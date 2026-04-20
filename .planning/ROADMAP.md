@@ -26,7 +26,12 @@
   3. The same IR fixture round-trips through the JSON renderer producing schema-valid structured output
   4. Babel ESM/CJS interop shim (`traverse.default ?? traverse`) is covered by a unit test that fails loudly if interop regresses
   5. Project-root resolution helper honors arg > `UI_TO_HIERARCH_ROOT` > `process.cwd()` and echoes resolved root in a canned metadata envelope
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 01-01-PLAN.md — Project scaffold (package.json, tsconfig, tsup, vitest, biome, island dirs, cli stub)
+  - [ ] 01-02-PLAN.md — IR zod schema (9-kind discriminatedUnion + envelope)
+  - [ ] 01-03-PLAN.md — Babel traverse ESM interop shim + test
+  - [ ] 01-04-PLAN.md — paths helper + resolveRoot (ARCH-03)
+  - [ ] 01-05-PLAN.md — Renderers (markdown + JSON) + envelope-builder + fixtures + snapshots
 **UI hint**: no
 
 ### Phase 2: MCP Transport Shell
@@ -97,7 +102,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffolding & IR Foundation | 0/0 | Not started | - |
+| 1. Scaffolding & IR Foundation | 0/5 | Not started | - |
 | 2. MCP Transport Shell | 0/0 | Not started | - |
 | 3. Parser Core | 0/0 | Not started | - |
 | 4. Next.js App Router Adapter | 0/0 | Not started | - |
