@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: Roadmap created; awaiting `/gsd-plan-phase 1`
+last_updated: "2026-04-20T09:03:36.337Z"
+progress:
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+---
+
 # STATE — ui-to-hierarch MCP
 
 **Last updated:** 2026-04-20 (initialization)
@@ -30,6 +43,7 @@
 ### Decisions
 
 Captured in PROJECT.md Key Decisions table. Highlights:
+
 - Multi-framework adapter architecture, only NextJsAdapter in v1
 - Query-only tools (no structural edits)
 - Parse-on-demand, no cache in v1
