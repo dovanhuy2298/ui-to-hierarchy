@@ -587,22 +587,22 @@ See "Architecture Patterns" section above — every pattern is paired with its s
 | A3 | Biome's `noRestrictedImports` supports per-directory overrides equivalently to ESLint | Pattern 10 | Low — if Biome's override mechanism is weaker, pick ESLint (D-17 allows either). |
 | A4 | `toMatchFileSnapshot` path resolution is relative to the test file | Pattern 9 | Very low — documented behavior; worst case is adjusting the path. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Text truncation length for markdown `text` kind**
    - What we know: D-10 says truncate long text with ellipsis.
    - What's unclear: Length threshold (40? 80? full line budget?). Ellipsis form (`…` vs `...`).
-   - Recommendation: Planner picks (Claude's Discretion). Suggest 60 chars + `…` for a balance between readability and info density. Revisit in Phase 6 with real client data.
+   - RESOLVED: 60 chars + `…` (adopted by Plans 02/05). Revisit in Phase 6 with real client data.
 
 2. **`schemaVersion` placement: top-level vs `meta.*`**
    - What we know: Claude's Discretion per CONTEXT.
    - What's unclear: D-15 example shows it top-level, but nesting under `meta` is valid too.
-   - Recommendation: Keep top-level (matches D-15 JSON). One less field to migrate later.
+   - RESOLVED: Top-level (matches D-15 JSON, adopted by Plan 02 envelope schema).
 
 3. **Per-kind schema split vs single file**
    - What we know: Claude's Discretion per CONTEXT.
    - What's unclear: 9 kinds in one file is ~150 lines (fine); splitting creates import boilerplate.
-   - Recommendation: Single file (`src/ir/schema.ts`). Revisit if any kind's validator balloons past ~40 lines.
+   - RESOLVED: Single file `src/ir/schema.ts` (adopted by Plan 02). Revisit if any kind's validator balloons past ~40 lines.
 
 ## Environment Availability
 
