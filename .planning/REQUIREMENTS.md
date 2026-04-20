@@ -64,4 +64,31 @@
 
 ## Traceability
 
-<!-- Filled by roadmapper: REQ-ID → Phase -->
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| MCP-01 | Phase 2 | Pending |
+| MCP-02 | Phase 2 | Pending |
+| MCP-03 | Phase 2 | Pending |
+| MCP-04 | Phase 2 | Pending |
+| TOOL-01 | Phase 5 | Pending |
+| TOOL-02 | Phase 5 | Pending |
+| TOOL-03 | Phase 5 | Pending |
+| TOOL-04 | Phase 5 | Pending |
+| PARSE-01 | Phase 3 | Pending |
+| PARSE-02 | Phase 3 | Pending |
+| PARSE-03 | Phase 3 | Pending |
+| PARSE-04 | Phase 3 | Pending |
+| NEXT-01 | Phase 4 | Pending |
+| NEXT-02 | Phase 4 | Pending |
+| NEXT-03 | Phase 4 | Pending |
+| NEXT-04 | Phase 4 | Pending |
+| OUT-01 | Phase 1 | Pending |
+| OUT-02 | Phase 3 | Pending |
+| OUT-03 | Phase 3 | Pending |
+| OUT-04 | Phase 3 | Pending |
+| ARCH-01 | Phase 3 | Pending |
+| ARCH-02 | Phase 5 | Pending |
+| ARCH-03 | Phase 1 | Pending |
+| ARCH-04 | Phase 6 | Pending |
+
+**Coverage:** 24/24 v1 requirements mapped, no orphans, no duplicates.
