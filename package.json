@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@modelcontextprotocol/inspector": "^0.21.2",
     "@types/babel__traverse": "^7.28.0",
     "@types/node": "^20.17.0",
     "@vitest/coverage-v8": "^4.1.4",
