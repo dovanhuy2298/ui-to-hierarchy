@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-21T10:16:32.681Z"
+last_updated: "2026-04-21T10:22:26.293Z"
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # STATE — ui-to-hierarchyMCP
@@ -32,7 +32,7 @@ Plan: 2 of 5
 - **Phase:** Phase 2: MCP Transport Shell — 5 plans, 5 waves
 - **Plan:** 02-02 complete (errors.ts + log.ts)
 - **Status:** Executing — Wave 1 utilities done, Wave 1 tools + server next
-- **Progress:** [█████████░] 90%
+- **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Plan: 2 of 5
 | Phase 02-mcp-transport-shell P02 | 3 | 2 tasks | 4 files |
 | Phase 02-mcp-transport-shell P03 | 10m | 2 tasks | 4 files |
 | Phase 02-mcp-transport-shell P04 | 7 | 2 tasks | 2 files |
+| Phase 02-mcp-transport-shell P05 | 231 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - log.ts uses process.stderr.write with template literal to satisfy both noConsole and useTemplate Biome rules
 - D-01 route regex applied: [\w-]+ pattern validates Next.js App Router paths
 - createServer and startServer kept separate — tests use createServer + InMemoryTransport
+- Used asToolResponse() cast helper for SDK client.callTool() result — content is typed unknown[] at Client layer
+- Added define.__TOOL_VERSION__ to vitest.config.ts to mirror tsup build-time substitution
 
 ### Open Todos
 
