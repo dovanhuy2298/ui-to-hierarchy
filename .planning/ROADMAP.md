@@ -44,7 +44,12 @@
   3. Calling any tool returns `{ content, isError: true }` with actionable guidance — no unhandled exceptions ever escape the handler
   4. A smoke test pipes stderr noise through the server and asserts every stdout line parses as JSON-RPC; ESLint `no-console` rule blocks `console.log` on server paths
   5. One real MCP client (Claude Code) connects and lists tools successfully
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 02-01-PLAN.md — Wave 0: global.d.ts, test stubs, test:smoke script, biome noConsole, inspector devDep
+  - [ ] 02-02-PLAN.md — Wave 1: src/mcp/errors.ts + src/mcp/log.ts (error helpers + stderr logger)
+  - [ ] 02-03-PLAN.md — Wave 1: src/mcp/tools/*.ts (four tool schemas + stub handlers)
+  - [ ] 02-04-PLAN.md — Wave 2: src/mcp/server.ts + src/cli.ts replacement (wiring + build)
+  - [ ] 02-05-PLAN.md — Wave 3: Tier 1 + Tier 2 test implementation + phase gate verification
 **UI hint**: no
 
 ### Phase 3: Parser Core (AST + Resolution + Extractors)
@@ -103,7 +108,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Scaffolding & IR Foundation | 0/5 | Not started | - |
-| 2. MCP Transport Shell | 0/0 | Not started | - |
+| 2. MCP Transport Shell | 0/5 | Not started | - |
 | 3. Parser Core | 0/0 | Not started | - |
 | 4. Next.js App Router Adapter | 0/0 | Not started | - |
 | 5. IR Queries & Tool Wire-up | 0/0 | Not started | - |
