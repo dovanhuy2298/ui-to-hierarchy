@@ -46,6 +46,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/mcp/**", "src/cli.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "error"
+          }
+        }
+      }
     }
   ]
 }

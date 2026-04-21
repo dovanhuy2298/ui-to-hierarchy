@@ -23,6 +23,7 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:smoke": "vitest run test/mcp/smoke.spawn.test.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
