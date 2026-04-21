@@ -1,4 +1,4 @@
-# ARCHITECTURE — ui-to-hierarch MCP
+# ARCHITECTURE — ui-to-hierarchyMCP
 
 **Domain:** MCP stdio server — static-analysis code parser with pluggable framework adapters
 **Researched:** 2026-04-20
@@ -41,17 +41,17 @@ Classic **frontend → IR → backend** compiler architecture wrapped in an MCP 
 
 ### Component Responsibilities
 
-| Component | Responsibility | Implementation |
-|-----------|----------------|----------------|
-| **MCP Server** | Wire stdio transport, register tools, route requests. | `@modelcontextprotocol/sdk` — use `McpServer.registerTool(name, { inputSchema: zod }, handler)` over low-level `Server.setRequestHandler(...)`. Zod gives runtime validation for free. |
-| **Tool Handlers** | Parse/validate input, call `AdapterDispatcher`, pipe IR through renderer. No parsing logic. | One file per tool in `src/tools/`. ~30 lines each. |
-| **AdapterDispatcher** | Ask each adapter `detect(root)` in priority order; return first match. | Simple registry array. No DI container in v1. |
-| **Pipeline Orchestrator (Analyzer)** | Sequence stages (discover → parse → resolve → graph → IR). Hold ASTs in memory for one tool call; GC on return. | One `Analyzer` per tool invocation. Matches "parse on-demand, no cache". |
-| **FrameworkAdapter** | All framework-specific knowledge — nothing else knows "Next.js App Router". | Interface + one concrete class per framework. |
-| **IR (ComponentGraph)** | Stable, typed, framework-agnostic tree. Contract between pipeline and renderers. | Plain TypeScript types. JSON-serializable directly. |
-| **Renderers** | IR → output string. Pure functions. | One file per format in `src/renderers/`. |
-| **Babel infra** | AST parse + traverse. | `@babel/parser` with `["jsx", "typescript", ...]`; `@babel/traverse` visitors. |
-| **Module resolver** | Resolve imports to absolute files. | `tsconfck`/`get-tsconfig` + extension walk. |
+| Component                            | Responsibility                                                                                                  | Implementation                                                                                                                                                                         |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MCP Server**                       | Wire stdio transport, register tools, route requests.                                                           | `@modelcontextprotocol/sdk` — use `McpServer.registerTool(name, { inputSchema: zod }, handler)` over low-level `Server.setRequestHandler(...)`. Zod gives runtime validation for free. |
+| **Tool Handlers**                    | Parse/validate input, call `AdapterDispatcher`, pipe IR through renderer. No parsing logic.                     | One file per tool in `src/tools/`. ~30 lines each.                                                                                                                                     |
+| **AdapterDispatcher**                | Ask each adapter `detect(root)` in priority order; return first match.                                          | Simple registry array. No DI container in v1.                                                                                                                                          |
+| **Pipeline Orchestrator (Analyzer)** | Sequence stages (discover → parse → resolve → graph → IR). Hold ASTs in memory for one tool call; GC on return. | One `Analyzer` per tool invocation. Matches "parse on-demand, no cache".                                                                                                               |
+| **FrameworkAdapter**                 | All framework-specific knowledge — nothing else knows "Next.js App Router".                                     | Interface + one concrete class per framework.                                                                                                                                          |
+| **IR (ComponentGraph)**              | Stable, typed, framework-agnostic tree. Contract between pipeline and renderers.                                | Plain TypeScript types. JSON-serializable directly.                                                                                                                                    |
+| **Renderers**                        | IR → output string. Pure functions.                                                                             | One file per format in `src/renderers/`.                                                                                                                                               |
+| **Babel infra**                      | AST parse + traverse.                                                                                           | `@babel/parser` with `["jsx", "typescript", ...]`; `@babel/traverse` visitors.                                                                                                         |
+| **Module resolver**                  | Resolve imports to absolute files.                                                                              | `tsconfck`/`get-tsconfig` + extension walk.                                                                                                                                            |
 
 ---
 
@@ -177,25 +177,25 @@ export interface FrameworkAdapter {
 }
 
 export interface Entry {
-  filePath: string;             // absolute
+  filePath: string; // absolute
   kind: EntryKind;
-  route?: string;               // "/dashboard/[slug]" for Next; undefined for RN screens
+  route?: string; // "/dashboard/[slug]" for Next; undefined for RN screens
   metadata?: Record<string, unknown>;
 }
 
 export type EntryKind =
-  | "root"       // RN _layout.tsx, Vue App.vue
-  | "layout"     // Next layout.tsx
-  | "page"       // Next page.tsx, RN screen
+  | "root" // RN _layout.tsx, Vue App.vue
+  | "layout" // Next layout.tsx
+  | "page" // Next page.tsx, RN screen
   | "loading"
   | "error"
   | "not-found"
-  | "screen";    // RN / Expo Router
+  | "screen"; // RN / Expo Router
 
 export interface EntryChain {
   route: string;
-  layouts: Entry[];             // outermost → innermost
-  leaf: Entry;                  // page/screen
+  layouts: Entry[]; // outermost → innermost
+  leaf: Entry; // page/screen
   siblings?: { loading?: Entry; error?: Entry; notFound?: Entry };
 }
 
@@ -206,7 +206,7 @@ export interface ResolveContext {
 
 export interface ParsedFile {
   filePath: string;
-  relPath: string;              // repo-relative, forward slashes
+  relPath: string; // repo-relative, forward slashes
   source: string;
   ast: BabelFile;
 }
@@ -223,16 +223,17 @@ export interface StyleExtractorSet {
 
 ### Why this contract is minimal and correct
 
-| Requirement | How the contract handles it |
-|-------------|-----------------------------|
-| v1 Next.js only, future RN/Vue/Svelte | Five methods. Only `NextJsAdapter` in v1. |
-| Entry discovery | `discoverEntries()` — framework enumerates its own conventions |
-| File resolution | `resolveModule()` — owns tsconfig paths, aliases, extensions |
-| Component extraction | `extractComponents()` — owns `"use client"`, Vue SFC, RN StyleSheet |
-| Route → entry mapping | `mapRouteToEntry()` — only method turning URL into files |
+| Requirement                             | How the contract handles it                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| v1 Next.js only, future RN/Vue/Svelte   | Five methods. Only `NextJsAdapter` in v1.                                     |
+| Entry discovery                         | `discoverEntries()` — framework enumerates its own conventions                |
+| File resolution                         | `resolveModule()` — owns tsconfig paths, aliases, extensions                  |
+| Component extraction                    | `extractComponents()` — owns `"use client"`, Vue SFC, RN StyleSheet           |
+| Route → entry mapping                   | `mapRouteToEntry()` — only method turning URL into files                      |
 | Style extractors shared across adapters | Passed INTO `extractComponents` as dependencies — not subclass responsibility |
 
 ### What does NOT belong in the adapter
+
 - **Tree building** (`buildNodesFromJsx`, branch/conditional resolution) → `ir/build.ts`. Adapter feeds `ComponentDefinition`s; IR builder walks render flows identically across frameworks.
 - **Rendering** — adapters never touch output format.
 - **MCP protocol** — adapters never import `@modelcontextprotocol/sdk`.
@@ -283,6 +284,7 @@ McpServer → StdioServerTransport → agent stdout
 ### Project root discovery
 
 Checked in order:
+
 1. **Tool input `projectRoot` arg** (preferred) — every tool's zod schema includes optional `projectRoot: z.string()`. How MCP clients drive from any cwd.
 2. **Env var `UI_TO_HIERARCH_ROOT`** — set by client's MCP config.
 3. **Server cwd** (`process.cwd()`) — fallback.
@@ -309,15 +311,19 @@ No changes to adapters, pipeline, tools, or MCP layer.
 ## Architectural Patterns
 
 ### Pattern 1: Strategy / Adapter for frameworks
+
 Single `FrameworkAdapter` interface, one impl per framework, chosen at runtime by `detect()`. New framework = one new directory, zero changes to core. Risk: resist putting framework-agnostic logic into an adapter "for convenience".
 
 ### Pattern 2: IR with pluggable renderers (LLVM/Rustc/Pandoc pattern)
+
 Compile many frontends (frameworks) → one IR → many backends (markdown, JSON, XML, Mermaid). O(N+M) vs O(N×M). Adding an IR field is a versioned contract change — do cautiously.
 
 ### Pattern 3: Per-call pipeline (no global state)
+
 Every tool call creates fresh `Analyzer` with fresh AST cache, runs pipeline, returns, GC'd. Impossible to get stale results; trivially thread-safe. Matches PROJECT.md's no-cache-in-v1 constraint.
 
 ### Pattern 4: Composition over inheritance for extractors
+
 Style extractors passed INTO `extractComponents` as `StyleExtractorSet`, not implemented as adapter subclasses. Next.js and Vue both get Tailwind from one implementation. Extractor API must stay framework-neutral.
 
 ---
@@ -362,6 +368,7 @@ Level 5 (whole system exists):
 ```
 
 **Strategic notes:**
+
 - **Renderers at Level 1** is counterintuitive but correct — pure IR→string; validate against fixtures before the parser exists. Any later bugs are adapter bugs.
 - **`extractComponents` is the longest single task** — effectively a port of `analyzeFile` + `buildNodesFromJsx` from prototype.
 - **`mapRouteToEntry` is the riskiest Next.js-specific task** — route groups `(auth)`, parallel `@slot`, intercepting `(.)foo`, dynamic `[slug]`/`[...rest]`/`[[...opt]]`. Likely deserves its own sub-phase.
@@ -373,16 +380,16 @@ Level 5 (whole system exists):
 
 Query-only, best-effort parser. A single bad file must never crash the whole tool call. Typed taxonomy in `src/core/errors.ts`:
 
-| Failure mode | Where handled | Behavior |
-|--------------|---------------|----------|
-| **Syntax error** in user file | `parseFile()` catches Babel error | Log warning to **stderr** (not stdout). Emit `TreeNode { kind: "error", name: "[unparseable]", fileRel, text: <msg> }`. Pipeline continues. |
-| **Unresolved import** | `resolveModule()` returns null | Treat as external — emit framework node with `module: "<unresolved>"`, no children. |
-| **Dynamic component** (`<Components[key] />`, `<A ?? B />`, `React.createElement(type)` with variable type) | Component resolver in `ir/build.ts` | Emit `TreeNode { kind: "dynamic", name: "<dynamic: " + sourceSlice + ">" }`. |
-| **Missing entry file** (route doesn't exist) | `mapRouteToEntry()` returns null | Tool returns MCP error response with `isError: true` + helpful message listing discovered routes. |
-| **Project root not a supported framework** | `AdapterDispatcher` finds no match | MCP error response: `"No framework adapter matched <root>. Supported: next"`. |
-| **Recursion** (component includes itself) | Already in prototype via `stack.includes(key)` | Mark `recursive: true`, don't recurse. |
-| **Cross-component reuse** (same component twice) | Prototype's `expandedComponents` set | Mark second `duplicate: true`, no children. |
-| **FS error** (permissions, mid-parse delete) | Top-level try/catch in `Analyzer.run()` | Wrap in typed `AnalyzerError`, surface as MCP error. |
+| Failure mode                                                                                                | Where handled                                  | Behavior                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Syntax error** in user file                                                                               | `parseFile()` catches Babel error              | Log warning to **stderr** (not stdout). Emit `TreeNode { kind: "error", name: "[unparseable]", fileRel, text: <msg> }`. Pipeline continues. |
+| **Unresolved import**                                                                                       | `resolveModule()` returns null                 | Treat as external — emit framework node with `module: "<unresolved>"`, no children.                                                         |
+| **Dynamic component** (`<Components[key] />`, `<A ?? B />`, `React.createElement(type)` with variable type) | Component resolver in `ir/build.ts`            | Emit `TreeNode { kind: "dynamic", name: "<dynamic: " + sourceSlice + ">" }`.                                                                |
+| **Missing entry file** (route doesn't exist)                                                                | `mapRouteToEntry()` returns null               | Tool returns MCP error response with `isError: true` + helpful message listing discovered routes.                                           |
+| **Project root not a supported framework**                                                                  | `AdapterDispatcher` finds no match             | MCP error response: `"No framework adapter matched <root>. Supported: next"`.                                                               |
+| **Recursion** (component includes itself)                                                                   | Already in prototype via `stack.includes(key)` | Mark `recursive: true`, don't recurse.                                                                                                      |
+| **Cross-component reuse** (same component twice)                                                            | Prototype's `expandedComponents` set           | Mark second `duplicate: true`, no children.                                                                                                 |
+| **FS error** (permissions, mid-parse delete)                                                                | Top-level try/catch in `Analyzer.run()`        | Wrap in typed `AnalyzerError`, surface as MCP error.                                                                                        |
 
 **Iron rule:** MCP server never exits. Only MCP JSON-RPC frames to stdout. All logs → stderr.
 
@@ -391,22 +398,27 @@ Query-only, best-effort parser. A single bad file must never crash the whole too
 ## Anti-Patterns
 
 ### AP1: Framework knowledge in `core/` or `ir/`
+
 - **Problem:** An `if (adapter.id === "next") ...` in `ir/build.ts` to handle `"use client"` or route groups. Five such conditionals and the architecture is no longer pluggable.
 - **Do instead:** Extend `ComponentDefinition` / `Entry` with normalized fields (e.g. `clientBoundary: boolean`); adapter populates; core consumes normalized field.
 
 ### AP2: Per-adapter rendering
+
 - **Problem:** `adapter.renderMarkdown(ir)` — "the adapter knows best." N×M output implementations; new format changes every adapter.
 - **Do instead:** Renderers consume IR only. If a format genuinely needs framework metadata, push into IR as optional fields.
 
 ### AP3: Using `McpServer` and `Server` interchangeably
+
 - **Problem:** Copy `server.setRequestHandler(CallToolRequestSchema, ...)` into a file that imports `McpServer` → `setRequestHandler does not exist`. (SDK issue #642.)
 - **Do instead:** Pick `McpServer.registerTool` with zod input schemas. SDK validates inputs for free. Drop to `Server` only if needed (not in v1).
 
 ### AP4: stdout for logs
+
 - **Problem:** `console.log("parsing file...")` corrupts stdio transport silently.
 - **Do instead:** `console.error(...)` or route to stderr/file.
 
 ### AP5: Cross-call AST caching in v1
+
 - **Problem:** "Parsing is slow, let's keep a module-level `Map<filePath, AST>`." Cache-invalidation bugs (stale tree after user edit) break the value prop.
 - **Do instead:** Per-call astCache (many files reference same imports), discard on return. Cross-call cache behind same `Analyzer` interface later if measurement shows need.
 
@@ -416,31 +428,31 @@ Query-only, best-effort parser. A single bad file must never crash the whole too
 
 ### External
 
-| Service | Integration | Notes |
-|---------|-------------|-------|
-| MCP clients (Claude Code, Cursor, Continue) | JSON-RPC 2.0 over stdio via `StdioServerTransport` | Clients launch per MCP config, typically `npx ui-to-hierarch` |
-| npm registry | Distribution | `package.json` `"bin"` + published package. UX: `npx -y ui-to-hierarch` |
+| Service                                     | Integration                                        | Notes                                                                   |
+| ------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
+| MCP clients (Claude Code, Cursor, Continue) | JSON-RPC 2.0 over stdio via `StdioServerTransport` | Clients launch per MCP config, typically `npx ui-to-hierarch`           |
+| npm registry                                | Distribution                                       | `package.json` `"bin"` + published package. UX: `npx -y ui-to-hierarch` |
 
 ### Internal boundaries
 
-| Boundary | Communication |
-|----------|---------------|
-| tool handler ↔ core | Direct typed function call |
-| core ↔ adapter | Calls on `FrameworkAdapter` interface (only `Analyzer` crosses) |
-| adapter ↔ extractor | Adapter calls extractor fn with Babel nodes; one-way |
-| pipeline ↔ IR | Pipeline builds IR, hands to renderer; IR is JSON-serializable |
-| server ↔ transport | Via SDK abstraction (never touch stdio directly) |
+| Boundary            | Communication                                                   |
+| ------------------- | --------------------------------------------------------------- |
+| tool handler ↔ core | Direct typed function call                                      |
+| core ↔ adapter      | Calls on `FrameworkAdapter` interface (only `Analyzer` crosses) |
+| adapter ↔ extractor | Adapter calls extractor fn with Babel nodes; one-way            |
+| pipeline ↔ IR       | Pipeline builds IR, hands to renderer; IR is JSON-serializable  |
+| server ↔ transport  | Via SDK abstraction (never touch stdio directly)                |
 
 ---
 
 ## Scaling Considerations
 
-| Scale | What matters | Adjustment |
-|-------|--------------|------------|
-| Tiny Next.js (< 50 files) | Nothing — parse-per-call ~50ms | Ship as-is |
-| Medium (~500 files, typical v1) | First call 1–3s | Fine. Parse in parallel via `Promise.all` |
-| Large (~5000 files, monorepo) | Parse time user-visible | Add **optional** on-disk AST cache keyed by `(filePath, mtime)` behind same interface |
-| Huge (~50k files) | Memory per call | Parse only transitive closure from queried route, not whole project |
+| Scale                           | What matters                   | Adjustment                                                                            |
+| ------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
+| Tiny Next.js (< 50 files)       | Nothing — parse-per-call ~50ms | Ship as-is                                                                            |
+| Medium (~500 files, typical v1) | First call 1–3s                | Fine. Parse in parallel via `Promise.all`                                             |
+| Large (~5000 files, monorepo)   | Parse time user-visible        | Add **optional** on-disk AST cache keyed by `(filePath, mtime)` behind same interface |
+| Huge (~50k files)               | Memory per call                | Parse only transitive closure from queried route, not whole project                   |
 
 **Don't add caching in v1 even if it seems free.** Correctness > perf at v1 scale.
 
@@ -448,21 +460,22 @@ Query-only, best-effort parser. A single bad file must never crash the whole too
 
 ## Confidence Assessment
 
-| Claim | Confidence | Basis |
-|-------|-----------|-------|
-| `McpServer.registerTool` with zod is recommended wiring | HIGH | Official SDK docs, PR #816, DeepWiki walkthrough |
-| `Server` + `setRequestHandler` still works but is low-level | HIGH | Official docs, Issue #642 |
-| Stdout must stay clean on stdio transport | HIGH | Universal MCP guidance |
-| IR-with-pluggable-renderers maps to this problem | HIGH | LLVM, Rustc, Pandoc all use this |
-| Adapter contract covers all v1-planned frameworks | MEDIUM | Validated against Next.js + RN/Expo (prototype proves RN). Vue SFC / Svelte stores may push small additions to `extractComponents` — no changes to 5-method shape |
-| Parse-on-demand under 3s for medium projects | MEDIUM | Prototype runs fast on RN/Expo; unvalidated on large Next.js monorepos |
-| `mapRouteToEntry` with parallel/intercepting routes is non-trivial | HIGH | Official Next.js docs document 5+ special route folder types |
+| Claim                                                              | Confidence | Basis                                                                                                                                                             |
+| ------------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `McpServer.registerTool` with zod is recommended wiring            | HIGH       | Official SDK docs, PR #816, DeepWiki walkthrough                                                                                                                  |
+| `Server` + `setRequestHandler` still works but is low-level        | HIGH       | Official docs, Issue #642                                                                                                                                         |
+| Stdout must stay clean on stdio transport                          | HIGH       | Universal MCP guidance                                                                                                                                            |
+| IR-with-pluggable-renderers maps to this problem                   | HIGH       | LLVM, Rustc, Pandoc all use this                                                                                                                                  |
+| Adapter contract covers all v1-planned frameworks                  | MEDIUM     | Validated against Next.js + RN/Expo (prototype proves RN). Vue SFC / Svelte stores may push small additions to `extractComponents` — no changes to 5-method shape |
+| Parse-on-demand under 3s for medium projects                       | MEDIUM     | Prototype runs fast on RN/Expo; unvalidated on large Next.js monorepos                                                                                            |
+| `mapRouteToEntry` with parallel/intercepting routes is non-trivial | HIGH       | Official Next.js docs document 5+ special route folder types                                                                                                      |
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
+
 - [typescript-sdk repo](https://github.com/modelcontextprotocol/typescript-sdk) — canonical SDK source
 - [typescript-sdk/docs/server.md](https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/server.md)
 - [@modelcontextprotocol/sdk on npm](https://www.npmjs.com/package/@modelcontextprotocol/sdk)
@@ -474,6 +487,7 @@ Query-only, best-effort parser. A single bad file must never crash the whole too
 - [Next.js Layouts and Pages](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
 
 ### Secondary (MEDIUM confidence)
+
 - [Tool Registration — DeepWiki](https://deepwiki.com/modelcontextprotocol/typescript-sdk/3.2-tool-registration-and-execution)
 - [Build an MCP server](https://modelcontextprotocol.io/docs/develop/build-server)
 - [@babel/traverse docs](https://babeljs.io/docs/babel-traverse)
@@ -482,5 +496,6 @@ Query-only, best-effort parser. A single bad file must never crash the whole too
 - [Adapter pattern in TS (refactoring.guru)](https://refactoring.guru/design-patterns/adapter/typescript/example)
 
 ### In-repo
+
 - `E:\ui-to-hierarch\generate-component-hierarchy.ts` — existing parser for RN/Expo; IR types (lines 96–114) and tree-building algorithms port over directly
 - `E:\ui-to-hierarch\.planning\PROJECT.md` — authoritative v1 scope

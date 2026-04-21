@@ -16,25 +16,25 @@ overrides_applied: 0
 
 ### Observable Truths (ROADMAP SC-1…SC-5)
 
-| # | Truth | Status | Evidence |
-|---|-------|--------|----------|
-| 1 | `pnpm build` produces ESM bundle with shebanged `bin/ui-to-hierarch` | VERIFIED | `dist/cli.js` line 1 = `#!/usr/bin/env node`; `package.json` `bin.ui-to-hierarch → ./dist/cli.js`, `type:"module"`, `engines.node:">=20"`; user-confirmed build green |
-| 2 | IR fixture round-trips through markdown renderer with `file:line` + forward slashes | VERIFIED | `src/renderers/markdown.ts` emits `@ ${node.file}:${node.line}`; `src/core/paths.ts::toForwardSlash` double-normalizes; 4 file snapshots exist under `test/renderers/__snapshots__/markdown-*.md` covering kitchen-sink + 3 edge fixtures |
-| 3 | Same fixture round-trips through JSON renderer producing schema-valid output | VERIFIED | `src/ir/envelope.ts::EnvelopeSchema` (zod, `schemaVersion:"1"`, datetime, warnings, tree); `src/renderers/json.ts` combiner; user-confirmed `EnvelopeSchema.parse` passes all 4 fixtures |
-| 4 | Babel traverse ESM/CJS interop shim covered by failing-loudly test | VERIFIED | `src/core/babel-shim.ts` implements `traverseImport.default ?? traverseImport`; `test/core/babel-shim.test.ts` present |
-| 5 | `resolveRoot` honors arg > env > cwd and echoes in metadata envelope | VERIFIED | `src/core/resolve-root.ts` implements exact precedence with `toForwardSlash(path.resolve(...))`; `src/renderers/envelope-builder.ts::buildEnvelope` populates `resolvedRoot`; `test/core/resolve-root.test.ts` present |
+| #   | Truth                                                                               | Status   | Evidence                                                                                                                                                                                                                                  |
+| --- | ----------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `pnpm build` produces ESM bundle with shebanged `bin/ui-to-hierarch`                | VERIFIED | `dist/cli.js` line 1 = `#!/usr/bin/env node`; `package.json` `bin.ui-to-hierarchy→ ./dist/cli.js`, `type:"module"`, `engines.node:">=20"`; user-confirmed build green                                                                     |
+| 2   | IR fixture round-trips through markdown renderer with `file:line` + forward slashes | VERIFIED | `src/renderers/markdown.ts` emits `@ ${node.file}:${node.line}`; `src/core/paths.ts::toForwardSlash` double-normalizes; 4 file snapshots exist under `test/renderers/__snapshots__/markdown-*.md` covering kitchen-sink + 3 edge fixtures |
+| 3   | Same fixture round-trips through JSON renderer producing schema-valid output        | VERIFIED | `src/ir/envelope.ts::EnvelopeSchema` (zod, `schemaVersion:"1"`, datetime, warnings, tree); `src/renderers/json.ts` combiner; user-confirmed `EnvelopeSchema.parse` passes all 4 fixtures                                                  |
+| 4   | Babel traverse ESM/CJS interop shim covered by failing-loudly test                  | VERIFIED | `src/core/babel-shim.ts` implements `traverseImport.default ?? traverseImport`; `test/core/babel-shim.test.ts` present                                                                                                                    |
+| 5   | `resolveRoot` honors arg > env > cwd and echoes in metadata envelope                | VERIFIED | `src/core/resolve-root.ts` implements exact precedence with `toForwardSlash(path.resolve(...))`; `src/renderers/envelope-builder.ts::buildEnvelope` populates `resolvedRoot`; `test/core/resolve-root.test.ts` present                    |
 
 ### Required Artifacts (D-16 layout + key files)
 
-| Artifact | Status |
-|----------|--------|
-| `src/ir/{schema,envelope,index}.ts` — 9-kind discriminated union with flat `file/line/layoutHint` | VERIFIED |
-| `src/renderers/{markdown,json,envelope-builder,index}.ts` | VERIFIED |
-| `src/core/{babel-shim,paths,resolve-root}.ts` | VERIFIED |
-| `src/cli.ts` stub (stderr + exit 0 per D-19) | VERIFIED |
-| `src/adapters/`, `src/mcp/` placeholder dirs | VERIFIED (empty, ARCH-01 boundary enforced) |
-| `test/fixtures/ir/{kitchen-sink,empty,single-leaf,deep-branch,index}.ts` | VERIFIED |
-| `biome.json` island boundary rule | VERIFIED — `no-restricted-imports` blocks `adapters/` + `mcp/` |
+| Artifact                                                                                          | Status                                                         |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `src/ir/{schema,envelope,index}.ts` — 9-kind discriminated union with flat `file/line/layoutHint` | VERIFIED                                                       |
+| `src/renderers/{markdown,json,envelope-builder,index}.ts`                                         | VERIFIED                                                       |
+| `src/core/{babel-shim,paths,resolve-root}.ts`                                                     | VERIFIED                                                       |
+| `src/cli.ts` stub (stderr + exit 0 per D-19)                                                      | VERIFIED                                                       |
+| `src/adapters/`, `src/mcp/` placeholder dirs                                                      | VERIFIED (empty, ARCH-01 boundary enforced)                    |
+| `test/fixtures/ir/{kitchen-sink,empty,single-leaf,deep-branch,index}.ts`                          | VERIFIED                                                       |
+| `biome.json` island boundary rule                                                                 | VERIFIED — `no-restricted-imports` blocks `adapters/` + `mcp/` |
 
 ### Anti-Patterns
 

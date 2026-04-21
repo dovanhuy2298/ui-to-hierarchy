@@ -12,7 +12,7 @@ progress:
   percent: 17
 ---
 
-# STATE — ui-to-hierarch MCP
+# STATE — ui-to-hierarchyMCP
 
 **Last updated:** 2026-04-21
 
@@ -36,11 +36,11 @@ Plan: 0 of 5
 
 ## Performance Metrics
 
-| Metric | Value |
-|--------|-------|
-| Phases complete | 1/6 |
-| Requirements validated | 0/24 |
-| Requirements deferred to v2 | 0 |
+| Metric                      | Value |
+| --------------------------- | ----- |
+| Phases complete             | 1/6   |
+| Requirements validated      | 0/24  |
+| Requirements deferred to v2 | 0     |
 
 ## Accumulated Context
 

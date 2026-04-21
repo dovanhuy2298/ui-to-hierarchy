@@ -1,4 +1,4 @@
-# ui-to-hierarch MCP
+# ui-to-hierarchyMCP
 
 ## What This Is
 
@@ -56,21 +56,22 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 ## Key Decisions
 
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Multi-framework architecture, Next.js parser only in v1 | User wants future-proof pluggability without paying the cost now | — Pending |
-| Query-only in v1 (no structural edits) | Keep scope tight; agents already have `Edit` tools — MCP's job is to *inform* edits | — Pending |
-| Parse on-demand (no cache in v1) | Simpler to build, correctness guaranteed; caching can come once perf shows it's needed | — Pending |
-| Both markdown and JSON output | Markdown for LLM comprehension, JSON for programmatic traversal | — Pending |
-| Next.js App Router only in v1 | Pages Router is legacy; focus buys deeper quality | — Pending |
-| MCP bring-your-own-vision | Agents already have multimodal; MCP stays a focused code-analysis server | — Pending |
-| Ship as npm package (stdio MCP) | Standard MCP distribution; `npx` zero-install UX for clients | — Pending |
+| Decision                                                | Rationale                                                                              | Outcome   |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------- |
+| Multi-framework architecture, Next.js parser only in v1 | User wants future-proof pluggability without paying the cost now                       | — Pending |
+| Query-only in v1 (no structural edits)                  | Keep scope tight; agents already have `Edit` tools — MCP's job is to _inform_ edits    | — Pending |
+| Parse on-demand (no cache in v1)                        | Simpler to build, correctness guaranteed; caching can come once perf shows it's needed | — Pending |
+| Both markdown and JSON output                           | Markdown for LLM comprehension, JSON for programmatic traversal                        | — Pending |
+| Next.js App Router only in v1                           | Pages Router is legacy; focus buys deeper quality                                      | — Pending |
+| MCP bring-your-own-vision                               | Agents already have multimodal; MCP stays a focused code-analysis server               | — Pending |
+| Ship as npm package (stdio MCP)                         | Standard MCP distribution; `npx` zero-install UX for clients                           | — Pending |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 **After each phase transition** (via `/gsd-transition`):
+
 1. Requirements invalidated? → Move to Out of Scope with reason
 2. Requirements validated? → Move to Validated with phase reference
 3. New requirements emerged? → Add to Active
@@ -78,10 +79,12 @@ This document evolves at phase transitions and milestone boundaries.
 5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
+
 1. Full review of all sections
 2. Core Value check — still the right priority?
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-20 after initialization*
+
+_Last updated: 2026-04-20 after initialization_
