@@ -12,7 +12,10 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Ship as npm package that runs as a stdio MCP server (`npx`-able) — **Validated in Phase 2: MCP Transport Shell**
+- [x] Expose 4 MCP tools with typed zod schemas (get_full_hierarchy, focus_on, find_by_text, find_by_style) — **Validated in Phase 2**
+- [x] Tool handlers return `{ content, isError: true }` on failure — never unhandled exceptions — **Validated in Phase 2**
+- [x] stdout reserved for JSON-RPC; all diagnostics to stderr as JSON lines — **Validated in Phase 2**
 
 ### Active
 
@@ -87,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-_Last updated: 2026-04-20 after initialization_
+_Last updated: 2026-04-21 after Phase 2 completion_
