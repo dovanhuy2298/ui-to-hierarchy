@@ -8,7 +8,7 @@
 ## Phases
 
 - [ ] **Phase 1: Scaffolding & IR Foundation** — Project skeleton, IR types, markdown/JSON renderers unit-testable against fixtures
-- [ ] **Phase 2: MCP Transport Shell** — `npx` stdio server with zod-validated tool surface (stubs return "not implemented")
+- [x] **Phase 2: MCP Transport Shell** — `npx` stdio server with zod-validated tool surface (stubs return "not implemented")
 - [ ] **Phase 3: Parser Core** — Babel AST + module resolution + style extractors + adapter interface
 - [ ] **Phase 4: Next.js App Router Adapter** — Routing, layout chains, route groups / parallel / intercepting / dynamic segments
 - [ ] **Phase 5: IR Queries & Tool Wire-up** — All four MCP tools fully functional end-to-end
@@ -51,11 +51,11 @@
 5. One real MCP client (Claude Code) connects and lists tools successfully
    **Plans**: 5 plans
 
-- [ ] 02-01-PLAN.md — Wave 0: global.d.ts, test stubs, test:smoke script, biome noConsole, inspector devDep
-- [ ] 02-02-PLAN.md — Wave 1: src/mcp/errors.ts + src/mcp/log.ts (error helpers + stderr logger)
-- [ ] 02-03-PLAN.md — Wave 1: src/mcp/tools/\*.ts (four tool schemas + stub handlers)
-- [ ] 02-04-PLAN.md — Wave 2: src/mcp/server.ts + src/cli.ts replacement (wiring + build)
-- [ ] 02-05-PLAN.md — Wave 3: Tier 1 + Tier 2 test implementation + phase gate verification
+- [x] 02-01-PLAN.md — Wave 0: global.d.ts, test stubs, test:smoke script, biome noConsole, inspector devDep
+- [x] 02-02-PLAN.md — Wave 1: src/mcp/errors.ts + src/mcp/log.ts (error helpers + stderr logger)
+- [x] 02-03-PLAN.md — Wave 1: src/mcp/tools/\*.ts (four tool schemas + stub handlers)
+- [x] 02-04-PLAN.md — Wave 2: src/mcp/server.ts + src/cli.ts replacement (wiring + build)
+- [x] 02-05-PLAN.md — Wave 3: Tier 1 + Tier 2 test implementation + phase gate verification
       **UI hint**: no
 
 ### Phase 3: Parser Core (AST + Resolution + Extractors)
@@ -121,8 +121,8 @@
 
 | Phase                          | Plans Complete | Status      | Completed |
 | ------------------------------ | -------------- | ----------- | --------- |
-| 1. Scaffolding & IR Foundation | 0/5            | Not started | -         |
-| 2. MCP Transport Shell         | 0/5            | Not started | -         |
+| 1. Scaffolding & IR Foundation | 5/5            | Complete    | 2026-04-20 |
+| 2. MCP Transport Shell         | 5/5            | Complete    | 2026-04-21 |
 | 3. Parser Core                 | 0/0            | Not started | -         |
 | 4. Next.js App Router Adapter  | 0/0            | Not started | -         |
 | 5. IR Queries & Tool Wire-up   | 0/0            | Not started | -         |

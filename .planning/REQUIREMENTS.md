@@ -76,10 +76,10 @@
 
 | Requirement | Phase   | Status  |
 | ----------- | ------- | ------- |
-| MCP-01      | Phase 2 | Pending |
-| MCP-02      | Phase 2 | Pending |
-| MCP-03      | Phase 2 | Pending |
-| MCP-04      | Phase 2 | Pending |
+| MCP-01      | Phase 2 | Complete |
+| MCP-02      | Phase 2 | Complete |
+| MCP-03      | Phase 2 | Complete |
+| MCP-04      | Phase 2 | Complete |
 | TOOL-01     | Phase 5 | Pending |
 | TOOL-02     | Phase 5 | Pending |
 | TOOL-03     | Phase 5 | Pending |
