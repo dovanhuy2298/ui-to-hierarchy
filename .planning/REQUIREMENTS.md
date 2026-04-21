@@ -10,7 +10,8 @@
 - [x] **MCP-01
 **: Ships as npm package with `bin` entry runnable via `npx ui-to-hierarch`; starts a stdio MCP server using `@modelcontextprotocol/sdk`'s `StdioServerTransport`
 - [ ] **MCP-02**: Every tool input defined via zod schema with `.describe()` on every field, precise types (enums, regex-validated identifiers, route-shape validators)
-- [ ] **MCP-03**: Tool handlers return `{ content, isError: true }` on user-facing failures with actionable guidance — never propagate unhandled exceptions
+- [x] **MCP-03
+**: Tool handlers return `{ content, isError: true }` on user-facing failures with actionable guidance — never propagate unhandled exceptions
 - [x] **MCP-04
 **: stdout reserved exclusively for JSON-RPC frames; all diagnostics routed to stderr; ESLint `no-console` on server paths + smoke test that parses every stdout line as JSON
 

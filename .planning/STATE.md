@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-04-21T10:05:02.450Z"
+last_updated: "2026-04-21T10:09:05Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
-  percent: 60
+  completed_plans: 8
+  percent: 80
 ---
 
 # STATE — ui-to-hierarchyMCP
@@ -25,14 +25,14 @@ progress:
 
 ## Current Position
 
-Phase: 02 (MCP Transport Shell) — READY TO EXECUTE
-Plan: 0 of 5
+Phase: 02 (MCP Transport Shell) — IN PROGRESS
+Plan: 2 of 5
 
 - **Milestone:** v1
 - **Phase:** Phase 2: MCP Transport Shell — 5 plans, 5 waves
-- **Plan:** —
-- **Status:** Planning complete — ready for `/gsd-execute-phase 02`
-- **Progress:** [██████░░░░] 60%
+- **Plan:** 02-02 complete (errors.ts + log.ts)
+- **Status:** Executing — Wave 1 utilities done, Wave 1 tools + server next
+- **Progress:** [████████░░] 80%
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Plan: 0 of 5
 | Requirements validated      | 0/24  |
 | Requirements deferred to v2 | 0     |
 | Phase 02-mcp-transport-shell P01 | 15 | 3 tasks | 6 files |
+| Phase 02-mcp-transport-shell P02 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -57,6 +58,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - Ship as stdio MCP via npm / `npx`
 - Use process.stderr.write instead of console.error in cli.ts placeholder to comply with noConsole:error lint rule
 - Append second overrides entry to biome.json to preserve existing noRestrictedImports entry unchanged
+- internalError() exposes err.message only, never err.stack — T-02-03 mitigation
+- log.ts uses process.stderr.write with template literal to satisfy both noConsole and useTemplate Biome rules
 
 ### Open Todos
 
@@ -73,7 +76,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 
 ## Session Continuity
 
-- Next command: `/gsd-execute-phase 2`
+- Last session: 2026-04-21T10:09:05Z — completed 02-02 (errors.ts + log.ts)
+- Next command: `/gsd-execute-phase 02` (continue with plan 02-03)
 - Prototype reference: `E:\ui-to-hierarch\generate-component-hierarchy.ts` (~60% of v1 logic; port, don't wrap)
 - Research artifacts: `.planning/research/{SUMMARY,STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`
 
