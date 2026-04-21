@@ -3,9 +3,18 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer } from "../../src/mcp/server.js";
-import { internalError } from "../../src/mcp/errors.js";
+import { internalError, type ToolResponse } from "../../src/mcp/errors.js";
 
 // Tier 1 — in-process tests using InMemoryTransport + Client
+
+// ---------------------------------------------------------------------------
+// Helper: cast client.callTool() result to ToolResponse.
+// The SDK types result.content as unknown[] at the Client layer;
+// casting through ToolResponse gives safe access to .content[0].text.
+// ---------------------------------------------------------------------------
+function asToolResponse(result: unknown): ToolResponse {
+  return result as ToolResponse;
+}
 
 // ---------------------------------------------------------------------------
 // Helper: wire a fresh server + client pair for a single test
@@ -43,7 +52,6 @@ describe("MCP server — tool registration (MCP-01)", () => {
 
   it("initialize handshake succeeds", async () => {
     // If createTestPair() resolves without throwing, the handshake succeeded.
-    // No additional assertion needed — a throw would fail the test.
     expect(pair.client).toBeDefined();
   });
 
@@ -72,8 +80,7 @@ describe("MCP server — tool registration (MCP-01)", () => {
   });
 
   it("each tool has a non-empty title", async () => {
-    // The SDK exposes inputSchema on each tool listing; assert it is present
-    // (title may or may not be surfaced in the listing response, but inputSchema is always present)
+    // inputSchema is always present on every registered tool
     const { tools } = await pair.client.listTools();
     for (const tool of tools) {
       expect(tool.inputSchema, `${tool.name} should have an inputSchema`).toBeTruthy();
@@ -96,69 +103,76 @@ describe("MCP server — tool schemas (MCP-02)", () => {
   });
 
   it("get_full_hierarchy: route field is required and validates Next.js paths", async () => {
-    // Valid route should NOT be rejected by schema
-    const result = await pair.client.callTool({
-      name: "get_full_hierarchy",
-      arguments: { route: "/dashboard" },
-    });
-    // Handler returns notImplemented (isError:true) — NOT a schema rejection
-    // The fact that content[0].text contains the tool name proves the handler was called
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain(
-      "get_full_hierarchy",
+    // Valid route passes schema boundary — handler is reached
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "get_full_hierarchy",
+        arguments: { route: "/dashboard" },
+      }),
     );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("get_full_hierarchy");
   });
 
   it("get_full_hierarchy: format field defaults to markdown", async () => {
-    // Call without format — schema default kicks in
-    const result = await pair.client.callTool({
-      name: "get_full_hierarchy",
-      arguments: { route: "/" },
-    });
-    // Handler was reached (not rejected by schema boundary)
-    expect(result.isError).toBe(true);
+    // Call without format — zod default kicks in; handler is reached
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "get_full_hierarchy",
+        arguments: { route: "/" },
+      }),
+    );
+    expect(r.isError).toBe(true);
   });
 
   it("focus_on: component field validates PascalCase only", async () => {
-    // Valid PascalCase component name should reach the handler
-    const result = await pair.client.callTool({
-      name: "focus_on",
-      arguments: { component: "Card" },
-    });
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain("focus_on");
+    // Valid PascalCase name passes schema boundary — handler is reached
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "focus_on",
+        arguments: { component: "Card" },
+      }),
+    );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("focus_on");
   });
 
   it("focus_on: scope field defaults to full", async () => {
-    // Call without scope — schema default kicks in
-    const result = await pair.client.callTool({
-      name: "focus_on",
-      arguments: { component: "Layout" },
-    });
-    expect(result.isError).toBe(true);
+    // Call without scope — zod default kicks in; handler is reached
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "focus_on",
+        arguments: { component: "Layout" },
+      }),
+    );
+    expect(r.isError).toBe(true);
   });
 
   it(
     "get_full_hierarchy: invalid route returns isError:true without calling handler",
     async () => {
-      // '/bad route' has a space — fails the route regex at the SDK schema boundary
-      const result = await pair.client.callTool({
-        name: "get_full_hierarchy",
-        arguments: { route: "/bad route" },
-      });
-      expect(result.isError).toBe(true);
+      // '/bad route' has a space — fails route regex at the SDK schema boundary
+      const r = asToolResponse(
+        await pair.client.callTool({
+          name: "get_full_hierarchy",
+          arguments: { route: "/bad route" },
+        }),
+      );
+      expect(r.isError).toBe(true);
     },
   );
 
   it(
     "focus_on: invalid component name returns isError:true without calling handler",
     async () => {
-      // 'lowercase' fails the PascalCase regex at the SDK schema boundary
-      const result = await pair.client.callTool({
-        name: "focus_on",
-        arguments: { component: "lowercase" },
-      });
-      expect(result.isError).toBe(true);
+      // 'lowercase' fails PascalCase regex at the SDK schema boundary
+      const r = asToolResponse(
+        await pair.client.callTool({
+          name: "focus_on",
+          arguments: { component: "lowercase" },
+        }),
+      );
+      expect(r.isError).toBe(true);
     },
   );
 });
@@ -178,41 +192,47 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
   });
 
   it("get_full_hierarchy returns isError:true with tool name in message", async () => {
-    const result = await pair.client.callTool({
-      name: "get_full_hierarchy",
-      arguments: { route: "/" },
-    });
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain(
-      "get_full_hierarchy",
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "get_full_hierarchy",
+        arguments: { route: "/" },
+      }),
     );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("get_full_hierarchy");
   });
 
   it("focus_on returns isError:true with tool name in message", async () => {
-    const result = await pair.client.callTool({
-      name: "focus_on",
-      arguments: { component: "Card" },
-    });
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain("focus_on");
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "focus_on",
+        arguments: { component: "Card" },
+      }),
+    );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("focus_on");
   });
 
   it("find_by_text returns isError:true with tool name in message", async () => {
-    const result = await pair.client.callTool({
-      name: "find_by_text",
-      arguments: { query: "Hello World" },
-    });
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain("find_by_text");
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "find_by_text",
+        arguments: { query: "Hello World" },
+      }),
+    );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("find_by_text");
   });
 
   it("find_by_style returns isError:true with tool name in message", async () => {
-    const result = await pair.client.callTool({
-      name: "find_by_style",
-      arguments: { class_or_prop: "flex" },
-    });
-    expect(result.isError).toBe(true);
-    expect((result.content[0] as { type: string; text: string }).text).toContain("find_by_style");
+    const r = asToolResponse(
+      await pair.client.callTool({
+        name: "find_by_style",
+        arguments: { class_or_prop: "flex" },
+      }),
+    );
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { type: string; text: string }).text).toContain("find_by_style");
   });
 
   it("handler exception is caught and returns internalError response", () => {
@@ -221,9 +241,8 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
     const response = internalError("test_tool", err);
     expect(response.isError).toBe(true);
     expect(response.content).toHaveLength(1);
-    expect(response.content[0].type).toBe("text");
-    expect((response.content[0] as { type: string; text: string }).text).toContain(
-      "simulated handler crash",
-    );
+    const item = response.content[0] as { type: string; text: string };
+    expect(item.type).toBe("text");
+    expect(item.text).toContain("simulated handler crash");
   });
 });
