@@ -665,17 +665,17 @@ export const findByStyleInput = z.object({
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `server.ts` need to export `McpServer` or just `createServer()` / `startServer()`?**
    - What we know: Tests need to call `createServer()` to wire `InMemoryTransport` themselves. `startServer()` hard-codes `StdioServerTransport`.
    - What's unclear: Whether the planner wants a factory pattern (`createServer()` returns `McpServer`) or an accessor pattern (module-level singleton exposed).
-   - Recommendation: Export `createServer(): McpServer` (factory) + `startServer(): Promise<void>` (called by `cli.ts`). This is the minimal surface and is consistent with D-11.
+   - RESOLVED: Export createServer(): McpServer (factory) + startServer(): Promise<void> (called by cli.ts) per D-11 — implemented in plan 02-04 Task 1.
 
 2. **`__TOOL_VERSION__` global declaration — already in Phase 1?**
    - What we know: `tsup.config.ts` already has `define: { __TOOL_VERSION__: JSON.stringify(pkg.version) }`. The declaration must exist somewhere for `tsc --noEmit` to pass.
    - What's unclear: Phase 1 execution status — if Phase 1 plans were executed, the declaration exists; if not, it needs creating in Wave 0.
-   - Recommendation: Wave 0 task should verify `src/global.d.ts` or `src/env.d.ts` contains `declare const __TOOL_VERSION__: string;`.
+   - RESOLVED: Not present in Phase 1 execution — Wave 0 plan 02-01 Task 1 creates src/global.d.ts with the declare const __TOOL_VERSION__: string declaration.
 
 ---
 
