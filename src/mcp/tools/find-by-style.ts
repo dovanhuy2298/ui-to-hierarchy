@@ -3,24 +3,18 @@ import { notImplemented, internalError } from "../errors.js";
 import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
 
-export const name = "focus_on";
-export const title = "Focus On Component";
+export const name = "find_by_style";
+export const title = "Find By Style";
 export const description =
-  "Returns the component subtree rooted at a named JSX component, optionally including ancestors. " +
-  "Phase 2 stub — returns not-implemented error; real query lands in Phase 5.";
+  "Finds component nodes that use a given CSS class name or style prop. " +
+  "Returns matching nodes with file:line location. " +
+  "Phase 2 stub — returns not-implemented error; real search lands in Phase 5.";
 
 export const inputSchema = z.object({
-  component: z
+  class_or_prop: z
     .string()
-    .regex(/^[A-Z][A-Za-z0-9_]*$/)
     .describe(
-      "JSX component name in PascalCase (e.g., Card, DashboardLayout). Lowercase tags and kebab-case are rejected.",
-    ),
-  scope: z
-    .enum(["up", "full", "down"])
-    .default("full")
-    .describe(
-      "Traversal scope: 'up' (ancestors only), 'full' (ancestors + subtree, default), 'down' (subtree only).",
+      "CSS class name or style prop to search for (e.g., flex, bg-blue-500, color, marginTop).",
     ),
   projectRoot: z
     .string()

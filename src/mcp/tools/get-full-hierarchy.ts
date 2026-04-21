@@ -13,7 +13,7 @@ export const inputSchema = z.object({
   route: z
     .string()
     .regex(
-      /^\/$|^\/(?:[\w\-]+|\[[\w.]+\]|\[\.\.\.[\w]+\]|\[\[\.\.\.[\w]+\]\])(?:\/(?:[\w\-]+|\[[\w.]+\]|\[\.\.\.[\w]+\]|\[\[\.\.\.[\w]+\]\]))*$/,
+      /^\/$|^\/(?:[\w-]+|\[[\w.]+\]|\[\.\.\.[\w]+\]|\[\[\.\.\.[\w]+\]\])(?:\/(?:[\w-]+|\[[\w.]+\]|\[\.\.\.[\w]+\]|\[\[\.\.\.[\w]+\]\]))*$/,
     )
     .describe(
       "Next.js App Router route path (e.g., /, /dashboard, /posts/[slug], /[...rest]). Must start with /. No trailing slash except for root.",
@@ -32,9 +32,7 @@ export const inputSchema = z.object({
     ),
 });
 
-export async function handler(
-  args: z.infer<typeof inputSchema>,
-): Promise<ToolResponse> {
+export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {
   try {
     const _root = resolveRoot(args.projectRoot);
     return notImplemented(name);
