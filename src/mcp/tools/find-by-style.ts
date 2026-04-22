@@ -13,6 +13,7 @@ export const description =
 export const inputSchema = z.object({
   class_or_prop: z
     .string()
+    .min(1)
     .describe(
       "CSS class name or style prop to search for (e.g., flex, bg-blue-500, color, marginTop).",
     ),

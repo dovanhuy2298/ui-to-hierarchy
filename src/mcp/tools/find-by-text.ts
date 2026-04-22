@@ -13,6 +13,7 @@ export const description =
 export const inputSchema = z.object({
   query: z
     .string()
+    .min(1)
     .describe(
       "Text string to search for in rendered component output (e.g., Submit, Cancel, Hello World).",
     ),
