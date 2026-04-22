@@ -6,6 +6,12 @@ import * as focusOn from "./tools/focus-on.js";
 import * as findByText from "./tools/find-by-text.js";
 import * as findByStyle from "./tools/find-by-style.js";
 
+// Runtime fallback: __TOOL_VERSION__ is substituted by tsup define at build time.
+// Without this guard, running via tsx or a test runner that skips define-substitution
+// would throw ReferenceError: __TOOL_VERSION__ is not defined.
+const TOOL_VERSION =
+  typeof __TOOL_VERSION__ !== "undefined" ? __TOOL_VERSION__ : "0.0.0-unknown";
+
 /**
  * Build and return a configured McpServer with all four tools registered.
  *
@@ -17,7 +23,7 @@ import * as findByStyle from "./tools/find-by-style.js";
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "ui-to-hierarch",
-    version: __TOOL_VERSION__,
+    version: TOOL_VERSION,
   });
 
   server.registerTool(
@@ -60,7 +66,7 @@ export function createServer(): McpServer {
     findByStyle.handler,
   );
 
-  log.info("server created", { version: __TOOL_VERSION__ });
+  log.info("server created", { version: TOOL_VERSION });
   return server;
 }
 
@@ -71,7 +77,7 @@ export function createServer(): McpServer {
  * holds process.stdin open.
  */
 export async function startServer(): Promise<void> {
-  log.info("server starting", { version: __TOOL_VERSION__ });
+  log.info("server starting", { version: TOOL_VERSION });
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
