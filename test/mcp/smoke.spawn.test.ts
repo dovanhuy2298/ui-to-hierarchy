@@ -42,6 +42,7 @@ describe("MCP smoke — spawned binary (MCP-01, MCP-04)", () => {
   afterAll(async () => {
     // Graceful shutdown — sends close and lets the process exit cleanly
     await client.close();
+    await transport.close(); // terminate the spawned child process
   }, 10000);
 
   it("spawns node dist/cli.js without error", () => {
