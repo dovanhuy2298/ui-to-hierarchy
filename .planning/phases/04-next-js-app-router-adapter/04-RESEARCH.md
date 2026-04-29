@@ -623,22 +623,25 @@ Not applicable — Phase 4 is greenfield code addition (replacing throwing stubs
 
 **Recommendation for planner:** flag A2 (sibling emit order) as a question in the discuss-phase if not already settled. The 04-CONTEXT.md says "inlined into `entries` at their segment position" but doesn't lock the within-segment ordering.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Within-segment ordering of special files** (A2 above)
    - What we know: SPEC R1 locks "root-down" across segments; CONTEXT D-02 locks "inlined at segment position".
    - What's unclear: the order among `layout`/`template`/`loading`/`error`/`not-found`/`default`/`page` at the same segment.
    - Recommendation: Adopt the order proposed in §"Layout Chain Semantics" (`layout, template, loading, error, not-found, default, page`) as the default; let plan-check confirm.
+   - **RESOLVED:** Implemented in plan 04-03 Task 2 via `SPECIAL_ORDER = ["layout", "template", "loading", "error", "notFound", "default"]` with `page` emitted last at the terminal segment.
 
 2. **`default.tsx` semantics for non-parallel pages**
    - What we know: Next docs scope `default.tsx` to parallel-route fallbacks.
    - What's unclear: Whether including `default.tsx` in `entries` for a non-slot route is semantically correct (no-op?) or actively wrong.
    - Recommendation: Include if present; document Phase 5 may filter it.
+   - **RESOLVED:** `default.tsx` is included in `entries` if present at any segment; Phase 5 renderer may filter for non-parallel pages. Consistent with R1 acceptance enumeration (siblings inlined at segment position).
 
 3. **Diagnostic channel for malformed route strings**
    - What we know: CONTEXT marks this as Claude's discretion; `mapRouteToEntry` does not receive `ParseContext`.
    - What's unclear: Whether to silently return `matched: false` (current direction) or surface via a different mechanism the planner picks.
    - Recommendation: Silent `matched: false`; Phase 5's tool layer adds user-facing diagnostics where it has access to ctx. This matches D-12 (no-throw) and the existing Phase 3 pattern.
+   - **RESOLVED:** Silent `{ matched: false, entries: [], params: {}, slots: {} }` per D-12 no-throw discipline. No logging in v1; Phase 5's tool layer owns user-facing diagnostics.
 
 ## Project Constraints (from CLAUDE.md)
 
