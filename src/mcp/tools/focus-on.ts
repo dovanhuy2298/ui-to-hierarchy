@@ -2,6 +2,7 @@ import { z } from "zod";
 import { notImplemented, internalError } from "../errors.js";
 import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
+import { projectRootSchema } from "./common.js";
 
 export const name = "focus_on";
 export const title = "Focus On Component";
@@ -21,12 +22,7 @@ export const inputSchema = z.object({
     .describe(
       "Traversal scope: 'up' (ancestors only), 'full' (ancestors + subtree, default), 'down' (subtree only).",
     ),
-  projectRoot: z
-    .string()
-    .optional()
-    .describe(
-      "Absolute path to the Next.js project root. Defaults to UI_TO_HIERARCH_ROOT env var, then process.cwd().",
-    ),
+  projectRoot: projectRootSchema,
 });
 
 export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {

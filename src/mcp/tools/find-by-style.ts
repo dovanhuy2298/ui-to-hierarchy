@@ -2,6 +2,7 @@ import { z } from "zod";
 import { notImplemented, internalError } from "../errors.js";
 import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
+import { projectRootSchema } from "./common.js";
 
 export const name = "find_by_style";
 export const title = "Find By Style";
@@ -16,12 +17,7 @@ export const inputSchema = z.object({
     .describe(
       "CSS class name or style prop to search for (e.g., flex, bg-blue-500, color, marginTop).",
     ),
-  projectRoot: z
-    .string()
-    .optional()
-    .describe(
-      "Absolute path to the Next.js project root. Defaults to UI_TO_HIERARCH_ROOT env var, then process.cwd().",
-    ),
+  projectRoot: projectRootSchema,
 });
 
 export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {
