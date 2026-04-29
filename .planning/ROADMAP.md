@@ -92,7 +92,12 @@
 2. Route groups `(group)` contribute layouts but not URL segments; private `_folder` is excluded; parallel routes `@slot` appear as labeled slots on the parent; intercepting `(.)`, `(..)`, `(...)`, `(..)(..)` resolve with correct segment math
 3. Dynamic route inputs match `[slug]`, `[...rest]`, `[[...opt]]` patterns and resolved params are echoed in response metadata
 4. Every component node carries `runtime: "server" | "client"` derived from first non-comment `"use client"` / `"use server"` directive
-   **Plans**: TBD
+   **Plans**: 4 plans
+
+- [ ] 04-01-PLAN.md — Wave 1: types contracts (RouteMatch + runtime field) + kitchen-sink + detect fixtures
+- [ ] 04-02-PLAN.md — Wave 2: detect.ts + discover.ts (R5 + R6) + tests
+- [ ] 04-03-PLAN.md — Wave 3: segments.ts + route-map.ts (NEXT-01/02/03) + tests
+- [ ] 04-04-PLAN.md — Wave 4: NextJsAdapter wiring + runtime plumbing (NEXT-04) + phase gate
    **UI hint**: no
 
 ### Phase 5: IR Queries & Tool Wire-up
