@@ -1,8 +1,13 @@
 import { z } from "zod";
-import { notImplemented, withErrorBoundary } from "../errors.js";
+import { withErrorBoundary } from "../errors.js";
 import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
 import { projectRootSchema } from "./common.js";
+import { Analyzer } from "../../core/Analyzer.js";
+import { NextJsAdapter } from "../../adapters/next/NextJsAdapter.js";
+import { buildEnvelope } from "../../renderers/envelope-builder.js";
+import { renderMarkdown } from "../../renderers/markdown.js";
+import { renderJson } from "../../renderers/json.js";
 
 export const name = "get_full_hierarchy";
 export const title = "Get Full Hierarchy";
@@ -29,7 +34,14 @@ export const inputSchema = z.object({
 
 export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {
   return withErrorBoundary(name, async () => {
-    const _root = resolveRoot(args.projectRoot);
-    return notImplemented(name);
+    const root = resolveRoot(args.projectRoot);
+    const analyzer = new Analyzer({ root, adapter: NextJsAdapter });
+    const { tree, warnings } = await analyzer.getFullHierarchy({ route: args.route });
+    const envelope = { ...buildEnvelope(tree, { resolvedRootOverride: root }), warnings };
+    const text =
+      args.format === "json"
+        ? JSON.stringify(renderJson(tree, envelope), null, 2)
+        : renderMarkdown(tree, envelope);
+    return { content: [{ type: "text" as const, text }] };
   });
 }
