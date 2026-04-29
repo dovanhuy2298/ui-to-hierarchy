@@ -197,7 +197,7 @@ export interface StyledTemplate {
  *     styles:     classNames, inlineStyles, cssModuleRefs, styledTemplates
  *
  * Field count check (test/adapters/types.test.ts) asserts Object.keys(...) ===
- *   11 to catch accidental additions.
+ *   12 to catch accidental additions/removals.
  */
 export interface ComponentDefinition {
   name: string;
