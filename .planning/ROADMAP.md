@@ -112,8 +112,16 @@
 3. `find_by_text(query)` returns matching nodes with file:line and emits fuzzy suggestions when no exact match exists
 4. `find_by_style(class_or_prop)` returns nodes whose classes or style props match, with file:line
 5. Each tool invocation constructs a fresh `Analyzer` with per-call AST cache; no cross-call cache exists (verified by test that mutates a file between calls and sees the new tree)
-   **Plans**: TBD
-   **UI hint**: no
+
+**Plans**: 5 plans
+
+- [ ] 05-01-PLAN.md — Fixtures: kitchen-sink + parse-error + mutation-test under test/fixtures/phase-05/
+- [ ] 05-02-PLAN.md — Analyzer class (IR-build, slot-substitution, 4 query methods, style sidecar, Levenshtein) — single-file src/core/Analyzer.ts
+- [ ] 05-03-PLAN.md — Tier 1 Analyzer unit tests (R1–R8 + ARCH-02 mutation + grep gates)
+- [ ] 05-04-PLAN.md — Wire 4 MCP tool handlers to Analyzer (replace notImplemented; preserve Phase 2 schemas)
+- [ ] 05-05-PLAN.md — Tier 2 MCP integration tests (4 tools via InMemoryTransport) + phase gate
+
+**UI hint**: no
 
 ### Phase 6: Hardening & Fixture Gates
 
