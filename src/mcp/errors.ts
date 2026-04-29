@@ -46,3 +46,19 @@ export function invalidInput(toolName: string, zodError: unknown): ToolResponse 
     isError: true,
   };
 }
+
+/**
+ * Wrap a tool handler body so unexpected exceptions are uniformly converted to
+ * an internalError() response (D-07). Phase 5 wire-up edits one body per tool
+ * instead of repeating the try/catch boilerplate four times.
+ */
+export async function withErrorBoundary(
+  toolName: string,
+  fn: () => Promise<ToolResponse>,
+): Promise<ToolResponse> {
+  try {
+    return await fn();
+  } catch (err) {
+    return internalError(toolName, err);
+  }
+}

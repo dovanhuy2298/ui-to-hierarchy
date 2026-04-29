@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { notImplemented, internalError } from "../errors.js";
+import { notImplemented, withErrorBoundary } from "../errors.js";
 import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
 import { projectRootSchema } from "./common.js";
@@ -28,10 +28,8 @@ export const inputSchema = z.object({
 });
 
 export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {
-  try {
+  return withErrorBoundary(name, async () => {
     const _root = resolveRoot(args.projectRoot);
     return notImplemented(name);
-  } catch (err) {
-    return internalError(name, err);
-  }
+  });
 }
