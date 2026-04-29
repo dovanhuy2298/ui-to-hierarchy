@@ -6,7 +6,8 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 // Tier 2 — spawned binary tests using StdioClientTransport
-// Requires prior `pnpm build`. Run via `pnpm run test:smoke`.
+// Requires a prior `npm run build` (or your package manager's equivalent).
+// Run via `npm run test:smoke` (or your package manager's equivalent).
 
 const distCli = resolve(fileURLToPath(import.meta.url), "../../../dist/cli.js");
 
@@ -21,7 +22,7 @@ describe("MCP smoke — spawned binary (MCP-01, MCP-04)", () => {
   beforeAll(async () => {
     if (!existsSync(distCli)) {
       throw new Error(
-        `dist/cli.js not found at ${distCli}. Run 'pnpm build' before 'pnpm run test:smoke'.`,
+        `dist/cli.js not found at ${distCli}. Run 'npm run build' (or your package manager's equivalent) before 'npm run test:smoke'.`,
       );
     }
 
@@ -66,19 +67,29 @@ describe("MCP smoke — spawned binary (MCP-01, MCP-04)", () => {
     // failed JSON-RPC parsing.
   });
 
-  it("stderr contains at least one structured JSON log line at startup", () => {
+  it("stderr is exclusively structured JSON log lines at startup", () => {
     const stderrText = Buffer.concat(stderrChunks).toString("utf8");
     const lines = stderrText.split("\n").filter((l) => l.trim().length > 0);
 
-    const jsonLines = lines.filter((line) => {
+    const jsonLines: string[] = [];
+    const nonJsonLines: string[] = [];
+    for (const line of lines) {
       try {
         const parsed = JSON.parse(line) as Record<string, unknown>;
-        return typeof parsed.level === "string" && parsed.level.length > 0;
+        if (typeof parsed.level === "string" && parsed.level.length > 0) {
+          jsonLines.push(line);
+        } else {
+          nonJsonLines.push(line);
+        }
       } catch {
-        return false;
+        nonJsonLines.push(line);
       }
-    });
+    }
 
+    expect(
+      nonJsonLines,
+      `Unstructured stderr lines (regression of stderr-only-JSON contract):\n${nonJsonLines.join("\n")}`,
+    ).toHaveLength(0);
     expect(
       jsonLines.length,
       `Expected at least one structured JSON log line with a 'level' field in stderr.\nActual stderr:\n${stderrText}`,
