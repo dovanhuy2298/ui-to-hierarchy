@@ -18,6 +18,9 @@
   "exclude": [
     "test/fixtures/parser/parse-errors/**",
     "test/fixtures/parser/resolver/**",
-    "test/fixtures/parser/extractors/**"
+    "test/fixtures/parser/extractors/**",
+    "test/fixtures/parser/render-flow/**",
+    "test/fixtures/parser/hoc/**",
+    "test/fixtures/parser/classes/**"
   ]
 }
