@@ -6,8 +6,7 @@ import { resolveRoot } from "../../core/resolve-root.js";
 export const name = "focus_on";
 export const title = "Focus On Component";
 export const description =
-  "Returns the component subtree rooted at a named JSX component, optionally including ancestors. " +
-  "Phase 2 stub — returns not-implemented error; real query lands in Phase 5.";
+  "Returns the component subtree rooted at a named JSX component, optionally including ancestors.";
 
 export const inputSchema = z.object({
   component: z

@@ -6,8 +6,7 @@ import { resolveRoot } from "../../core/resolve-root.js";
 export const name = "get_full_hierarchy";
 export const title = "Get Full Hierarchy";
 export const description =
-  "Returns the ordered layout chain and page component subtree for a Next.js App Router route. " +
-  "Phase 2 stub — returns not-implemented error; real parsing lands in Phase 5.";
+  "Returns the ordered layout chain and page component subtree for a Next.js App Router route.";
 
 export const inputSchema = z.object({
   route: z

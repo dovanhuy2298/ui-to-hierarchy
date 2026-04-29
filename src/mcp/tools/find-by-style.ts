@@ -7,8 +7,7 @@ export const name = "find_by_style";
 export const title = "Find By Style";
 export const description =
   "Finds component nodes that use a given CSS class name or style prop. " +
-  "Returns matching nodes with file:line location. " +
-  "Phase 2 stub — returns not-implemented error; real search lands in Phase 5.";
+  "Returns matching nodes with file:line location.";
 
 export const inputSchema = z.object({
   class_or_prop: z

@@ -7,8 +7,7 @@ export const name = "find_by_text";
 export const title = "Find By Text";
 export const description =
   "Finds component nodes whose rendered text content matches the given query string. " +
-  "Returns matching nodes with file:line location. " +
-  "Phase 2 stub — returns not-implemented error; real search lands in Phase 5.";
+  "Returns matching nodes with file:line location.";
 
 export const inputSchema = z.object({
   query: z
