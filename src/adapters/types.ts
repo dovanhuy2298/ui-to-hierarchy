@@ -209,6 +209,24 @@ export interface ComponentDefinition {
   textContent: string[];
   renderFlow: RenderNode;
   classNames: ClassToken[];
+  /**
+   * Per-component flat map of inline-style declarations.
+   *
+   * MERGE SEMANTICS — last-wins across elements (WR-04):
+   * Multiple JSX elements within the same component contribute their
+   * `style={{ ... }}` props into this single record. When two elements set
+   * the same key (e.g. both have `style={{ margin: ... }}`), the LATER
+   * element overwrites the earlier one silently. This is a deliberate v1
+   * limitation imposed by the locked R8 11-field shape — per-element style
+   * scoping would require a contract change.
+   *
+   * Spread elements (`...rest`) are captured under synthetic
+   * `__spread_<n>` keys (monotonic counter, unique within an element).
+   * Non-object style expressions collapse to a single `__raw__` key.
+   *
+   * Consumers must NOT assume this map represents any single element's
+   * styles — treat it as a best-effort component-level signal only.
+   */
   inlineStyles: Record<string, string | { raw: string }>;
   cssModuleRefs: CssModuleRef[];
   styledTemplates: StyledTemplate[];
