@@ -18,7 +18,8 @@ const TOOL_VERSION =
  * Does NOT connect a transport. Tests call this and wire InMemoryTransport.
  * The CLI calls startServer() which calls this and wires StdioServerTransport.
  *
- * CRITICAL: Keep createServer and startServer separate (see RESEARCH.md Pitfall 1).
+ * Keep createServer (returns server, no transport) and startServer (wires stdio)
+ * separate so tests can inject InMemoryTransport without touching real stdio.
  */
 export function createServer(): McpServer {
   const server = new McpServer({
