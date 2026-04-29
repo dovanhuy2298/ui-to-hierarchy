@@ -3,19 +3,11 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer } from "../../src/mcp/server.js";
-import { internalError, type ToolResponse } from "../../src/mcp/errors.js";
+import { internalError } from "../../src/mcp/errors.js";
 import { tools as registeredTools } from "../../src/mcp/tools/index.js";
+import { asToolResponse, firstText } from "../helpers.js";
 
 // Tier 1 — in-process tests using InMemoryTransport + Client
-
-// ---------------------------------------------------------------------------
-// Helper: cast client.callTool() result to ToolResponse.
-// The SDK types result.content as unknown[] at the Client layer;
-// casting through ToolResponse gives safe access to .content[0].text.
-// ---------------------------------------------------------------------------
-function asToolResponse(result: unknown): ToolResponse {
-  return result as ToolResponse;
-}
 
 // ---------------------------------------------------------------------------
 // Helper: wire a fresh server + client pair for a single test
@@ -111,7 +103,7 @@ describe("MCP server — tool schemas (MCP-02)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("get_full_hierarchy");
+    expect(firstText(r)).toContain("get_full_hierarchy");
   });
 
   it("get_full_hierarchy: format field defaults to markdown", async () => {
@@ -134,7 +126,7 @@ describe("MCP server — tool schemas (MCP-02)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("focus_on");
+    expect(firstText(r)).toContain("focus_on");
   });
 
   it("focus_on: scope field defaults to full", async () => {
@@ -199,7 +191,7 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("get_full_hierarchy");
+    expect(firstText(r)).toContain("get_full_hierarchy");
   });
 
   it("focus_on returns isError:true with tool name in message", async () => {
@@ -210,7 +202,7 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("focus_on");
+    expect(firstText(r)).toContain("focus_on");
   });
 
   it("find_by_text returns isError:true with tool name in message", async () => {
@@ -221,7 +213,7 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("find_by_text");
+    expect(firstText(r)).toContain("find_by_text");
   });
 
   it("find_by_style returns isError:true with tool name in message", async () => {
@@ -232,7 +224,7 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { type: string; text: string }).text).toContain("find_by_style");
+    expect(firstText(r)).toContain("find_by_style");
   });
 
   it("handler exception is caught and returns internalError response", () => {
@@ -241,8 +233,6 @@ describe("MCP server — not-implemented responses (MCP-03)", () => {
     const response = internalError("test_tool", err);
     expect(response.isError).toBe(true);
     expect(response.content).toHaveLength(1);
-    const item = response.content[0] as { type: string; text: string };
-    expect(item.type).toBe("text");
-    expect(item.text).toContain("simulated handler crash");
+    expect(firstText(response)).toContain("simulated handler crash");
   });
 });

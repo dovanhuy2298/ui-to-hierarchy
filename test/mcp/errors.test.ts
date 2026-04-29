@@ -4,13 +4,7 @@ import {
   invalidInput,
   notImplemented,
 } from "../../src/mcp/errors.js";
-
-/** Safely extract the text field from the first content entry. */
-function firstText(result: { content: Array<{ type: string }> }): string {
-  const first = result.content[0];
-  if (!first || first.type !== "text") throw new Error("Expected text content");
-  return (first as { type: "text"; text: string }).text;
-}
+import { firstText } from "../helpers.js";
 
 describe("notImplemented", () => {
   it("returns isError: true", () => {
