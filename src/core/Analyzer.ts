@@ -307,25 +307,46 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
       return { ...tree, children: newChildren };
     }
     case "element": {
-      // If element has no children but there's a slot line near this element,
-      // inject a children slot. We check if any slot line is "inside" this element's span.
-      // Heuristic: if element has empty children and slotLines has any entry, inject a slot.
-      // This is conservative — we inject into elements that could contain {children}.
+      // Recurse into existing children first.
       const newChildren = tree.children.map((c) => injectChildrenSlots(c, slotLines, file));
 
-      // Check if this element should receive a children slot
-      // by looking if any slotLine is "plausible" for this element
-      if (newChildren.length === 0 && slotLines.size > 0) {
-        // Find a slot line >= this element's line (children can be on the same line as the tag).
-        for (const sl of slotLines) {
-          if (sl >= tree.line) {
-            const slotNode: TreeNode = {
-              kind: "slot",
-              name: "children",
-              file,
-              line: sl,
-            };
-            return { ...tree, children: [slotNode] };
+      // Check if this element should receive a {children} slot injected.
+      //
+      // Case A: element currently has no children — inject a slot if any slotLine
+      //   is on or after this element's opening tag line.
+      //
+      // Case B: element already has children (e.g. <div><Sidebar />{children}</div>)
+      //   — inject a slot AFTER the last existing child when a slotLine is greater
+      //   than the last child's line. This handles siblings like {children} following
+      //   another JSX element in the same parent.
+      if (slotLines.size > 0) {
+        if (newChildren.length === 0) {
+          // Case A — empty element
+          for (const sl of slotLines) {
+            if (sl >= tree.line) {
+              const slotNode: TreeNode = {
+                kind: "slot",
+                name: "children",
+                file,
+                line: sl,
+              };
+              return { ...tree, children: [slotNode] };
+            }
+          }
+        } else {
+          // Case B — element already has children; check if any slotLine falls
+          // after the last child's line (meaning {children} is a sibling after them).
+          const lastChildLine = Math.max(...newChildren.map((c) => c.line));
+          for (const sl of slotLines) {
+            if (sl > lastChildLine) {
+              const slotNode: TreeNode = {
+                kind: "slot",
+                name: "children",
+                file,
+                line: sl,
+              };
+              return { ...tree, children: [...newChildren, slotNode] };
+            }
           }
         }
       }
