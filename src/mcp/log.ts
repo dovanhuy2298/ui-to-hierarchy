@@ -10,10 +10,12 @@
 type Level = "info" | "warn" | "error" | "debug";
 
 function emit(level: Level, msg: string, meta?: Record<string, unknown>): void {
+  // Spread meta first so canonical fields (level, msg, ts) cannot be overwritten
+  // by a buggy caller passing { level: "error" } in meta.
   const entry = JSON.stringify({
+    ...(meta ?? {}),
     level,
     msg,
-    ...(meta ?? {}),
     ts: new Date().toISOString(),
   });
   process.stderr.write(`${entry}\n`);
