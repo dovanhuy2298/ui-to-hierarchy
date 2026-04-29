@@ -9,7 +9,7 @@
 
 - [ ] **Phase 1: Scaffolding & IR Foundation** — Project skeleton, IR types, markdown/JSON renderers unit-testable against fixtures
 - [x] **Phase 2: MCP Transport Shell** — `npx` stdio server with zod-validated tool surface (stubs return "not implemented")
-- [ ] **Phase 3: Parser Core** — Babel AST + module resolution + style extractors + adapter interface
+- [x] **Phase 3: Parser Core** — Babel AST + module resolution + style extractors + adapter interface (completed 2026-04-29)
 - [ ] **Phase 4: Next.js App Router Adapter** — Routing, layout chains, route groups / parallel / intercepting / dynamic segments
 - [ ] **Phase 5: IR Queries & Tool Wire-up** — All four MCP tools fully functional end-to-end
 - [ ] **Phase 6: Hardening & Fixture Gates** — Integration tests, Windows/pnpm/shadcn fixtures, real-client verification
@@ -73,12 +73,12 @@
 6. `FrameworkAdapter` interface is defined with exactly 5 methods and nothing in `core/` or `ir/` imports from `adapters/`
    **Plans**: 6 plans
 
-- [ ] 03-01-PLAN.md — Types + FrameworkAdapter interface + island enforcement test
-- [ ] 03-02-PLAN.md — Babel parse primitive (errorRecovery + 10-plugin set + per-call AST cache)
-- [ ] 03-03-PLAN.md — Resolver: tsconfig paths + barrel chase + cycle guard
-- [ ] 03-04-PLAN.md — Style extractors: Tailwind layout filter + inline + CSS Modules + styled-components
-- [ ] 03-05-PLAN.md — Render-flow walker + HOC unwrap + class component detection
-- [ ] 03-06-PLAN.md — NextJsAdapter orchestrator + kitchen-sink end-to-end
+- [x] 03-01-PLAN.md — Types + FrameworkAdapter interface + island enforcement test
+- [x] 03-02-PLAN.md — Babel parse primitive (errorRecovery + 10-plugin set + per-call AST cache)
+- [x] 03-03-PLAN.md — Resolver: tsconfig paths + barrel chase + cycle guard
+- [x] 03-04-PLAN.md — Style extractors: Tailwind layout filter + inline + CSS Modules + styled-components
+- [x] 03-05-PLAN.md — Render-flow walker + HOC unwrap + class component detection
+- [x] 03-06-PLAN.md — NextJsAdapter orchestrator + kitchen-sink end-to-end
    **UI hint**: no
 
 ### Phase 4: Next.js App Router Adapter
@@ -130,7 +130,7 @@
 | ------------------------------ | -------------- | ----------- | --------- |
 | 1. Scaffolding & IR Foundation | 5/5            | Complete    | 2026-04-20 |
 | 2. MCP Transport Shell         | 5/5            | Complete    | 2026-04-21 |
-| 3. Parser Core                 | 0/6            | Planned     | -         |
+| 3. Parser Core                 | 6/6 | Complete    | 2026-04-29 |
 | 4. Next.js App Router Adapter  | 0/0            | Not started | -         |
 | 5. IR Queries & Tool Wire-up   | 0/0            | Not started | -         |
 | 6. Hardening & Fixture Gates   | 0/0            | Not started | -         |

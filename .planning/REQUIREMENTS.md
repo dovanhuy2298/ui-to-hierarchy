@@ -25,10 +25,10 @@
 
 ### Parser Core
 
-- [ ] **PARSE-01**: Babel parse with full plugin set (`jsx`, `typescript`, `decorators-legacy`, `classProperties`, `classPrivateProperties`, `classPrivateMethods`, `dynamicImport`, `topLevelAwait`, `importAssertions`, `explicitResourceManagement`) + `errorRecovery: true`; parse errors become `TreeNode { kind: "error" }`, not silent skips
-- [ ] **PARSE-02**: Barrel re-export resolution — when a named import lands in a file without the local binding, recurse through `ExportNamedDeclaration` and `ExportAllDeclaration`; cache per file; guard cycles
-- [ ] **PARSE-03**: tsconfig `paths` + `baseUrl` resolution via `get-tsconfig`, including `extends` chain (supports `@/*`, `~/*`, `#*`, and multi-target aliases)
-- [ ] **PARSE-04**: HOC unwrapping for `memo`, `forwardRef`, `observer`, `with*`, `*HOC` — annotate `wrappers: [...]`; class components (`extends Component`/`PureComponent`) extracted via `ClassDeclaration` visitor
+- [x] **PARSE-01**: Babel parse with full plugin set (`jsx`, `typescript`, `decorators-legacy`, `classProperties`, `classPrivateProperties`, `classPrivateMethods`, `dynamicImport`, `topLevelAwait`, `importAssertions`, `explicitResourceManagement`) + `errorRecovery: true`; parse errors become `TreeNode { kind: "error" }`, not silent skips
+- [x] **PARSE-02**: Barrel re-export resolution — when a named import lands in a file without the local binding, recurse through `ExportNamedDeclaration` and `ExportAllDeclaration`; cache per file; guard cycles
+- [x] **PARSE-03**: tsconfig `paths` + `baseUrl` resolution via `get-tsconfig`, including `extends` chain (supports `@/*`, `~/*`, `#*`, and multi-target aliases)
+- [x] **PARSE-04**: HOC unwrapping for `memo`, `forwardRef`, `observer`, `with*`, `*HOC` — annotate `wrappers: [...]`; class components (`extends Component`/`PureComponent`) extracted via `ClassDeclaration` visitor
 
 ### Next.js App Router
 
@@ -40,13 +40,13 @@
 ### Output & Styling
 
 - [ ] **OUT-01**: Markdown tree (default, LLM-friendly) + JSON (structured, programmatic); every node carries `file` + `line`; forward-slash paths on Windows
-- [ ] **OUT-02**: Layout-only class filter by default (preserves flex/grid/spacing/sizing/positioning); `fullClasses: true` flag exposes everything
-- [ ] **OUT-03**: Style extractors for Tailwind classNames (including `cn`/`clsx`/`cva`/`twMerge`), inline `style` prop objects, CSS Modules references (`styles.foo @ ./X.module.css`, no CSS parsing in v1), styled-components template literals (best-effort with `{?}` for interpolations)
-- [ ] **OUT-04**: Conditional render branches preserved — ternary, `&&`, `||`, `??`, `!`/`!!` wrappers; list renders (`.map`) marked as `list` kind
+- [x] **OUT-02**: Layout-only class filter by default (preserves flex/grid/spacing/sizing/positioning); `fullClasses: true` flag exposes everything
+- [x] **OUT-03**: Style extractors for Tailwind classNames (including `cn`/`clsx`/`cva`/`twMerge`), inline `style` prop objects, CSS Modules references (`styles.foo @ ./X.module.css`, no CSS parsing in v1), styled-components template literals (best-effort with `{?}` for interpolations)
+- [x] **OUT-04**: Conditional render branches preserved — ternary, `&&`, `||`, `??`, `!`/`!!` wrappers; list renders (`.map`) marked as `list` kind
 
 ### Architecture
 
-- [ ] **ARCH-01**: `FrameworkAdapter` interface with exactly 5 methods (`detect`, `discoverEntries`, `resolveModule`, `extractComponents`, `mapRouteToEntry`); v1 ships `NextJsAdapter` only; `adapters/` is an island (core/ir/renderers never import framework-specific logic)
+- [x] **ARCH-01**: `FrameworkAdapter` interface with exactly 5 methods (`detect`, `discoverEntries`, `resolveModule`, `extractComponents`, `mapRouteToEntry`); v1 ships `NextJsAdapter` only; `adapters/` is an island (core/ir/renderers never import framework-specific logic)
 - [ ] **ARCH-02**: Parse on-demand — fresh `Analyzer` instance per tool call with per-call AST cache; no cross-call cache in v1
 - [ ] **ARCH-03**: Project root resolution order — tool input `projectRoot` arg > `UI_TO_HIERARCH_ROOT` env var > `process.cwd()`; resolved root echoed in response metadata
 - [ ] **ARCH-04**: Integration test suite with fixture Next.js projects (shadcn-style barrel re-exports, nested layouts, route groups, parallel slots, pnpm monorepo workspace, Windows path separators); MCP Inspector + one real client (Claude Code) end-to-end verified
@@ -84,19 +84,19 @@
 | TOOL-02     | Phase 5 | Pending |
 | TOOL-03     | Phase 5 | Pending |
 | TOOL-04     | Phase 5 | Pending |
-| PARSE-01    | Phase 3 | Pending |
-| PARSE-02    | Phase 3 | Pending |
-| PARSE-03    | Phase 3 | Pending |
-| PARSE-04    | Phase 3 | Pending |
+| PARSE-01    | Phase 3 | Complete |
+| PARSE-02    | Phase 3 | Complete |
+| PARSE-03    | Phase 3 | Complete |
+| PARSE-04    | Phase 3 | Complete |
 | NEXT-01     | Phase 4 | Pending |
 | NEXT-02     | Phase 4 | Pending |
 | NEXT-03     | Phase 4 | Pending |
 | NEXT-04     | Phase 4 | Pending |
 | OUT-01      | Phase 1 | Pending |
-| OUT-02      | Phase 3 | Pending |
-| OUT-03      | Phase 3 | Pending |
-| OUT-04      | Phase 3 | Pending |
-| ARCH-01     | Phase 3 | Pending |
+| OUT-02      | Phase 3 | Complete |
+| OUT-03      | Phase 3 | Complete |
+| OUT-04      | Phase 3 | Complete |
+| ARCH-01     | Phase 3 | Complete |
 | ARCH-02     | Phase 5 | Pending |
 | ARCH-03     | Phase 1 | Pending |
 | ARCH-04     | Phase 6 | Pending |
