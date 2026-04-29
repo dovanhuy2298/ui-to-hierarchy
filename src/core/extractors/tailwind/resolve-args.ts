@@ -72,9 +72,14 @@ function walk(node: t.Node, source: string, file: string, out: ClassToken[]): vo
             ? prop.key.value
             : null;
         if (keyName && t.isExpression(prop.value)) {
-          if (t.isBooleanLiteral(prop.value) && prop.value.value === true) {
-            for (const tok of keyName.split(/\s+/).filter(Boolean)) {
-              out.push({ kind: "literal", value: tok, file, line });
+          if (t.isBooleanLiteral(prop.value)) {
+            // clsx semantics: `true` → emit literal token(s); `false` → drop entirely.
+            // In both cases the key is fully resolved and must NOT fall through to
+            // the raw-slice catch-all (which would emit a class for `{ foo: false }`).
+            if (prop.value.value === true) {
+              for (const tok of keyName.split(/\s+/).filter(Boolean)) {
+                out.push({ kind: "literal", value: tok, file, line });
+              }
             }
             continue;
           }
