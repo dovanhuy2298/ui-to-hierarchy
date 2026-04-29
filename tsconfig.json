@@ -21,6 +21,11 @@
     "test/fixtures/parser/extractors/**",
     "test/fixtures/parser/render-flow/**",
     "test/fixtures/parser/hoc/**",
-    "test/fixtures/parser/classes/**"
+    "test/fixtures/parser/classes/**",
+    "test/fixtures/next-app-router/**",
+    "test/fixtures/next-detect-no-config/**",
+    "test/fixtures/next-detect-pages-only/**",
+    "test/fixtures/next-detect-with-app/**",
+    "test/fixtures/next-detect-with-src-app/**"
   ]
 }
