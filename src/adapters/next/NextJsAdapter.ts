@@ -237,6 +237,12 @@ function extractProps(body: t.Node, source: string): PropSignature[] {
     return [{ name: param.name, typeSlice, optional: !!param.optional }];
   }
 
+  // `function Card(props: Props = {})` — AssignmentPattern wrapping an
+  // Identifier. The default value implies optional in the JS surface.
+  if (t.isAssignmentPattern(param) && t.isIdentifier(param.left)) {
+    return [{ name: param.left.name, typeSlice, optional: true }];
+  }
+
   // `function Card({ a, b: alias, ...rest }: Props)` — destructure.
   const objPat = t.isObjectPattern(param)
     ? param
@@ -280,6 +286,14 @@ function readTypeSlice(param: t.Node, source: string): string {
   // AssignmentPattern wrapping ObjectPattern: `{ a } = {} : Props` — the type
   // annotation hangs off the left ObjectPattern in TS-Babel.
   if (t.isAssignmentPattern(param) && t.isObjectPattern(param.left)) {
+    const left = param.left;
+    if (left.typeAnnotation && t.isTSTypeAnnotation(left.typeAnnotation)) {
+      return sliceSource(source, left.typeAnnotation.typeAnnotation);
+    }
+  }
+  // AssignmentPattern wrapping Identifier: `props: Props = {}` — the type
+  // annotation hangs off the left Identifier.
+  if (t.isAssignmentPattern(param) && t.isIdentifier(param.left)) {
     const left = param.left;
     if (left.typeAnnotation && t.isTSTypeAnnotation(left.typeAnnotation)) {
       return sliceSource(source, left.typeAnnotation.typeAnnotation);
