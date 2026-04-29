@@ -123,6 +123,17 @@ function doResolve(
   }
 
   let foundLocal = false;
+  // Track bare `export { Name }` (no `from`) re-exports of imported bindings.
+  // Map: importDeclaration source -> imported name within that import that maps to `importedName`.
+  // Also track ImportDeclaration specifiers so we can correlate a bare export back to its import.
+  type BareReExport = { source: string; importedFromSource: string };
+  let bareReExport: BareReExport | null = null;
+  // Collect imports first, then exports — but in a single traverse for efficiency.
+  // Babel visits in source order, so we accumulate imports as we see them and
+  // resolve `export { X }` against the imports collected so far (sufficient because
+  // declarations precede their `export { ... }` in valid ES modules — but we also
+  // do a second-pass safety net by collecting all imports first via a simple Map).
+  const importLocalToSource = new Map<string, string>(); // local name -> import source
   traverse(parsed.ast, {
     FunctionDeclaration(p: { node: t.FunctionDeclaration }) {
       if (p.node.id?.name === importedName) foundLocal = true;
@@ -133,9 +144,43 @@ function doResolve(
     ClassDeclaration(p: { node: t.ClassDeclaration }) {
       if (p.node.id?.name === importedName) foundLocal = true;
     },
+    ImportDeclaration(p: { node: t.ImportDeclaration }) {
+      const src = p.node.source.value;
+      for (const spec of p.node.specifiers) {
+        // ImportSpecifier, ImportDefaultSpecifier, ImportNamespaceSpecifier all have `.local`.
+        const localName = spec.local.name;
+        importLocalToSource.set(localName, src);
+      }
+    },
+    ExportNamedDeclaration(p: { node: t.ExportNamedDeclaration }) {
+      if (p.node.source) return; // re-export-from form is handled by chaseBarrel
+      for (const spec of p.node.specifiers) {
+        if (!t.isExportSpecifier(spec)) continue;
+        const exportedName = t.isIdentifier(spec.exported)
+          ? spec.exported.name
+          : spec.exported.value;
+        if (exportedName !== importedName) continue;
+        const localName = t.isIdentifier(spec.local) ? spec.local.name : exportedName;
+        const importSrc = importLocalToSource.get(localName);
+        if (importSrc) {
+          bareReExport = { source: importSrc, importedFromSource: localName };
+        }
+      }
+    },
   });
 
   if (foundLocal) return fileResult;
+
+  // Bare named re-export of an imported binding:
+  //   import { Foo } from "./internal/foo"; export { Foo };
+  // Recurse into the original import source.
+  if (bareReExport) {
+    const re = bareReExport as BareReExport;
+    const next = resolveSpecifierToFile(ctx, fileResult.absolutePath, re.source);
+    if (!next.ok) return next;
+    if (next.kind === "external") return next;
+    return chaseBarrel(ctx, next.absolutePath, re.importedFromSource, resolveSpecifierToFile);
+  }
 
   // Barrel chase
   return chaseBarrel(ctx, fileResult.absolutePath, importedName, resolveSpecifierToFile);
