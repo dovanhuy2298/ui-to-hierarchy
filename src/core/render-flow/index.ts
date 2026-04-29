@@ -75,6 +75,32 @@ export const walk: WalkFn = (node, source, file) => {
   return null;
 };
 
+/**
+ * Walk a function body's BlockStatement and produce a RenderNode for the
+ * first top-level branching/return statement.
+ *
+ * V1 LIMITATIONS (WR-05) — documented for downstream consumers:
+ *
+ *   1. **No symbolic-binding inlining.** Local `const`/`let` bindings to JSX
+ *      expressions are NOT substituted. Pattern:
+ *        const content = cond ? <A/> : <B/>;
+ *        return <Wrapper>{content}</Wrapper>;
+ *      will yield a `<Wrapper>` node with an Identifier-bearing child whose
+ *      branching information (`<A/>` / `<B/>`) is invisible.
+ *
+ *   2. **First top-level `if`/`return` wins.** Iteration stops at the first
+ *      `ReturnStatement` or `IfStatement` encountered. An `if` followed by a
+ *      separate `return` produces only the `if`-branch — the trailing return
+ *      is discarded.
+ *
+ *   3. **Only branching pattern recognized: early `return` inside `if`/`else`.**
+ *      Switch statements, try/catch, throw-then-return, and short-circuit
+ *      logic at statement scope are NOT modeled here (logical/conditional
+ *      expressions ARE handled, but only at expression position).
+ *
+ * Resolving these requires a local-binding map and statement-flow analysis;
+ * deferred to v2.
+ */
 function walkBlock(block: t.BlockStatement, source: string, file: string): RenderNode | null {
   for (const stmt of block.body) {
     if (t.isReturnStatement(stmt) && stmt.argument) return walk(stmt.argument, source, file);
