@@ -2,8 +2,8 @@
 phase: 3
 slug: parser-core-ast-resolution-extractors
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-29
 ---
 
@@ -37,17 +37,17 @@ created: 2026-04-29
 
 ## Per-Task Verification Map
 
-> Per-task entries are filled by `gsd-planner` from RESEARCH.md § "Test-to-Requirement Mapping (Wave 0 gap list)". Each PLAN.md task's `<acceptance_criteria>` must reference one of the test files below.
+> Test paths match the files actually created by Plans 02–06. Each PLAN.md task's `<acceptance_criteria>` references one of the test files below. Wave 0 scaffolding is folded into each plan's first task per the execution model — no separate Wave 0 plan exists.
 
-| Requirement | Test File | Test Type | Automated Command |
-|-------------|-----------|-----------|-------------------|
-| PARSE-01 | `test/core/parse.test.ts` | unit | `npx vitest run test/core/parse.test.ts` |
-| PARSE-02 | `test/core/resolve-barrel.test.ts` | unit | `npx vitest run test/core/resolve-barrel.test.ts` |
-| PARSE-03 | `test/core/resolve-paths.test.ts` | unit | `npx vitest run test/core/resolve-paths.test.ts` |
-| PARSE-04 | `test/core/unwrap-hoc.test.ts`, `test/core/extract-class-component.test.ts` | unit | `npx vitest run test/core/unwrap-hoc.test.ts test/core/extract-class-component.test.ts` |
-| OUT-02 | `test/extractors/extract-classes.test.ts`, `test/extractors/extract-style.test.ts`, `test/extractors/extract-css-modules.test.ts`, `test/extractors/extract-styled.test.ts` | unit | `npx vitest run test/extractors/` |
-| OUT-03 | `test/core/render-flow.test.ts` | unit | `npx vitest run test/core/render-flow.test.ts` |
-| OUT-04 | covered transitively (resolved import paths surface in barrel/paths tests above) | unit | (see PARSE-02 + PARSE-03) |
+| Requirement | Test File(s) | Test Type | Automated Command |
+|-------------|--------------|-----------|-------------------|
+| PARSE-01 | `test/core/parser/parseFile.test.ts` | unit | `npx vitest run test/core/parser/parseFile.test.ts` |
+| PARSE-02 | `test/core/resolver/barrel.test.ts` | unit | `npx vitest run test/core/resolver/barrel.test.ts` |
+| PARSE-03 | `test/core/resolver/tsconfig-paths.test.ts`, `test/core/resolver/relative.test.ts` | unit | `npx vitest run test/core/resolver/tsconfig-paths.test.ts test/core/resolver/relative.test.ts` |
+| PARSE-04 | `test/core/render-flow/component-detect.test.ts` | unit | `npx vitest run test/core/render-flow/component-detect.test.ts` |
+| OUT-02 | `test/core/extractors/tailwind-classes.test.ts`, `test/core/extractors/inline-style.test.ts`, `test/core/extractors/css-module.test.ts`, `test/core/extractors/styled.test.ts` | unit | `npx vitest run test/core/extractors/` |
+| OUT-03 | `test/core/render-flow/conditionals.test.ts`, `test/core/render-flow/lists.test.ts` | unit | `npx vitest run test/core/render-flow/conditionals.test.ts test/core/render-flow/lists.test.ts` |
+| OUT-04 | `test/core/render-flow/walkRenderFlow.test.ts` | unit | `npx vitest run test/core/render-flow/walkRenderFlow.test.ts` |
 | ARCH-01 | `test/architecture/island.test.ts` | architecture | `npx vitest run test/architecture/island.test.ts` |
 
 *Status legend: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — populated during execution.*
@@ -56,20 +56,25 @@ created: 2026-04-29
 
 ## Wave 0 Requirements
 
-All test files above are gaps (none exist yet). Wave 0 must include:
+Wave 0 scaffolding is folded into each plan's first task (per the GSD execution model adopted in Phase 3); no separate Wave 0 plan exists. Each plan creates its own test file alongside the implementation in the same task. The complete inventory of test files created during Phase 3:
 
-- [ ] `test/fixtures/` — minimal Next.js App Router shapes, barrel re-export shadcn-style fixture, HOC fixture, class-component fixture, styled-components fixture, conditional render fixture
-- [ ] `test/core/parse.test.ts` — stubs for PARSE-01 (errorRecovery → `kind: "error"`)
-- [ ] `test/core/resolve-barrel.test.ts` — stubs for PARSE-02 (recursive ExportNamed/ExportAll chase, cycle guard)
-- [ ] `test/core/resolve-paths.test.ts` — stubs for PARSE-03 (`@/*`, `~/*`, `#*`, `extends` chain via `get-tsconfig`)
-- [ ] `test/core/unwrap-hoc.test.ts` — stubs for PARSE-04 part A (memo, forwardRef, observer, with*, *HOC)
-- [ ] `test/core/extract-class-component.test.ts` — stubs for PARSE-04 part B (ClassDeclaration → render())
-- [ ] `test/extractors/extract-classes.test.ts` — stubs for OUT-02 part A (layout-only Tailwind by default, `fullClasses: true`)
-- [ ] `test/extractors/extract-style.test.ts` — stubs for OUT-02 part B (inline `style={{...}}`)
-- [ ] `test/extractors/extract-css-modules.test.ts` — stubs for OUT-02 part C (CSS Modules import + member access)
-- [ ] `test/extractors/extract-styled.test.ts` — stubs for OUT-02 part D (styled-components tagged templates)
-- [ ] `test/core/render-flow.test.ts` — stubs for OUT-03 (ternary, `&&`, `||`, `??`, `!`, `.map`)
-- [ ] `test/architecture/island.test.ts` — stubs for ARCH-01 (no `core/` or `ir/` import from `adapters/`)
+- `test/architecture/island.test.ts` — Plan 01 (ARCH-01: no `core/` or `ir/` import from `adapters/`, static + dynamic)
+- `test/adapters/types.test.ts` — Plan 01 (ComponentDefinition structural fields)
+- `test/adapters/FrameworkAdapter.test.ts` — Plan 01 (exactly 5 method names)
+- `test/adapters/next/NextJsAdapter.test.ts` — Plan 06 (HOC, class, stubs, end-to-end)
+- `test/core/parser/parseFile.test.ts` — Plan 02 (PARSE-01: errorRecovery, sibling validity)
+- `test/core/resolver/relative.test.ts` — Plan 03 (D-13 probe order)
+- `test/core/resolver/barrel.test.ts` — Plan 03 (PARSE-02: shadcn fixture, cycle guard)
+- `test/core/resolver/tsconfig-paths.test.ts` — Plan 03 (PARSE-03: `@/*`, multi-target, `extends` chain, forward-slash)
+- `test/core/render-flow/component-detect.test.ts` — Plan 05 (PARSE-04: HOC + class component detection)
+- `test/core/render-flow/walkRenderFlow.test.ts` — Plan 05 (OUT-04: 5 conditional forms + .map snapshot)
+- `test/core/render-flow/conditionals.test.ts` — Plan 05 (OUT-03 conditionals primitive)
+- `test/core/render-flow/lists.test.ts` — Plan 05 (OUT-03 lists primitive)
+- `test/core/extractors/tailwind-classes.test.ts` — Plan 04 (OUT-02 part A: layout-only Tailwind, `fullClasses: true`)
+- `test/core/extractors/inline-style.test.ts` — Plan 04 (OUT-02 part B: inline `style={{...}}`)
+- `test/core/extractors/css-module.test.ts` — Plan 04 (OUT-02 part C: CSS Modules import + member access)
+- `test/core/extractors/styled.test.ts` — Plan 04 (OUT-02 part D: styled-components tagged templates with `{?}` placeholder)
+- `test/fixtures/parser/` — full fixture tree per D-14 + D-15 (parse-errors, hoc, classes, render-flow, extractors, resolver mini-projects)
 
 ---
 
@@ -83,11 +88,11 @@ All test files above are gaps (none exist yet). Wave 0 must include:
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all 12 MISSING test file references
-- [ ] No watch-mode flags (`--watch` forbidden in CI commands)
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter once gsd-planner attaches per-task entries
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING test file references (folded into plan task 1)
+- [x] No watch-mode flags (`--watch` forbidden in CI commands)
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter (per-task entries match plan-created paths)
 
-**Approval:** pending
+**Approval:** ready

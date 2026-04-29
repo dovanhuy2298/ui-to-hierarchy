@@ -1046,27 +1046,31 @@ declaring a `keyof FrameworkAdapter` exhaustive switch or by counting
 | A4 | `t.isMemberExpression(callee)` patterns for HOCs (e.g., `React.memo(Foo)`) are rare enough in real codebases to defer; we only match unqualified Identifier callees | "Pattern 5 — HOC unwrap matrix" | Low — REQUIREMENTS.md only requires the listed names. Tests can add `React.memo` fixture if needed; matcher extension is one line |
 | A5 | The prototype's heuristic of "if target file has exactly one component, treat it as the import target" is NOT needed once barrel chase is implemented | "Anti-Patterns" | Low — proper barrel chase + named-export resolution should always find the right binding. If not, tests will fail and we can fall back to the heuristic |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `ParseContext.warnings` be deduplicated?**
    - What we know: Multiple call sites push warnings; same message could repeat across many files (e.g., "skipping node_modules:react").
    - What's unclear: Whether agents prefer one-per-occurrence (signals frequency) or deduplicated (smaller envelope).
    - Recommendation: Dedupe via `Set<string>` on the way out of `extractComponents`; keep raw `warnings` internal. Decision belongs to planner.
+   - **RESOLVED:** Adopt the recommendation — dedupe via `Set<string>` on the way out of `extractComponents`; raw `warnings` array stays internal. Wired in Plan 06 (extractComponents output).
 
 2. **Where exactly does `ParseResult { kind: "error" }` translate to `RenderNode { kind: "error" }`?**
    - What we know: PARSE-01 says "syntax errors become `TreeNode { kind: "error" }`" — SPEC R1.
    - What's unclear: A whole-file parse error has no JSX context; the natural emit point is at `extractComponents` level (the file produces zero `ComponentDefinition`s but a synthetic error component, OR an error gets attached to the closest enclosing render flow).
    - Recommendation: Synthetic `ComponentDefinition { name: "<parseError>", kind: "function", renderFlow: { kind: "error", ... } }` per failed file. Phase 5's `toIR()` flattens to `TreeNode { kind: "error" }`. Planner picks shape; tests will lock it.
+   - **RESOLVED:** Synthetic `ComponentDefinition` with `renderFlow.kind === "error"` per failed file (implemented in Plan 06). Phase 5 `toIR()` will flatten to `TreeNode { kind: "error" }`.
 
 3. **Should `resolveModule` differentiate "external in node_modules with valid path" from "external bare specifier (couldn't even resolve)"?**
    - What we know: D-12 has `external` (success) and `not-found` (failure).
    - What's unclear: A bare specifier `"react"` with no node_modules nearby — the SPEC implies `external` because we mark all node_modules as external regardless. But if there's no actual file we can't extract `packageName` from a path; we use the original specifier.
    - Recommendation: Always derive `packageName` from the specifier (not from the resolved path). Resolution success means `paths` matched OR relative path resolved OR specifier looks like a bare/scoped package name. Planner can refine.
+   - **RESOLVED:** Adopt the recommendation — `packageName` always derived from the specifier; do NOT differentiate "node_modules-with-path" from "bare-spec-not-found" in v1 (both surface as `external`). Wired in Plan 03 `packageNameFromSpecifier` + `detectNodeModules`.
 
 4. **Does the architecture test (D-11 layer 2) need to handle `import("...")` dynamic imports or just static `import x from "..."`?**
    - What we know: D-11 says "dynamic imports and string-built paths".
    - What's unclear: Detecting dynamic `import()` requires AST parsing (or regex with false-positive risk). Worth the complexity?
    - Recommendation: Regex-based string scan is fine for v1 (`/from\s+["']([^"']+)["']/` + `/import\s*\(\s*["']([^"']+)["']\s*\)/`). False-positive rate near-zero for our own codebase. Planner picks scope.
+   - **RESOLVED:** Regex-based static-only detection for v1 (handles both `import x from "..."` and `import("...")` strings); dynamic-import-with-template-literals deferred. Implemented in Plan 01 `test/architecture/island.test.ts`.
 
 ## Environment Availability
 
