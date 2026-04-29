@@ -1,0 +1,279 @@
+/**
+ * Parser-level type contracts for the adapter island (Phase 3).
+ *
+ * D-04 — `RenderNode` is deliberately separate from IR `TreeNode`
+ *   (src/ir/schema.ts). Phase 5 owns the `adapter → IR` translator (toIR()).
+ *   This file MUST NOT import from src/ir/, src/core/, or src/renderers/ —
+ *   the adapter island stays one-directional (the rest of the codebase may
+ *   import these types, but never the inverse).
+ *
+ * R8 — `ComponentDefinition` is the locked 11-field shape consumed by every
+ *   downstream Wave 2/3 plan. Adding a 12th field is a milestone-level change.
+ *
+ * No zod schemas live here (D-04). These are pure TypeScript types — the
+ * parser output is internal; runtime validation lives at the IR boundary
+ * (Phase 5) and at the MCP tool input boundary (Phase 2).
+ */
+
+import type { File } from "@babel/types";
+import type { TsConfigResult } from "get-tsconfig";
+
+// ──────────────────────────────────────────────────────────────────
+// JsxAttribute — discriminated value union for JSX attributes
+// (D-05 supporting type; concrete shape locked here per planner's
+// discretion — minimum surface is `{ name, value }` where value
+// discriminates literal vs expression vs spread).
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * One attribute on a JSX element.
+ *
+ * D-05 — supporting type for `RenderNode { kind: "jsx" }`. Value is a
+ * discriminated union so the consumer can distinguish source-text fallback
+ * (`expression` / `spread`) from statically-resolved literals.
+ */
+export interface JsxAttribute {
+  name: string;
+  value:
+    | { kind: "literal"; value: string | number | boolean | null }
+    | { kind: "expression"; source: string }
+    | { kind: "spread"; source: string };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// RenderNode — 7-kind discriminated union (D-05).
+// Every variant carries `file: string` (forward-slash absolute) +
+// `line: number` so Phase 5's toIR() is mechanical.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Parser-level render flow node.
+ *
+ * D-04 — separate from IR `TreeNode`; Phase 5 owns the bridge.
+ * D-05 — exactly 7 kinds reflecting AST reality (jsx is the single kind for
+ *   both components and elements; `isComponent` flag distinguishes them).
+ *   No `slot` kind here — slots are a Next.js routing concern (Phase 4).
+ */
+export type RenderNode =
+  | {
+      kind: "jsx";
+      tag: string;
+      isComponent: boolean;
+      resolvedFrom?: string;
+      attributes: JsxAttribute[];
+      children: RenderNode[];
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "branch";
+      condition: string;
+      thenBranch: RenderNode | null;
+      elseBranch: RenderNode | null;
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "list";
+      item: RenderNode;
+      iterableSource: string;
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "text";
+      value: string;
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "fragment";
+      children: RenderNode[];
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "spread";
+      expression: string;
+      file: string;
+      line: number;
+    }
+  | {
+      kind: "error";
+      message: string;
+      file: string;
+      line: number;
+    };
+
+// ──────────────────────────────────────────────────────────────────
+// PropSignature — minimal prop shape (D-06).
+// `typeSlice` is the raw source of the type annotation; no resolution.
+// `optional` derived from `name?: T` syntax.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * One prop on a component.
+ *
+ * D-06 — minimal v1 shape. No `defaultValue`, no `restElement` flag — Phase 5
+ *   query tools have not requested them. Add only when concretely needed.
+ * D-07 — for `function Card({ a, b: alias, ...rest }: Props)`, `name` is the
+ *   local destructure name (`a`, `alias`, `rest`); `typeSlice` is the raw
+ *   source of `Props` for every prop (we do NOT split per-field).
+ */
+export interface PropSignature {
+  name: string;
+  typeSlice: string;
+  optional: boolean;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ClassToken — discriminated className token (D-09).
+// `cn`/`clsx`/`cva`/`twMerge` literal args become `literal`; everything
+// non-statically-resolvable preserved as a single `raw` token.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * One className token captured from a JSX `className` attribute or
+ * `cn`/`clsx`/`cva`/`twMerge` call argument.
+ *
+ * D-09 — return both literals and raw source slices (PITFALL 5.1). No
+ *   symbolic execution / variant-table resolution in v1.
+ */
+export type ClassToken =
+  | { kind: "literal"; value: string; file: string; line: number }
+  | { kind: "raw"; source: string; file: string; line: number };
+
+// ──────────────────────────────────────────────────────────────────
+// CssModuleRef — `styles.foo` reference (R8 supporting type).
+// No CSS file parsing in v1 — `source` is the import specifier only.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * One CSS Modules reference (`styles.foo` → `{ binding: "styles",
+ * key: "foo", source: "./X.module.css" }`).
+ *
+ * R8 — supporting type for `ComponentDefinition.cssModuleRefs`. CSS file
+ *   content parsing is deferred to v2.
+ */
+export interface CssModuleRef {
+  binding: string;
+  key: string;
+  source: string;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// StyledTemplate — styled-components template literal capture (D-10).
+// `body` is the template raw text with each `${...}` replaced by `{?}`.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * One styled-components template literal capture.
+ *
+ * D-10 — placeholder rule: every `${...}` interpolation in the template body
+ *   is replaced by the literal string `{?}`. No theme-function resolution.
+ *   Detection is identifier-based (callee is `styled`); no import-source
+ *   verification in v1.
+ */
+export interface StyledTemplate {
+  tag: string;
+  body: string;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ComponentDefinition — locked 11-field shape (R8).
+// `runtime` is deliberately absent — Phase 4 layers it via NEXT-04
+// ("use client" / "use server" detection).
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * The parser's per-component output.
+ *
+ * R8 — locked 11-field shape. Adding a 12th field requires a milestone
+ *   amendment. Field order (alphabetic-by-purpose):
+ *     identity:   name, file, line, kind
+ *     wrappers:   wrappers
+ *     interface:  props, textContent
+ *     render:     renderFlow
+ *     styles:     classNames, inlineStyles, cssModuleRefs, styledTemplates
+ *
+ * Field count check (test/adapters/types.test.ts) asserts Object.keys(...) ===
+ *   11 to catch accidental additions.
+ */
+export interface ComponentDefinition {
+  name: string;
+  file: string;
+  line: number;
+  kind: "function" | "class";
+  wrappers: string[];
+  props: PropSignature[];
+  textContent: string[];
+  renderFlow: RenderNode;
+  classNames: ClassToken[];
+  inlineStyles: Record<string, string | { raw: string }>;
+  cssModuleRefs: CssModuleRef[];
+  styledTemplates: StyledTemplate[];
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ResolveResult — discriminated union, never throws (D-12).
+// `ambiguous` is reserved for future logic; currently unreachable but
+// kept in the union so callers can pattern-match exhaustively.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Output of `FrameworkAdapter.resolveModule(...)`.
+ *
+ * D-12 — `resolveModule` returns this discriminated union and never throws.
+ *   Callers (`extractComponents`) decide whether to emit a
+ *   `RenderNode { kind: "error" }` or drop the import silently.
+ * D-13 — `not-found` carries the list of probed paths (`tried`) for
+ *   diagnostic surfacing in `ctx.warnings`.
+ */
+export type ResolveResult =
+  | { ok: true; kind: "local"; absolutePath: string }
+  | { ok: true; kind: "external"; packageName: string }
+  | { ok: false; kind: "cycle"; chain: string[] }
+  | { ok: false; kind: "not-found"; specifier: string; tried: string[] }
+  | { ok: false; kind: "ambiguous"; specifier: string; candidates: string[] };
+
+// ──────────────────────────────────────────────────────────────────
+// ParseResult — parser primitive output (D-02 cache value).
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Output of `parseFile(ctx, absPath)` and the value type stored in
+ * `ParseContext.astCache`.
+ *
+ * D-02 — cache value is the discriminated union, so re-entries to the same
+ *   file (barrel chase) don't re-parse and don't re-throw.
+ */
+export type ParseResult =
+  | { kind: "ok"; ast: File; source: string }
+  | { kind: "error"; message: string; line: number };
+
+// ──────────────────────────────────────────────────────────────────
+// ParseContext — pure-function state envelope (D-01).
+// Built fresh per `NextJsAdapter.extractComponents()` call.
+//   - astCache keyed by forward-slash absolute path (D-02)
+//   - resolverCache keyed by `${fromFile}::${specifier}::${importedName}` (D-03)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * State envelope threaded through every parser/resolver/extractor function.
+ *
+ * D-01 — pure functions only; no class instances at the parser level.
+ * D-02 — per-call `astCache`; garbage-collected when the context goes out
+ *   of scope. Honors ARCH-02 ("no cross-call cache in v1").
+ * D-03 — per-call `resolverCache` keyed by the (fromFile, specifier,
+ *   importedName) tuple.
+ *
+ * `warnings` is the in-band channel surfaced in the MCP envelope — `core/`
+ * modules MUST push to this rather than calling `console.*` (stdio safety).
+ */
+export interface ParseContext {
+  resolvedRoot: string;
+  tsconfig: TsConfigResult | null;
+  astCache: Map<string, ParseResult>;
+  resolverCache: Map<string, ResolveResult>;
+  warnings: string[];
+}
