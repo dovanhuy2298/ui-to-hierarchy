@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-29T09:45:36.036Z"
+last_updated: "2026-04-29T10:11:31.184Z"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 20
+  total_plans: 25
   completed_plans: 20
-  percent: 100
+  percent: 80
 ---
 
 # STATE — ui-to-hierarchyMCP
@@ -19,19 +19,19 @@ progress:
 ## Project Reference
 
 - **Core value:** When an AI agent can't confidently act on a screenshot or vague UI description, call this MCP for a precise file/component map — edit the right component, not guess.
-- **Current focus:** Phase 04 — next-js-app-router-adapter
+- **Current focus:** Phase 5 — ir-queries-tool-wire-up
 - **Mode:** yolo
 - **Granularity:** standard
 
 ## Current Position
 
-Phase: 04 (next-js-app-router-adapter) — EXECUTING
-Plan: 1 of 4
+Phase: 5 (ir-queries-tool-wire-up) — EXECUTING
+Plan: 1 of 5
 
 - **Milestone:** v1
 - **Phase:** 4
 - **Plan:** Not started
-- **Status:** Executing Phase 04
+- **Status:** Executing Phase 5
 - **Progress:** `[██░░░░] 2/6 phases complete`
 
 ## Performance Metrics
@@ -88,5 +88,5 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - Prototype reference: `E:\ui-to-hierarch\generate-component-hierarchy.ts` (~60% of v1 logic; port, don't wrap)
 - Research artifacts: `.planning/research/{SUMMARY,STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`
 
-**Planned Phase:** 04 (next-js-app-router-adapter) — 4 plans — 2026-04-29T08:37:18.776Z
+**Planned Phase:** 5 (IR Queries & Tool Wire-up) — 5 plans — 2026-04-29T10:08:48.814Z
 **Planned Phase:** 02 (mcp-transport-shell) — 5 plans — 2026-04-21T00:00:00.000Z
