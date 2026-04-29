@@ -120,9 +120,18 @@ function buildTree(absFwdFiles: string[], fwdAppRoot: string): SegmentNode {
 
         // Intercepting alias — register the same node under the stripped
         // target name so the URL walk resolves it (v1 interpretation).
+        // Use a synthetic `static` segment so the walker treats the alias
+        // as a regular named child (the original `intercepting`-kind node
+        // is short-circuited inside walk()). The alias shares the same
+        // children/files maps as the original via spread, so file
+        // registration on `child` below is visible through the alias.
         if (seg.kind === "intercepting") {
           if (!node.children.has(seg.targetSegment)) {
-            node.children.set(seg.targetSegment, child);
+            const aliasNode: SegmentNode = {
+              ...child,
+              segment: { kind: "static", name: seg.targetSegment },
+            };
+            node.children.set(seg.targetSegment, aliasNode);
           }
         }
       }
