@@ -24,9 +24,13 @@ export function extractInlineStyle(
     return { __raw__: { raw: sliceSource(source, expr as t.Node) } };
   }
   const out: Record<string, string | { raw: string }> = {};
+  let spreadIdx = 0;
   for (const prop of expr.properties) {
     if (t.isSpreadElement(prop)) {
-      out[`__spread_${prop.start ?? 0}`] = { raw: sliceSource(source, prop.argument) };
+      // Use a monotonic counter (not byte offset) to ensure each spread within
+      // the same element gets a unique key even when prop.start is unavailable
+      // (e.g. constructed AST or transformed AST where positions are stripped).
+      out[`__spread_${spreadIdx++}`] = { raw: sliceSource(source, prop.argument) };
       continue;
     }
     if (!t.isObjectProperty(prop) || prop.computed) continue;
