@@ -1,16 +1,15 @@
 /**
- * NextJsAdapter — Phase 3 final integration (ARCH-01 + SPEC R7/R8).
+ * NextJsAdapter — Phase 3 + Phase 4 ship all 5 methods (ARCH-01 + SPEC R7/R8).
  *
- * The only `FrameworkAdapter` implementation v1 ships. Phase 3 fills in two
- * methods for real:
+ * The only `FrameworkAdapter` implementation v1 ships. Phase 3 implemented
  *   - `resolveModule(...)` delegates to the core resolver (Plan 03).
  *   - `extractComponents(...)` orchestrates parseFile + discoverComponents +
  *     walkRenderFlow + collectStyleSignals, producing a `ComponentDefinition[]`
- *     with all 11 SPEC R8 fields populated (D-12: never throws).
+ *     (D-12: never throws).
  *
- * The remaining three methods (`detect`, `discoverEntries`, `mapRouteToEntry`)
- * each raise `Error("not implemented in Phase 3")` per SPEC R7; Phase 4
- * fills them in with Next.js routing semantics.
+ * Phase 4 fills `detect`, `discoverEntries`, `mapRouteToEntry` via delegating
+ * shims to sibling modules `detect.ts`, `discover.ts`, `route-map.ts`.
+ * NEXT-04 plumbed into `buildComponentDefinition` (line ~140).
  *
  * This file lives in the adapters island and is permitted to runtime-import
  * from src/core/. The reverse direction is blocked by the architecture test
@@ -25,6 +24,7 @@ import type {
   PropSignature,
   RenderNode,
   ResolveResult,
+  RouteMatch,
 } from "../types.js";
 import { collectStyleSignals } from "../../core/extractors/index.js";
 import { parseFile } from "../../core/parser/index.js";
@@ -35,18 +35,21 @@ import {
 } from "../../core/render-flow/component-detect.js";
 import { walkRenderFlow } from "../../core/render-flow/index.js";
 import { resolveModule as coreResolveModule } from "../../core/resolver/index.js";
+import { detect as detectNextProject } from "./detect.js";
+import { discoverEntries as discoverNextEntries } from "./discover.js";
+import { matchRoute } from "./route-map.js";
 
 export const NextJsAdapter: FrameworkAdapter = {
-  detect(_absRoot: string): boolean {
-    throw new Error("not implemented in Phase 3");
+  async detect(absRoot: string): Promise<boolean> {
+    return detectNextProject(absRoot);
   },
 
-  discoverEntries(_absRoot: string): string[] {
-    throw new Error("not implemented in Phase 3");
+  async discoverEntries(absRoot: string): Promise<string[]> {
+    return discoverNextEntries(absRoot);
   },
 
-  mapRouteToEntry(_absRoot: string, _route: string): string[] {
-    throw new Error("not implemented in Phase 3");
+  async mapRouteToEntry(absRoot: string, route: string): Promise<RouteMatch> {
+    return matchRoute(absRoot, route);
   },
 
   resolveModule(
@@ -88,6 +91,7 @@ export const NextJsAdapter: FrameworkAdapter = {
           inlineStyles: {},
           cssModuleRefs: [],
           styledTemplates: [],
+          runtime: "server",
         });
         continue;
       }
@@ -124,6 +128,17 @@ function buildComponentDefinition(
   // 5. textContent — string literals in JSXText, harvested from the walked tree.
   const textContent = collectTextContent(renderFlow);
 
+  // 6. NEXT-04 / D-10..D-12: per-file Next.js runtime boundary.
+  //    Babel separates the leading directive prologue from `body` automatically
+  //    per the JavaScript spec, so `directives[0]` is the spec-correct
+  //    "first non-comment string-literal statement". Comments before the
+  //    directive are attached as leadingComments on the directive node and
+  //    do NOT block recognition. (Verified in 04-RESEARCH §"Pattern 2".)
+  const firstDirective = ast.program.directives[0]?.value.value;
+  const runtime: "server" | "client" =
+    firstDirective === "use client" ? "client" : "server";
+  // D-12: "use server" and absent both map to "server" (App Router default).
+
   return {
     name: comp.name,
     file,
@@ -137,6 +152,7 @@ function buildComponentDefinition(
     inlineStyles: styleSignals.inlineStyles,
     cssModuleRefs: styleSignals.cssModuleRefs,
     styledTemplates: styleSignals.styledTemplates,
+    runtime,
   };
 }
 
