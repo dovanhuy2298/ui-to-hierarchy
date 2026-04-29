@@ -7,8 +7,8 @@
  *   the adapter island stays one-directional (the rest of the codebase may
  *   import these types, but never the inverse).
  *
- * R8 — `ComponentDefinition` is the locked 11-field shape consumed by every
- *   downstream Wave 2/3 plan. Adding a 12th field is a milestone-level change.
+ * R8 — `ComponentDefinition` is the locked 12-field shape consumed by every
+ *   downstream Wave 2/3 plan. Adding a 13th field is a milestone-level change.
  *
  * No zod schemas live here (D-04). These are pure TypeScript types — the
  * parser output is internal; runtime validation lives at the IR boundary
@@ -180,24 +180,25 @@ export interface StyledTemplate {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// ComponentDefinition — locked 11-field shape (R8).
-// `runtime` is deliberately absent — Phase 4 layers it via NEXT-04
-// ("use client" / "use server" detection).
+// ComponentDefinition — locked 12-field shape (R8 + NEXT-04).
+// `runtime` is the framework-boundary field added in Phase 4 via
+// NEXT-04 ("use client" / "use server" detection).
 // ──────────────────────────────────────────────────────────────────
 
 /**
  * The parser's per-component output.
  *
- * R8 — locked 11-field shape. Adding a 12th field requires a milestone
+ * R8 — locked 12-field shape. Adding a 13th field requires a milestone
  *   amendment. Field order (alphabetic-by-purpose):
  *     identity:   name, file, line, kind
  *     wrappers:   wrappers
  *     interface:  props, textContent
  *     render:     renderFlow
  *     styles:     classNames, inlineStyles, cssModuleRefs, styledTemplates
+ *     boundary:   runtime
  *
  * Field count check (test/adapters/types.test.ts) asserts Object.keys(...) ===
- *   12 to catch accidental additions/removals.
+ *   13 to catch accidental additions/removals.
  */
 export interface ComponentDefinition {
   name: string;
@@ -230,6 +231,14 @@ export interface ComponentDefinition {
   inlineStyles: Record<string, string | { raw: string }>;
   cssModuleRefs: CssModuleRef[];
   styledTemplates: StyledTemplate[];
+  /**
+   * Per-file Next.js runtime boundary (NEXT-04, D-10..D-13).
+   * Read from `ast.program.directives[0]?.value.value`:
+   *   - "use client" → "client"
+   *   - "use server" or absent → "server" (App Router default)
+   * Shared across every ComponentDefinition emitted from the same file.
+   */
+  runtime: "server" | "client";
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -253,6 +262,33 @@ export type ResolveResult =
   | { ok: false; kind: "cycle"; chain: string[] }
   | { ok: false; kind: "not-found"; specifier: string; tried: string[] }
   | { ok: false; kind: "ambiguous"; specifier: string; candidates: string[] };
+
+// ──────────────────────────────────────────────────────────────────
+// RouteMatch — Phase 4 mapRouteToEntry return type (D-01..D-04).
+// Flat four-field record; D-12 no-throw collapses every failure to
+// { matched: false, entries: [], params: {}, slots: {} }.
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Output of `FrameworkAdapter.mapRouteToEntry(...)`.
+ *
+ * D-01 — co-located with adapter types; Phase 5's toIR() imports from here.
+ * D-02 — flat four fields (no tagged-object entries; role recoverable from filename).
+ * D-03 — no-match shape: `{ matched: false, entries: [], params: {}, slots: {} }`.
+ * D-12 — no-throw; any error (malformed route, missing app/, etc.) collapses
+ *   to the no-match shape.
+ *
+ * `entries` is forward-slash absolute, root-down, with sibling special files
+ * (`template.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `default.tsx`)
+ * inlined at their segment position. `slots` keys are the parallel-route
+ * folder name minus `@` (dynamic, not enum).
+ */
+export interface RouteMatch {
+  matched: boolean;
+  entries: string[];
+  params: Record<string, string | string[]>;
+  slots: Record<string, string[]>;
+}
 
 // ──────────────────────────────────────────────────────────────────
 // ParseResult — parser primitive output (D-02 cache value).

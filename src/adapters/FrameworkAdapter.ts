@@ -1,4 +1,4 @@
-import type { ComponentDefinition, ParseContext, ResolveResult } from "./types.js";
+import type { ComponentDefinition, ParseContext, ResolveResult, RouteMatch } from "./types.js";
 
 /**
  * FrameworkAdapter — locked 5-method contract (ARCH-01, SPEC R7).
@@ -42,6 +42,6 @@ export interface FrameworkAdapter {
     opts?: { fullClasses?: boolean },
   ): ComponentDefinition[];
 
-  /** Map a route string to the entry file(s) responsible for rendering it (Phase 4). */
-  mapRouteToEntry(absRoot: string, route: string): Promise<string[]> | string[];
+  /** Map a route string to entries + params + slots (Phase 4, NEXT-01..03). */
+  mapRouteToEntry(absRoot: string, route: string): Promise<RouteMatch> | RouteMatch;
 }
