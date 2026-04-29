@@ -4,6 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer } from "../../src/mcp/server.js";
 import { internalError, type ToolResponse } from "../../src/mcp/errors.js";
+import { tools as registeredTools } from "../../src/mcp/tools/index.js";
 
 // Tier 1 — in-process tests using InMemoryTransport + Client
 
@@ -55,20 +56,19 @@ describe("MCP server — tool registration (MCP-01)", () => {
     expect(pair.client).toBeDefined();
   });
 
-  it("listTools returns exactly 4 tools", async () => {
+  it("listTools returns the same number of tools as the registry", async () => {
     const { tools } = await pair.client.listTools();
-    expect(tools).toHaveLength(4);
+    expect(tools).toHaveLength(registeredTools.length);
   });
 
   it(
-    "listTools returns get_full_hierarchy, focus_on, find_by_text, find_by_style",
+    "listTools returns every name declared in the registry",
     async () => {
       const { tools } = await pair.client.listTools();
       const names = tools.map((t) => t.name);
-      expect(names).toContain("get_full_hierarchy");
-      expect(names).toContain("focus_on");
-      expect(names).toContain("find_by_text");
-      expect(names).toContain("find_by_style");
+      for (const expected of registeredTools.map((t) => t.name)) {
+        expect(names).toContain(expected);
+      }
     },
   );
 
