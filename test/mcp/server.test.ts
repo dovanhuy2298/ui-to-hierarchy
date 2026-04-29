@@ -94,52 +94,6 @@ describe("MCP server — tool schemas (MCP-02)", () => {
     await pair.cleanup();
   });
 
-  it("get_full_hierarchy: route field is required and validates Next.js paths", async () => {
-    // Valid route passes schema boundary — handler is reached
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "get_full_hierarchy",
-        arguments: { route: "/dashboard" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("get_full_hierarchy");
-  });
-
-  it("get_full_hierarchy: format field defaults to markdown", async () => {
-    // Call without format — zod default kicks in; handler is reached
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "get_full_hierarchy",
-        arguments: { route: "/" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-  });
-
-  it("focus_on: component field validates PascalCase only", async () => {
-    // Valid PascalCase name passes schema boundary — handler is reached
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "focus_on",
-        arguments: { component: "Card" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("focus_on");
-  });
-
-  it("focus_on: scope field defaults to full", async () => {
-    // Call without scope — zod default kicks in; handler is reached
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "focus_on",
-        arguments: { component: "Layout" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-  });
-
   it(
     "get_full_hierarchy: invalid route returns isError:true without calling handler",
     async () => {
@@ -170,65 +124,10 @@ describe("MCP server — tool schemas (MCP-02)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Describe: not-implemented responses (MCP-03)
+// Describe: error helper unit (MCP-03 — handler-wired in Phase 5)
 // ---------------------------------------------------------------------------
-describe("MCP server — not-implemented responses (MCP-03)", () => {
-  let pair: Awaited<ReturnType<typeof createTestPair>>;
-
-  beforeEach(async () => {
-    pair = await createTestPair();
-  });
-
-  afterEach(async () => {
-    await pair.cleanup();
-  });
-
-  it("get_full_hierarchy returns isError:true with tool name in message", async () => {
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "get_full_hierarchy",
-        arguments: { route: "/" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("get_full_hierarchy");
-  });
-
-  it("focus_on returns isError:true with tool name in message", async () => {
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "focus_on",
-        arguments: { component: "Card" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("focus_on");
-  });
-
-  it("find_by_text returns isError:true with tool name in message", async () => {
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "find_by_text",
-        arguments: { query: "Hello World" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("find_by_text");
-  });
-
-  it("find_by_style returns isError:true with tool name in message", async () => {
-    const r = asToolResponse(
-      await pair.client.callTool({
-        name: "find_by_style",
-        arguments: { class_or_prop: "flex" },
-      }),
-    );
-    expect(r.isError).toBe(true);
-    expect(firstText(r)).toContain("find_by_style");
-  });
-
+describe("MCP server — internal error helper", () => {
   it("handler exception is caught and returns internalError response", () => {
-    // Unit test for the internalError() helper directly — no server needed
     const err = new Error("simulated handler crash");
     const response = internalError("test_tool", err);
     expect(response.isError).toBe(true);
