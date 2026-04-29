@@ -6,8 +6,7 @@ import { tools } from "./tools/index.js";
 // Runtime fallback: __TOOL_VERSION__ is substituted by tsup define at build time.
 // Without this guard, running via tsx or a test runner that skips define-substitution
 // would throw ReferenceError: __TOOL_VERSION__ is not defined.
-const TOOL_VERSION =
-  typeof __TOOL_VERSION__ !== "undefined" ? __TOOL_VERSION__ : "0.0.0-unknown";
+const TOOL_VERSION = typeof __TOOL_VERSION__ !== "undefined" ? __TOOL_VERSION__ : "0.0.0-unknown";
 
 /**
  * Build and return a configured McpServer with all four tools registered.

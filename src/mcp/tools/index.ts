@@ -9,14 +9,18 @@ import * as getFullHierarchy from "./get-full-hierarchy.js";
  * Contract every tool module must satisfy. Each tool file exports these named
  * bindings; the registry below collects them so adding a tool is a one-file
  * change (create file → add to `tools` array). server.ts iterates this list.
+ *
+ * The handler arg type is each tool's own `z.infer<typeof inputSchema>` — the
+ * SDK's registerTool re-validates against the inferred shape before invoking,
+ * so the registry boundary uses `any` deliberately.
  */
-// biome-ignore lint/suspicious/noExplicitAny: handler args type is the tool's own z.infer; can't be narrowed at the registry boundary
 export interface ToolModule {
   readonly name: string;
   readonly title: string;
   readonly description: string;
   readonly inputSchema: z.ZodObject<z.ZodRawShape>;
-  // biome-ignore lint/suspicious/noExplicitAny: each tool's handler infers its own arg type; the registry treats them uniformly
+  // Per-handler args type is z.infer<inputSchema>; cannot narrow at the registry boundary.
+  // The SDK re-validates against inputSchema before invoking, so `any` here is intentional.
   readonly handler: (args: any) => Promise<ToolResponse>;
 }
 
@@ -27,9 +31,4 @@ export interface ToolModule {
  * To add a new tool: create the file under tools/ exporting the ToolModule
  * shape, then append the namespace import here. No other edits required.
  */
-export const tools: readonly ToolModule[] = [
-  getFullHierarchy,
-  focusOn,
-  findByText,
-  findByStyle,
-];
+export const tools: readonly ToolModule[] = [getFullHierarchy, focusOn, findByText, findByStyle];
