@@ -260,15 +260,17 @@ function walk(
       return { ok: true, entries, params, slots };
     }
     // Optional catch-all child with a page acts as parent-path match.
-    for (const [, child] of expandGroupsAndChildren(node)) {
-      if (child.segment.kind === "optional-catch-all" && child.files.page) {
-        const branchEntries = [...entries];
-        // Group transparency: harvest layouts of any groups we pass through.
-        // (expandGroupsAndChildren already accounts for that via `pre`.)
-        params[child.segment.param] = [];
-        harvestSpecials(child, branchEntries);
-        branchEntries.push(child.files.page);
-        return { ok: true, entries: branchEntries, params, slots };
+    // Thread `pre` from expandGroups so any transparent group layouts we
+    // pass through are included in the branch entries.
+    for (const { node: cand, pre } of expandGroups(node, [])) {
+      for (const [, child] of cand.children) {
+        if (child.segment.kind === "optional-catch-all" && child.files.page) {
+          const branchEntries = [...entries, ...pre];
+          params[child.segment.param] = [];
+          harvestSpecials(child, branchEntries);
+          branchEntries.push(child.files.page);
+          return { ok: true, entries: branchEntries, params, slots };
+        }
       }
     }
     return { ok: false };
