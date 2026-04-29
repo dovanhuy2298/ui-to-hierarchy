@@ -15,5 +15,9 @@
     "types": ["node"]
   },
   "include": ["src/**/*", "test/**/*", "tsup.config.ts", "vitest.config.ts"],
-  "exclude": ["test/fixtures/parser/parse-errors/**", "test/fixtures/parser/resolver/**"]
+  "exclude": [
+    "test/fixtures/parser/parse-errors/**",
+    "test/fixtures/parser/resolver/**",
+    "test/fixtures/parser/extractors/**"
+  ]
 }
