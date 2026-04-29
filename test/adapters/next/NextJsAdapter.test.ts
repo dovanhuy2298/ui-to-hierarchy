@@ -22,10 +22,30 @@ describe("ARCH-01 / SPEC R7 NextJsAdapter", () => {
     expect(typeof NextJsAdapter.mapRouteToEntry).toBe("function");
   });
 
-  it('detect / discoverEntries / mapRouteToEntry throw "not implemented in Phase 3"', () => {
-    expect(() => NextJsAdapter.detect("/x")).toThrow(/not implemented in Phase 3/);
-    expect(() => NextJsAdapter.discoverEntries("/x")).toThrow(/not implemented in Phase 3/);
-    expect(() => NextJsAdapter.mapRouteToEntry("/x", "/")).toThrow(/not implemented in Phase 3/);
+  it("detect returns a boolean (no throw)", async () => {
+    const result = await NextJsAdapter.detect(path.resolve("test/fixtures/next-detect-with-app"));
+    expect(result).toBe(true);
+  });
+
+  it("discoverEntries returns string[] (no throw)", async () => {
+    const result = await NextJsAdapter.discoverEntries(
+      path.resolve("test/fixtures/next-app-router"),
+    );
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((p) => !p.includes("\\"))).toBe(true);
+  });
+
+  it("mapRouteToEntry returns a RouteMatch (no throw)", async () => {
+    const result = await NextJsAdapter.mapRouteToEntry(
+      path.resolve("test/fixtures/next-app-router"),
+      "/dashboard/settings",
+    );
+    expect(result).toHaveProperty("matched");
+    expect(result).toHaveProperty("entries");
+    expect(result).toHaveProperty("params");
+    expect(result).toHaveProperty("slots");
+    expect(result.matched).toBe(true);
   });
 
   it("extractComponents returns ComponentDefinition[] on a simple function fixture", () => {
@@ -42,9 +62,9 @@ describe("ARCH-01 / SPEC R7 NextJsAdapter", () => {
     expect(T.renderFlow.kind).toBe("jsx");
     // Forward-slash discipline — emitted file path must contain no backslashes.
     expect(T.file.includes("\\")).toBe(false);
-    // Locked R8 11-field shape (Object.keys length === 12 because the type
-    // count is 12 — name, file, line, kind, wrappers, props, textContent,
-    // renderFlow, classNames, inlineStyles, cssModuleRefs, styledTemplates).
+    // Locked R8 13-field shape (Object.keys length === 13 — name, file, line,
+    // kind, wrappers, props, textContent, renderFlow, classNames, inlineStyles,
+    // cssModuleRefs, styledTemplates, runtime).
     expect(Object.keys(T).sort()).toEqual(
       [
         "classNames",
@@ -56,11 +76,14 @@ describe("ARCH-01 / SPEC R7 NextJsAdapter", () => {
         "name",
         "props",
         "renderFlow",
+        "runtime",
         "styledTemplates",
         "textContent",
         "wrappers",
       ].sort(),
     );
+    // NEXT-04: every ComponentDefinition carries a runtime field.
+    expect(T.runtime === "server" || T.runtime === "client").toBe(true);
   });
 
   it("extractComponents preserves HOC wrappers (PARSE-04)", () => {
