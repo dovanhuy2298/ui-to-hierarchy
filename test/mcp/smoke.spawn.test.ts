@@ -96,21 +96,27 @@ describe("MCP smoke — spawned binary (MCP-01, MCP-04)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("each tool call returns isError:true on stderr, not stdout", async () => {
-    // Call all 4 tools — each should return isError:true (notImplemented stub)
-    // without writing anything to stdout (SDK owns stdout; our logs go to stderr).
+  it("each tool call returns a successful envelope; stdout stays clean", async () => {
+    // Phase 5 wired all 4 handlers to the real Analyzer. They now return
+    // structured envelopes (kind:"tree" or kind:"error") wrapped in a successful
+    // tool response. isError must be falsy; application logs go to stderr only.
+    const KS = resolve(fileURLToPath(import.meta.url), "../../fixtures/phase-05/kitchen-sink");
     const toolCalls = [
-      { name: "get_full_hierarchy", arguments: { route: "/" } },
-      { name: "focus_on", arguments: { component: "Card" } },
-      { name: "find_by_text", arguments: { query: "Hello" } },
-      { name: "find_by_style", arguments: { class_or_prop: "flex" } },
+      { name: "get_full_hierarchy", arguments: { route: "/dashboard/settings", projectRoot: KS } },
+      { name: "focus_on", arguments: { component: "Card", projectRoot: KS } },
+      { name: "find_by_text", arguments: { query: "Hello", projectRoot: KS } },
+      { name: "find_by_style", arguments: { class_or_prop: "flex", projectRoot: KS } },
     ];
 
     for (const call of toolCalls) {
       const result = await client.callTool(call);
       expect(
         result.isError,
-        `Expected ${call.name} to return isError:true`,
+        `Expected ${call.name} to return a successful response (isError falsy)`,
+      ).toBeFalsy();
+      expect(
+        Array.isArray(result.content) && result.content.length > 0,
+        `Expected ${call.name} to return non-empty content`,
       ).toBe(true);
     }
 
