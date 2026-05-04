@@ -322,11 +322,16 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
       //   — inject a slot AFTER the last existing child when a slotLine is greater
       //   than the last child's line. This handles siblings like {children} following
       //   another JSX element in the same parent.
+      // WR-01 stopgap: consume each slotLine as it is injected so a single
+      // {children} expression cannot be assigned to multiple elements. The set
+      // is mutated in-place, which is safe because injectChildrenSlots is
+      // called once per layout file (via buildTreeForEntry).
       if (slotLines.size > 0) {
         if (newChildren.length === 0) {
           // Case A — empty element
           for (const sl of slotLines) {
             if (sl >= tree.line) {
+              slotLines.delete(sl);
               const slotNode: TreeNode = {
                 kind: "slot",
                 name: "children",
@@ -342,6 +347,7 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
           const lastChildLine = Math.max(...newChildren.map((c) => c.line));
           for (const sl of slotLines) {
             if (sl > lastChildLine) {
+              slotLines.delete(sl);
               const slotNode: TreeNode = {
                 kind: "slot",
                 name: "children",
