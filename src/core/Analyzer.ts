@@ -670,8 +670,9 @@ export class Analyzer {
       const { tree, matched } = await this.getOrBuildRouteTree(args.route);
       if (!matched) {
         const warns = [...this.ctx.warnings];
-        if (!warns.some((w) => w.includes("route not matched"))) {
-          warns.push(`route not matched: ${args.route}`);
+        const expected = `route not matched: ${args.route}`;
+        if (!warns.includes(expected)) {
+          warns.push(expected);
         }
         return { tree: buildFragmentRoot([]), warnings: warns };
       }
