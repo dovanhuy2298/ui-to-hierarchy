@@ -34,7 +34,8 @@ export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolRe
     const root = resolveRoot(args.projectRoot);
     const analyzer = new Analyzer({ root, adapter: NextJsAdapter });
     const { tree, warnings } = await analyzer.focusOn({ component: args.component, scope: args.scope });
-    const envelope = { ...buildEnvelope(tree, { resolvedRootOverride: root }), warnings };
+    const base = buildEnvelope(tree, { resolvedRootOverride: root });
+    const envelope = { ...base, warnings: [...(base.warnings ?? []), ...warnings] };
     const text = renderMarkdown(tree, envelope);
     return { content: [{ type: "text" as const, text }] };
   });
