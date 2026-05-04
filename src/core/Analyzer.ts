@@ -772,9 +772,11 @@ export class Analyzer {
         const dist = levenshtein(queryLower, value.toLowerCase());
         if (dist <= 2) {
           candidates.push({ dist, value, file, line });
-          if (candidates.length >= 5) break; // early exit (D-03)
         }
       }
+      // Sort by distance, then take top 5 — collecting all ≤2 candidates first
+      // ensures a distance-1 hit is never dropped in favor of distance-2 hits
+      // discovered earlier (D-03 bound is on candidate count, not discovery order).
       candidates.sort((a, b) => a.dist - b.dist);
       for (const c of candidates.slice(0, 5)) {
         warnings.push(`no exact match — did you mean: "${c.value}" @ ${c.file}:${c.line}`);
