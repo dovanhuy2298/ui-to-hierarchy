@@ -192,10 +192,13 @@ function renderNodeToTreeNode(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Recursively visit-and-clone a TreeNode tree, replacing the FIRST
- * kind:"slot" with name === slotName with the replacement tree.
+ * Recursively visit-and-clone a TreeNode tree, replacing ALL
+ * kind:"slot" nodes with name === slotName with the replacement tree.
  * Finite depth bounded by tree depth (T-05-02-03).
  * If no slot found, returns original tree unchanged (D-10 silent skip).
+ *
+ * Replaces all matches because in React/Next.js, `{children}` is a single
+ * binding — every reference must resolve to the same subtree.
  */
 function replaceSlot(tree: TreeNode, slotName: string, replacement: TreeNode): TreeNode {
   if (tree.kind === "slot" && tree.name === slotName) {
