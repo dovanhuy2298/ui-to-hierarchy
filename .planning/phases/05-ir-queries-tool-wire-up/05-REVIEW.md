@@ -49,6 +49,35 @@ findings:
   info: 4
   total: 13
 status: issues_found
+fixes_applied: 8
+fixes_skipped: 1
+fix_status:
+  CR-01: fixed
+  CR-02: skipped_requires_schema_change
+  WR-01: fixed_stopgap
+  WR-02: fixed
+  WR-03: fixed
+  WR-04: fixed
+  WR-05: fixed
+  WR-06: fixed
+  WR-07: fixed_doc_only
+fix_notes:
+  CR-02: |
+    Skipped — recommended fix requires extending TreeNode "slot" kind with a
+    `content?: TreeNode` field plus updating replaceSlot, attachParallelSlot,
+    Zod schema, JSON renderer, markdown renderer, and all consumers. This is
+    a cross-cutting schema change with wide ripple; deferred to a dedicated
+    follow-up phase. Current behavior produces an observable slot marker that
+    the test asserts on, and ModalLogin appears as a sibling — partially
+    correct semantics but incomplete parent/child linkage.
+  WR-01: |
+    Stopgap applied — slotLines Set is now mutated as each entry is consumed,
+    preventing the same {children} expression from being injected into
+    multiple elements. Full fix (emit kind:"slot" from the render-flow walker
+    upstream) requires adding a new RenderNode kind and is deferred.
+  WR-07: |
+    Investigation showed replaceSlot already replaces ALL matching slots via
+    recursive .map(); only the docstring was misleading. Doc updated.
 ---
 
 # Phase 05: Code Review Report
