@@ -31,7 +31,16 @@ import { NextJsAdapter } from "../../src/adapters/next/NextJsAdapter.js";
 import { EnvelopeSchema } from "../../src/ir/envelope.js";
 import { renderMarkdown } from "../../src/renderers/markdown.js";
 import { buildEnvelope } from "../../src/renderers/envelope-builder.js";
+import { toForwardSlash } from "../../src/core/paths.js";
 import type { TreeNode } from "../../src/ir/schema.js";
+
+// Strip a forward-slashed absolute root prefix from rendered markdown so
+// snapshots stay portable across machines and CI. Without this, snapshots
+// embed the reviewer's drive-letter path (e.g. "E:/ui-to-hierarch/...") and
+// any other contributor or CI runner gets a 100% diff (CR-01).
+function stripRoot(markdown: string, root: string): string {
+  return markdown.replaceAll(`${toForwardSlash(root)}/`, "");
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixture roots
@@ -127,9 +136,9 @@ describe("Analyzer.getFullHierarchy (R1)", () => {
     // No unexpected route-not-matched warnings
     expect(warnings.filter((w) => w.includes("route not matched"))).toHaveLength(0);
 
-    // Snapshot via markdown renderer
+    // Snapshot via markdown renderer (paths rebased to repo-relative for portability — CR-01)
     const envelope = buildEnvelope(tree, { resolvedRootOverride: KS });
-    const markdown = renderMarkdown(tree, envelope);
+    const markdown = stripRoot(renderMarkdown(tree, envelope), KS);
     await expect(markdown).toMatchFileSnapshot(
       "./__snapshots__/analyzer-dashboard-settings.md"
     );
@@ -159,9 +168,9 @@ describe("Analyzer.getFullHierarchy (R1)", () => {
       expect(modalSlot.name).toBe("modal");
     }
 
-    // Snapshot the login+modal tree (file named per plan: analyzer-feed-with-modal.md)
+    // Snapshot the login+modal tree (paths rebased to repo-relative — CR-01)
     const envelope = buildEnvelope(tree, { resolvedRootOverride: KS });
-    const markdown = renderMarkdown(tree, envelope);
+    const markdown = stripRoot(renderMarkdown(tree, envelope), KS);
     await expect(markdown).toMatchFileSnapshot(
       "./__snapshots__/analyzer-feed-with-modal.md"
     );
