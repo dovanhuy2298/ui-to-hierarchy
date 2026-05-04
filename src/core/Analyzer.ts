@@ -473,7 +473,7 @@ export class Analyzer {
   /**
    * Within-call route tree cache (Claude's Discretion — ARCH-02 allows within-call memoization).
    */
-  private readonly routeTreeCache = new Map<string, TreeNode>();
+  private readonly routeTreeCache = new Map<string, { tree: TreeNode; matched: boolean }>();
 
   constructor(opts: { root: string; adapter: FrameworkAdapter }) {
     this.root = opts.root;
@@ -611,7 +611,7 @@ export class Analyzer {
    */
   private async getOrBuildRouteTree(route: string): Promise<{ tree: TreeNode; matched: boolean }> {
     const cached = this.routeTreeCache.get(route);
-    if (cached) return { tree: cached, matched: true };
+    if (cached) return cached;
 
     let rm: RouteMatch;
     try {
@@ -619,16 +619,21 @@ export class Analyzer {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.ctx.warnings.push(`route resolution error for ${route}: ${message}`);
-      return { tree: buildFragmentRoot([]), matched: false };
+      const result = { tree: buildFragmentRoot([]), matched: false };
+      this.routeTreeCache.set(route, result);
+      return result;
     }
 
     if (!rm.matched) {
-      return { tree: buildFragmentRoot([]), matched: false };
+      const result = { tree: buildFragmentRoot([]), matched: false };
+      this.routeTreeCache.set(route, result);
+      return result;
     }
 
     const tree = await this.buildRouteTree(rm);
-    this.routeTreeCache.set(route, tree);
-    return { tree, matched: true };
+    const result = { tree, matched: true };
+    this.routeTreeCache.set(route, result);
+    return result;
   }
 
   /**
