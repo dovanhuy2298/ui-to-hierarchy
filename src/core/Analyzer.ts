@@ -545,11 +545,14 @@ export class Analyzer {
         }
       }
 
-      // Wrap in a kind:"component" node
+      // Wrap in a kind:"component" node. Preserve fragment wrappers in the IR
+      // (consumers walk through the fragment naturally; flattening is the
+      // renderer's job, not the IR's). This keeps the original fragment node's
+      // file/line metadata intact for round-trip use cases.
       const base: TreeNode & { kind: "component" } = {
         kind: "component",
         name: def.name,
-        children: bodyTree.kind === "fragment" ? bodyTree.children : [bodyTree],
+        children: [bodyTree],
         file: toForwardSlash(def.file),
         line: def.line,
       };
