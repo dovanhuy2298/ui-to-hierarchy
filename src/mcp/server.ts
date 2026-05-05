@@ -19,7 +19,7 @@ const TOOL_VERSION = typeof __TOOL_VERSION__ !== "undefined" ? __TOOL_VERSION__ 
  */
 export function createServer(): McpServer {
   const server = new McpServer({
-    name: "ui-to-hierarch",
+    name: "ui-hierarchy-mcp",
     version: TOOL_VERSION,
   });
 

@@ -1,13 +1,39 @@
 {
-  "name": "ui-to-hierarch",
+  "name": "@hudyv2298/ui-hierarchy-mcp",
   "version": "0.1.0",
-  "description": "MCP server that returns a frontend codebase's UI component hierarchy.",
+  "description": "MCP server that returns a Next.js App Router project's UI component hierarchy as a structured tree (markdown + JSON) so AI coding agents can ground image/description-based UI edits in exact file/component locations.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "nextjs",
+    "react",
+    "ui",
+    "component-hierarchy",
+    "ast",
+    "jsx",
+    "tsx",
+    "ai-tools",
+    "claude",
+    "cursor"
+  ],
+  "license": "MIT",
+  "author": "huydv98",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dovanhuy2298/ui-to-hierarchy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dovanhuy2298/ui-to-hierarchy/issues"
+  },
+  "homepage": "https://github.com/dovanhuy2298/ui-to-hierarchy#readme",
   "type": "module",
   "bin": {
-    "ui-to-hierarch": "./dist/cli.js"
+    "ui-hierarchy-mcp": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -27,7 +53,8 @@
     "test:integration": "vitest run test/integration",
     "perf": "tsx test/perf/measure.ts",
     "lint": "biome check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@babel/parser": "^7.29.2",
