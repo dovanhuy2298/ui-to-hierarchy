@@ -17,7 +17,11 @@ findings:
   warning: 5
   info: 6
   total: 11
-status: issues_found
+status: warnings_fixed
+fix_summary:
+  warnings_fixed: 5
+  info_deferred: 6
+  fixed_at: 2026-05-05T00:00:00Z
 ---
 
 # Phase 06: Code Review Report
