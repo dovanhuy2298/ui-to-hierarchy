@@ -17,6 +17,7 @@ export type TreeNode =
       file: string;
       line: number;
       layoutHint?: string;
+      attributes?: Array<{ name: string; value: string }>;
     }
   | {
       kind: "element";
@@ -25,6 +26,7 @@ export type TreeNode =
       file: string;
       line: number;
       layoutHint?: string;
+      attributes?: Array<{ name: string; value: string }>;
     }
   | {
       kind: "text";
@@ -92,12 +94,14 @@ export const TreeNodeSchema: z.ZodType<TreeNode> = z.lazy(() =>
       name: z.string(),
       children: z.array(TreeNodeSchema),
       ...BaseNode,
+      attributes: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
     }),
     z.object({
       kind: z.literal("element"),
       tag: z.string(),
       children: z.array(TreeNodeSchema),
       ...BaseNode,
+      attributes: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
     }),
     z.object({
       kind: z.literal("text"),
