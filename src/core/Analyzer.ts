@@ -99,6 +99,28 @@ function scrapeStyleAttributes(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Literal-string attribute extraction (DEBUG #3 — TreeNode.attributes population)
+//
+// v1 carve-out: only `kind:"literal"` attributes whose value is a string survive.
+// Expression attributes, spread attributes, and non-string literals (number /
+// boolean / null) are dropped. Mirrors the literal-string filter in
+// scrapeStyleAttributes; both can coexist (style sidecar is orthogonal —
+// findByStyle reads styleIndex, not TreeNode.attributes).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function extractLiteralAttributes(
+  rn: RenderNode & { kind: "jsx" },
+): Array<{ name: string; value: string }> | undefined {
+  const out: Array<{ name: string; value: string }> = [];
+  for (const attr of rn.attributes) {
+    if (attr.value.kind === "literal" && typeof attr.value.value === "string") {
+      out.push({ name: attr.name, value: attr.value.value });
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Import-binding collection (DEBUG #2 — resolver wiring fix)
 //
 // For a parsed module, return a map: localJsxName → { source, importedName }.
@@ -157,6 +179,8 @@ function renderNodeToTreeNode(
       scrapeStyleAttributes(rn, sidecar);
       const fwdFile = toForwardSlash(rn.file);
 
+      const literalAttrs = extractLiteralAttributes(rn);
+
       if (rn.isComponent) {
         const isClient = runtimeMap.get(rn.tag) === "client";
         const base: TreeNode & { kind: "component" } = {
@@ -167,16 +191,19 @@ function renderNodeToTreeNode(
           line: rn.line,
         };
         if (isClient) base.layoutHint = "client";
+        if (literalAttrs) base.attributes = literalAttrs;
         return base;
       }
 
-      return {
+      const base: TreeNode & { kind: "element" } = {
         kind: "element",
         tag: rn.tag,
         children: rn.children.map((c) => renderNodeToTreeNode(c, runtimeMap, sidecar)),
         file: fwdFile,
         line: rn.line,
       };
+      if (literalAttrs) base.attributes = literalAttrs;
+      return base;
     }
 
     case "text":
@@ -920,6 +947,19 @@ export class Analyzer {
             allTextNodes.push({ value: n.value, file: n.file, line: n.line });
             if (n.value.toLowerCase().includes(queryLower)) {
               matchNodes.push(n);
+            }
+          }
+          // DEBUG #3 — also match against literal-string attribute values on
+          // component/element nodes. The matched node itself is returned (not a
+          // synthetic text node) so file:line points at the JSX element that
+          // carries the prop.
+          if ((n.kind === "component" || n.kind === "element") && n.attributes) {
+            for (const attr of n.attributes) {
+              allTextNodes.push({ value: attr.value, file: n.file, line: n.line });
+              if (attr.value.toLowerCase().includes(queryLower)) {
+                matchNodes.push(n);
+                break; // one match per node — avoid duplicate pushes if multiple attrs match
+              }
             }
           }
         });
