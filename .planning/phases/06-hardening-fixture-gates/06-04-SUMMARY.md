@@ -171,7 +171,21 @@ Verified:
   - `21f414e` test(06-04): add per-fixture MCP integration suite (R1-R5 gate)
   - `c0eaba8` chore(06-04): add pnpm test:integration script
 
-## Self-Check: PASSED
+## Self-Check: PASSED (gate-build) — INTEGRATION SUITE FAILS (per D-14, Findings seeded)
+
+End-to-end run after orchestrator merged Wave 1 worktrees: `pnpm build && pnpm test:integration` → **15/20 fail**. Per D-14 the failures falsify earlier-phase invariants and are recorded as Findings, not fixed in phase 06.
+
+## Findings Seed (per D-13 schema)
+
+| ID    | Severity | Tool                                        | Repro                                                                                                              | Defer/Block | Ref |
+|-------|----------|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------|-------------|-----|
+| F-S-01 | major    | `find_by_text` / `find_by_style`            | Tool envelope text begins `<>` instead of JSON → `extractEnvelope` `JSON.parse` throws `Unexpected token '<'`. Reproduces on all 3 fixtures. | candidate **block** (falsifies Phase 5 R8 envelope shape contract) | TBD |
+| F-S-02 | major    | `get_full_hierarchy` (shadcn-barrels)       | `Button.file` resolves to `app/page.tsx` (the importer), not `components/ui/button.tsx` (the leaf). Falsifies SPEC R1 barrel-chain acceptance. | candidate **block** (falsifies Phase 1 D-07 + SPEC R1) | TBD |
+| F-S-03 | major    | `get_full_hierarchy` (pnpm-monorepo apps/web) | `Button.file` resolves to `apps/web/app/page.tsx`, not `packages/ui/src/button.tsx`. Falsifies SPEC R3 workspace-import acceptance. | candidate **block** (falsifies SPEC R3) | TBD |
+| F-S-04 | major    | `get_full_hierarchy` (pnpm-monorepo apps/admin) | Envelope missing `Manage users` text marker — admin tree not reaching `DataTable` leaf. | candidate **block** (falsifies SPEC R3 non-overlapping trees) | TBD |
+| F-S-05 | major    | `focus_on` (all fixtures)                   | All `focus_on` cases fail — likely cascades from F-S-01 envelope shape OR independent resolution gap. Needs follow-up triage. | defer (pending root-cause split) | TBD |
+
+**Acceptance per phase 06 plan:** "Either `pnpm test:integration` is GREEN end-to-end OR Findings are seeded for follow-up phase per D-14." Findings seeded → acceptance met. The Wave 3 UAT operator MUST cross-reference these into `06-UAT.md` Findings table and assign final `block`/`defer` after manual repro.
 
 ## Commits
 
@@ -179,3 +193,4 @@ Verified:
 |---|---|
 | `21f414e` | test(06-04): add per-fixture MCP integration suite (R1-R5 gate) |
 | `c0eaba8` | chore(06-04): add pnpm test:integration script |
+| `67fc8c5` | docs(06-04): add SUMMARY for integration suite plan |
