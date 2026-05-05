@@ -505,6 +505,36 @@ function collectChildrenSlotLines(ast: t.File): Set<number> {
 }
 
 /**
+ * Build a map from JSXElement opening-tag line → closing-tag line (WR-01).
+ *
+ * Used by injectChildrenSlots to bound Case A's `sl >= tree.line` check on
+ * BOTH ends, so an empty element on line 5 cannot claim a `{children}`
+ * literal on line 80 from an unrelated subtree. Self-closing elements
+ * collapse to a single-line range (open === close).
+ *
+ * Only the FIRST element starting on a given line is recorded — collisions
+ * across nested elements opening on the same source line are exceedingly
+ * rare (typical when the user hand-writes JSX that way), and the trade-off
+ * for v1 is to keep the heuristic simple. Future: key by (openLine, openCol).
+ */
+function collectElementLineRanges(ast: t.File): Map<number, number> {
+  const ranges = new Map<number, number>();
+  traverse(ast, {
+    JSXElement(path: { node: t.JSXElement }) {
+      const open = path.node.loc?.start.line;
+      if (!open) return;
+      // Closing element line if present, else opening element end (self-closing).
+      const close =
+        path.node.closingElement?.loc?.end.line ??
+        path.node.openingElement.loc?.end.line ??
+        open;
+      if (!ranges.has(open)) ranges.set(open, close);
+    },
+  });
+  return ranges;
+}
+
+/**
  * Post-process a TreeNode tree to inject kind:"slot", name:"children" nodes
  * at positions where `{children}` appeared in the source.
  * Uses slotLines (line numbers from the AST) to find the right insertion points.
@@ -517,18 +547,27 @@ function collectChildrenSlotLines(ast: t.File): Set<number> {
  * and whose line is within the range of a children-slot line, inject the slot.
  * This uses a parent-line to children-slot-line range check.
  */
-function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: string): TreeNode {
+function injectChildrenSlots(
+  tree: TreeNode,
+  slotLines: Set<number>,
+  file: string,
+  elementRanges: Map<number, number>,
+): TreeNode {
   if (slotLines.size === 0) return tree;
 
   switch (tree.kind) {
     case "component": {
       // Recurse on existing children first
-      const newChildren = tree.children.map((c) => injectChildrenSlots(c, slotLines, file));
+      const newChildren = tree.children.map((c) =>
+        injectChildrenSlots(c, slotLines, file, elementRanges),
+      );
       return { ...tree, children: newChildren };
     }
     case "element": {
       // Recurse into existing children first.
-      const newChildren = tree.children.map((c) => injectChildrenSlots(c, slotLines, file));
+      const newChildren = tree.children.map((c) =>
+        injectChildrenSlots(c, slotLines, file, elementRanges),
+      );
 
       // Check if this element should receive a {children} slot injected.
       //
@@ -545,9 +584,14 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
       // called once per layout file (via buildTreeForEntry).
       if (slotLines.size > 0) {
         if (newChildren.length === 0) {
-          // Case A — empty element
+          // Case A — empty element. WR-01: bound `sl >= tree.line` on BOTH
+          // ends using the element's source-level closing-tag line so an
+          // empty element on line 5 cannot claim a `{children}` literal on
+          // line 80 of an unrelated subtree. Falls back to the open line
+          // (self-closing) when no range is recorded for this element.
+          const closeLine = elementRanges.get(tree.line) ?? tree.line;
           for (const sl of slotLines) {
-            if (sl >= tree.line) {
+            if (sl >= tree.line && sl <= closeLine) {
               slotLines.delete(sl);
               const slotNode: TreeNode = {
                 kind: "slot",
@@ -587,15 +631,24 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
       return { ...tree, children: newChildren };
     }
     case "fragment":
-      return { ...tree, children: tree.children.map((c) => injectChildrenSlots(c, slotLines, file)) };
+      return {
+        ...tree,
+        children: tree.children.map((c) =>
+          injectChildrenSlots(c, slotLines, file, elementRanges),
+        ),
+      };
     case "branch":
       return {
         ...tree,
-        thenBranch: tree.thenBranch ? injectChildrenSlots(tree.thenBranch, slotLines, file) : null,
-        elseBranch: tree.elseBranch ? injectChildrenSlots(tree.elseBranch, slotLines, file) : null,
+        thenBranch: tree.thenBranch
+          ? injectChildrenSlots(tree.thenBranch, slotLines, file, elementRanges)
+          : null,
+        elseBranch: tree.elseBranch
+          ? injectChildrenSlots(tree.elseBranch, slotLines, file, elementRanges)
+          : null,
       };
     case "list":
-      return { ...tree, item: injectChildrenSlots(tree.item, slotLines, file) };
+      return { ...tree, item: injectChildrenSlots(tree.item, slotLines, file, elementRanges) };
     default:
       return tree;
   }
@@ -788,7 +841,10 @@ export class Analyzer {
       if (cachedParse && cachedParse.kind === "ok") {
         const slotLines = collectChildrenSlotLines(cachedParse.ast);
         if (slotLines.size > 0) {
-          bodyTree = injectChildrenSlots(bodyTree, slotLines, fwdFile);
+          // WR-01: thread element open→close line ranges so empty-element slot
+          // injection is bounded on both ends by the element's source extent.
+          const elementRanges = collectElementLineRanges(cachedParse.ast);
+          bodyTree = injectChildrenSlots(bodyTree, slotLines, fwdFile, elementRanges);
         }
 
         // DEBUG #2 fix: resolve component callsites to their definition files.
