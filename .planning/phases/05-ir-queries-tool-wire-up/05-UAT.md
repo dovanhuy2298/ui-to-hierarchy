@@ -8,7 +8,7 @@ source:
   - .planning/phases/05-ir-queries-tool-wire-up/05-04-SUMMARY.md
   - .planning/phases/05-ir-queries-tool-wire-up/05-05-SUMMARY.md
 started: 2026-05-04T04:31:32Z
-updated: 2026-05-04T04:33:00Z
+updated: 2026-05-05T08:59:00Z
 mode: automated
 ---
 
@@ -27,9 +27,12 @@ evidence: |
 
 ### 2. Full Test Suite Passes
 expected: `npx vitest run` — full suite green, no Phase 5 regressions.
-result: issue
-reported: "vitest run reports 235 PASS / 1 FAIL — test/mcp/smoke.spawn.test.ts:99 expects all 4 tools to return isError:true (Phase 2 stub behavior). Phase 5 wired real Analyzer-backed handlers; the smoke test was not updated."
-severity: major
+result: pass
+evidence: |
+  Re-run on 2026-05-05: 35 test files, 256 tests, all passing in 5.81s.
+  test/mcp/smoke.spawn.test.ts:99 was updated (during Phase 6 hardening) to
+  assert the post-Phase-5 contract: tool calls return successful envelopes
+  (isError falsy), non-empty content, stdout stays clean.
 
 ### 3. get_full_hierarchy returns layout chain (R1)
 expected: /dashboard/settings → 3-tier layout chain with {children} slots.
@@ -83,22 +86,15 @@ evidence: |
 ## Summary
 
 total: 11
-passed: 10
-issues: 1
+passed: 11
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
 
 - truth: "Full test suite is green after Phase 5 lands"
-  status: failed
-  reason: "test/mcp/smoke.spawn.test.ts:99 — `each tool call returns isError:true on stderr, not stdout` was written in Phase 2 to assert the notImplemented stub behavior. Phase 5 (plan 04) wired all 4 handlers to real Analyzer calls — they now return successful data envelopes, so `result.isError` is undefined. The Phase 2 smoke test must be updated to assert the post-Phase-5 contract: tool calls return successful results (no isError), stdout stays clean (only MCP frames), application logs still go to stderr only."
+  status: closed
+  resolution: "Resolved during Phase 6 hardening — test/mcp/smoke.spawn.test.ts:99 was rewritten to assert the post-Phase-5 contract (isError falsy, non-empty content, stdout clean). Re-run on 2026-05-05: 35 files / 256 tests, all green."
   severity: major
   test: 2
-  artifacts:
-    - test/mcp/smoke.spawn.test.ts:99-119
-    - src/mcp/tools/get-full-hierarchy.ts (now Analyzer-backed, no notImplemented)
-    - src/mcp/tools/focus-on.ts
-    - src/mcp/tools/find-by-text.ts
-    - src/mcp/tools/find-by-style.ts
-  missing: []
