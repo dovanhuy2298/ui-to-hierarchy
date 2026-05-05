@@ -12,12 +12,21 @@ import type { Envelope, TreeNode } from "../ir/index.js";
 
 const TEXT_MAX = 60;
 
+function formatAttributes(
+  attrs: Array<{ name: string; value: string }> | undefined,
+): string {
+  if (!attrs || attrs.length === 0) return "";
+  // Defensive escape of embedded double quotes in literal-string attribute values.
+  const parts = attrs.map((a) => `${a.name}="${a.value.replace(/"/g, '\\"')}"`);
+  return ` ${parts.join(" ")}`;
+}
+
 function labelFor(node: TreeNode): string {
   switch (node.kind) {
     case "component":
-      return `<${node.name}>`;
+      return `<${node.name}${formatAttributes(node.attributes)}>`;
     case "element":
-      return node.tag;
+      return `${node.tag}${formatAttributes(node.attributes)}`;
     case "text": {
       const v = node.value;
       const shown = v.length > TEXT_MAX ? `${v.slice(0, TEXT_MAX)}…` : v;
