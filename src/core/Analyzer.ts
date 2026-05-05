@@ -440,6 +440,53 @@ function attachParallelSlot(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Find the name of the default-exported component in a parsed file (WR-02).
+ *
+ * Recognized forms:
+ *   - `export default function Foo() {}`   → "Foo"
+ *   - `export default class Foo {}`        → "Foo"
+ *   - `export default Foo`                 → "Foo" (Identifier reference)
+ *   - `export default memo(Foo)`           → "Foo" (peels HOC-style wrappers)
+ *   - `export { Foo as default }`          → "Foo"
+ * Returns undefined when the default export does not resolve to a single
+ * named component (e.g. anonymous function, object expression).
+ */
+function findDefaultExportName(ast: t.File): string | undefined {
+  for (const node of ast.program.body) {
+    if (t.isExportDefaultDeclaration(node)) {
+      const decl = node.declaration;
+      if ((t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) && decl.id) {
+        return decl.id.name;
+      }
+      if (t.isIdentifier(decl)) return decl.name;
+      // Peel call-expression wrappers (memo, forwardRef, etc.) until we hit
+      // an Identifier; we don't restrict to known HOC names because the
+      // intent here is just "which name does the default export point at".
+      let cur: t.Node = decl;
+      while (t.isCallExpression(cur)) {
+        const arg = cur.arguments[0];
+        if (!arg) break;
+        cur = arg as t.Node;
+      }
+      if (t.isIdentifier(cur)) return cur.name;
+      return undefined;
+    }
+    if (t.isExportNamedDeclaration(node)) {
+      for (const spec of node.specifiers) {
+        if (t.isExportSpecifier(spec)) {
+          const exported = spec.exported;
+          const exportedName = t.isIdentifier(exported) ? exported.name : exported.value;
+          if (exportedName === "default" && t.isIdentifier(spec.local)) {
+            return spec.local.name;
+          }
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Collect all line numbers where `{children}` JSX expressions appear in an AST.
  * These are JSXExpressionContainer nodes whose expression is an Identifier named "children".
  */
@@ -699,8 +746,24 @@ export class Analyzer {
         };
       }
 
-      // Pick the first non-parse-error component definition
-      const def: ComponentDefinition | undefined = defs.find((d) => d.name !== "<parse-error>") ?? defs[0];
+      // WR-02: prefer the default-export's component definition.
+      // The ComponentDefinition shape is locked at 13 fields (R8) and cannot
+      // carry an `isDefault` flag, so we compute the default-export's name
+      // from the cached AST and match by name. Falls back to the first
+      // non-parse-error definition (legacy behavior) when no default export
+      // is detectable, then to defs[0] for fully-degenerate inputs.
+      const fwdAbs = toForwardSlash(absFile);
+      const cachedForDefault = this.ctx.astCache.get(fwdAbs);
+      const defaultExportName =
+        cachedForDefault && cachedForDefault.kind === "ok"
+          ? findDefaultExportName(cachedForDefault.ast)
+          : undefined;
+      const def: ComponentDefinition | undefined =
+        (defaultExportName
+          ? defs.find((d) => d.name === defaultExportName && d.name !== "<parse-error>")
+          : undefined) ??
+        defs.find((d) => d.name !== "<parse-error>") ??
+        defs[0];
       if (!def) {
         return { kind: "error", message: "no component definition", file: toForwardSlash(absFile), line: 0 };
       }
