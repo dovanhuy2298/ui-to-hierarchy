@@ -136,10 +136,10 @@
 4. p95 parse+query latency is measured on a medium fixture and recorded in a perf note (informs v2 cache decision)
 **Plans**: 7 plans
 
-- [ ] 06-01-PLAN.md — Wave 0: shadcn-barrels fixture (R1)
-- [ ] 06-02-PLAN.md — Wave 0: nested-routes fixture (R2)
-- [ ] 06-03-PLAN.md — Wave 0: pnpm-monorepo fixture (R3)
-- [ ] 06-04-PLAN.md — Wave 1: integration suite mcp-e2e.test.ts + test:integration script (R4 + R5)
+- [x] 06-01-PLAN.md — Wave 0: shadcn-barrels fixture (R1)
+- [x] 06-02-PLAN.md — Wave 0: nested-routes fixture (R2)
+- [x] 06-03-PLAN.md — Wave 0: pnpm-monorepo fixture (R3)
+- [x] 06-04-PLAN.md — Wave 1: integration suite mcp-e2e.test.ts + test:integration script (R4 + R5)
 - [ ] 06-05-PLAN.md — Wave 2: perf script measure.ts + perf script + initial 06-PERF.md (R7)
 - [ ] 06-06-PLAN.md — Wave 2: 06-UAT.md template (R6 template)
 - [ ] 06-07-PLAN.md — Wave 3 (manual UAT): operator UAT + uat-evidence/ + filled PASS grid + Findings (R6 execution)
