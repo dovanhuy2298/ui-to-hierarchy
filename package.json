@@ -25,6 +25,7 @@
     "test:watch": "vitest",
     "test:smoke": "vitest run test/mcp/smoke.spawn.test.ts",
     "test:integration": "vitest run test/integration",
+    "perf": "tsx test/perf/measure.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
