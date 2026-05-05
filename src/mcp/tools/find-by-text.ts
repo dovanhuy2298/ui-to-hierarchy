@@ -7,6 +7,7 @@ import { Analyzer } from "../../core/Analyzer.js";
 import { NextJsAdapter } from "../../adapters/next/NextJsAdapter.js";
 import { buildEnvelope } from "../../renderers/envelope-builder.js";
 import { renderMarkdown } from "../../renderers/markdown.js";
+import { renderJson } from "../../renderers/json.js";
 
 export const name = "find_by_text";
 export const title = "Find By Text";
@@ -21,6 +22,12 @@ export const inputSchema = z.object({
     .describe(
       "Text string to search for in rendered component output (e.g., Submit, Cancel, Hello World).",
     ),
+  format: z
+    .enum(["markdown", "json"])
+    .default("markdown")
+    .describe(
+      "Output format: markdown (default, LLM-friendly tree) or json (structured object for programmatic use).",
+    ),
   projectRoot: projectRootSchema,
 });
 
@@ -31,7 +38,10 @@ export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolRe
     const { tree, warnings } = await analyzer.findByText({ query: args.query });
     const base = buildEnvelope(tree, { resolvedRootOverride: root });
     const envelope = { ...base, warnings: [...(base.warnings ?? []), ...warnings] };
-    const text = renderMarkdown(tree, envelope);
+    const text =
+      args.format === "json"
+        ? JSON.stringify(renderJson(tree, envelope), null, 2)
+        : renderMarkdown(tree, envelope);
     return { content: [{ type: "text" as const, text }] };
   });
 }
