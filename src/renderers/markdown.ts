@@ -16,8 +16,12 @@ function formatAttributes(
   attrs: Array<{ name: string; value: string }> | undefined,
 ): string {
   if (!attrs || attrs.length === 0) return "";
-  // Defensive escape of embedded double quotes in literal-string attribute values.
-  const parts = attrs.map((a) => `${a.name}="${a.value.replace(/"/g, '\\"')}"`);
+  // Defensive escape: backslashes FIRST (so we don't double-escape the
+  // backslashes we add for quotes), then embedded double quotes. WR-05.
+  const parts = attrs.map((a) => {
+    const escaped = a.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    return `${a.name}="${escaped}"`;
+  });
   return ` ${parts.join(" ")}`;
 }
 
