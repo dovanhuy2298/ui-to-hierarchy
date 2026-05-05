@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-05T07:05:00.000Z"
+last_updated: "2026-05-05T07:10:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 36
-  completed_plans: 32
+  total_plans: 37
+  completed_plans: 33
   percent: 89
 ---
 
@@ -47,6 +47,7 @@ Plan: 1 of 10
 | Phase 02-mcp-transport-shell P04 | 7 | 2 tasks | 2 files |
 | Phase 02-mcp-transport-shell P05 | 231 | 2 tasks | 3 files |
 | Phase 06-hardening-fixture-gates P08 | ~10m | 2 tasks | 4 files |
+| Phase 06-hardening-fixture-gates P09 | ~30m | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - Used asToolResponse() cast helper for SDK client.callTool() result — content is typed unknown[] at Client layer
 - Added define.__TOOL_VERSION__ to vitest.config.ts to mirror tsup build-time substitution
 - 06-08: format param inlined per-tool (not shared in tools/common.ts) — preserves wire-protocol self-description; default "markdown" preserves backward compat
+- 06-09: resolver wiring done as a post-pass over the built TreeNode tree (rather than threading bindings into renderNodeToTreeNode) — keeps the hot recursive translator clean
+- 06-09: resolved component nodes use `line: 1` (ResolveResult exposes only absolutePath); a discoverComponents lookup for true declaration line is deferred — file pointer alone satisfies R1/R3 acceptance
 
 ### Open Todos
 
@@ -85,8 +88,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 
 ## Session Continuity
 
-- Last session: 2026-05-05T07:05:00Z — completed 06-08 (format-symmetric MCP tools + integration argsFor)
-- Next command: `/gsd-execute-phase 06` (continue with plans 06-09 / 06-10 in wave 2)
+- Last session: 2026-05-05T07:10:00Z — completed 06-09 (resolver wiring; integration suite 17/20 → 19/20)
+- Next command: `/gsd-execute-phase 06` (continue with plan 06-10: TreeNode attributes field + Analyzer prop emission, DEBUG #3)
 - Prototype reference: `E:\ui-to-hierarch\generate-component-hierarchy.ts` (~60% of v1 logic; port, don't wrap)
 - Research artifacts: `.planning/research/{SUMMARY,STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`
 
