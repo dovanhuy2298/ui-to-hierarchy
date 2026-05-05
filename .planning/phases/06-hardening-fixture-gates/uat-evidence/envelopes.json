@@ -1,0 +1,72 @@
+[
+  {
+    "call": {
+      "name": "get_full_hierarchy",
+      "arguments": {
+        "route": "/dashboard/123",
+        "format": "json",
+        "projectRoot": "E:\\ui-to-hierarch\\test\\fixtures\\phase-06\\nested-routes"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"schemaVersion\": \"1\",\n  \"resolvedRoot\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes\",\n  \"toolVersion\": \"0.1.0\",\n  \"generatedAt\": \"2026-05-05T09:02:48.984Z\",\n  \"warnings\": [],\n  \"tree\": {\n    \"kind\": \"component\",\n    \"name\": \"RootLayout\",\n    \"children\": [\n      {\n        \"kind\": \"element\",\n        \"tag\": \"html\",\n        \"children\": [\n          {\n            \"kind\": \"element\",\n            \"tag\": \"body\",\n            \"children\": [\n              {\n                \"kind\": \"component\",\n                \"name\": \"GroupLayout\",\n                \"children\": [\n                  {\n                    \"kind\": \"element\",\n                    \"tag\": \"section\",\n                    \"children\": [\n                      {\n                        \"kind\": \"component\",\n                        \"name\": \"DashboardLayout\",\n                        \"children\": [\n                          {\n                            \"kind\": \"element\",\n                            \"tag\": \"div\",\n                            \"children\": [\n                              {\n                                \"kind\": \"component\",\n                                \"name\": \"DashboardDetail\",\n                                \"children\": [\n                                  {\n                                    \"kind\": \"element\",\n                                    \"tag\": \"main\",\n                                    \"children\": [\n                                      {\n                                        \"kind\": \"text\",\n                                        \"value\": \"Dashboard\",\n                                        \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx\",\n                                        \"line\": 2\n                                      }\n                                    ],\n                                    \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx\",\n                                    \"line\": 2\n                                  }\n                                ],\n                                \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx\",\n                                \"line\": 1\n                              }\n                            ],\n                            \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/layout.tsx\",\n                            \"line\": 2,\n                            \"attributes\": [\n                              {\n                                \"name\": \"className\",\n                                \"value\": \"grid grid-cols-3 gap-4\"\n                              }\n                            ]\n                          }\n                        ],\n                        \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/layout.tsx\",\n                        \"line\": 1\n                      }\n                    ],\n                    \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/layout.tsx\",\n                    \"line\": 2,\n                    \"attributes\": [\n                      {\n                        \"name\": \"className\",\n                        \"value\": \"flex flex-col\"\n                      }\n                    ]\n                  }\n                ],\n                \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/layout.tsx\",\n                \"line\": 1\n              }\n            ],\n            \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx\",\n            \"line\": 2\n          }\n        ],\n        \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx\",\n        \"line\": 2\n      },\n      {\n        \"kind\": \"slot\",\n        \"name\": \"main\",\n        \"file\": \"<synthetic>\",\n        \"line\": 0\n      },\n      {\n        \"kind\": \"component\",\n        \"name\": \"MainSlot\",\n        \"children\": [\n          {\n            \"kind\": \"element\",\n            \"tag\": \"section\",\n            \"children\": [\n              {\n                \"kind\": \"text\",\n                \"value\": \"Main slot\",\n                \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@main/page.tsx\",\n                \"line\": 2\n              }\n            ],\n            \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@main/page.tsx\",\n            \"line\": 2,\n            \"attributes\": [\n              {\n                \"name\": \"className\",\n                \"value\": \"flex\"\n              }\n            ]\n          }\n        ],\n        \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@main/page.tsx\",\n        \"line\": 1\n      },\n      {\n        \"kind\": \"slot\",\n        \"name\": \"sidebar\",\n        \"file\": \"<synthetic>\",\n        \"line\": 0\n      },\n      {\n        \"kind\": \"component\",\n        \"name\": \"Sidebar\",\n        \"children\": [\n          {\n            \"kind\": \"element\",\n            \"tag\": \"aside\",\n            \"children\": [\n              {\n                \"kind\": \"text\",\n                \"value\": \"Sidebar slot\",\n                \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@sidebar/page.tsx\",\n                \"line\": 2\n              }\n            ],\n            \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@sidebar/page.tsx\",\n            \"line\": 2,\n            \"attributes\": [\n              {\n                \"name\": \"className\",\n                \"value\": \"flex flex-col\"\n              }\n            ]\n          }\n        ],\n        \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@sidebar/page.tsx\",\n        \"line\": 1\n      }\n    ],\n    \"file\": \"E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx\",\n    \"line\": 1\n  }\n}"
+        }
+      ]
+    }
+  },
+  {
+    "call": {
+      "name": "focus_on",
+      "arguments": {
+        "component": "DashboardDetail",
+        "scope": "full",
+        "projectRoot": "E:\\ui-to-hierarch\\test\\fixtures\\phase-06\\nested-routes"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "<> @ <synthetic>:0\n└── <RootLayout> @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx:1\n    └── html @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx:2\n        └── body @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/layout.tsx:2\n            └── <GroupLayout> @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/layout.tsx:1\n                └── section className=\"flex flex-col\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/layout.tsx:2\n                    └── <DashboardLayout> @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/layout.tsx:1\n                        └── div className=\"grid grid-cols-3 gap-4\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/layout.tsx:2\n                            └── <DashboardDetail> @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:1\n                                └── main @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:2\n                                    └── \"Dashboard\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:2"
+        }
+      ]
+    }
+  },
+  {
+    "call": {
+      "name": "find_by_text",
+      "arguments": {
+        "query": "Sidebar slot",
+        "projectRoot": "E:\\ui-to-hierarch\\test\\fixtures\\phase-06\\nested-routes"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "<> @ <synthetic>:0\n└── \"Sidebar slot\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/@sidebar/page.tsx:2"
+        }
+      ]
+    }
+  },
+  {
+    "call": {
+      "name": "find_by_style",
+      "arguments": {
+        "class_or_prop": "grid-cols-3",
+        "projectRoot": "E:\\ui-to-hierarch\\test\\fixtures\\phase-06\\nested-routes"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "<> @ <synthetic>:0\n└── div className=\"grid grid-cols-3 gap-4\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/layout.tsx:2\n    └── <DashboardDetail> @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:1\n        └── main @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:2\n            └── \"Dashboard\" @ E:/ui-to-hierarch/test/fixtures/phase-06/nested-routes/app/(group)/dashboard/[id]/page.tsx:2"
+        }
+      ]
+    }
+  }
+]
