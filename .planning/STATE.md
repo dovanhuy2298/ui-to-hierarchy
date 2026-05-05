@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-05T03:13:47.341Z"
+last_updated: "2026-05-05T07:05:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 32
-  completed_plans: 25
-  percent: 78
+  total_plans: 36
+  completed_plans: 32
+  percent: 89
 ---
 
 # STATE — ui-to-hierarchyMCP
@@ -26,7 +26,7 @@ progress:
 ## Current Position
 
 Phase: 06 (hardening-fixture-gates) — EXECUTING
-Plan: 1 of 7
+Plan: 1 of 10
 
 - **Milestone:** v1
 - **Phase:** 4
@@ -46,6 +46,7 @@ Plan: 1 of 7
 | Phase 02-mcp-transport-shell P03 | 10m | 2 tasks | 4 files |
 | Phase 02-mcp-transport-shell P04 | 7 | 2 tasks | 2 files |
 | Phase 02-mcp-transport-shell P05 | 231 | 2 tasks | 3 files |
+| Phase 06-hardening-fixture-gates P08 | ~10m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - createServer and startServer kept separate — tests use createServer + InMemoryTransport
 - Used asToolResponse() cast helper for SDK client.callTool() result — content is typed unknown[] at Client layer
 - Added define.__TOOL_VERSION__ to vitest.config.ts to mirror tsup build-time substitution
+- 06-08: format param inlined per-tool (not shared in tools/common.ts) — preserves wire-protocol self-description; default "markdown" preserves backward compat
 
 ### Open Todos
 
@@ -83,8 +85,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 
 ## Session Continuity
 
-- Last session: 2026-04-21T10:09:05Z — completed 02-02 (errors.ts + log.ts)
-- Next command: `/gsd-execute-phase 02` (continue with plan 02-03)
+- Last session: 2026-05-05T07:05:00Z — completed 06-08 (format-symmetric MCP tools + integration argsFor)
+- Next command: `/gsd-execute-phase 06` (continue with plans 06-09 / 06-10 in wave 2)
 - Prototype reference: `E:\ui-to-hierarch\generate-component-hierarchy.ts` (~60% of v1 logic; port, don't wrap)
 - Research artifacts: `.planning/research/{SUMMARY,STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`
 

@@ -143,6 +143,7 @@
 - [x] 06-05-PLAN.md — Wave 2: perf script measure.ts + perf script + initial 06-PERF.md (R7)
 - [x] 06-06-PLAN.md — Wave 2: 06-UAT.md template (R6 template)
 - [ ] 06-07-PLAN.md — Wave 3 (manual UAT): operator UAT + uat-evidence/ + filled PASS grid + Findings (R6 execution)
+- [x] 06-08-PLAN.md — Gap closure #1: format-symmetric MCP tools + integration argsFor (D-15)
    **UI hint**: no
 
 ## Progress
@@ -154,4 +155,4 @@
 | 3. Parser Core                 | 6/6 | Complete    | 2026-04-29 |
 | 4. Next.js App Router Adapter  | 4/4            | Complete    | 2026-04-29 |
 | 5. IR Queries & Tool Wire-up   | 5/5            | Complete    | 2026-04-29 |
-| 6. Hardening & Fixture Gates   | 0/7            | Not started | -         |
+| 6. Hardening & Fixture Gates   | 7/8            | Executing   | -         |
