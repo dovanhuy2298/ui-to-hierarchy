@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-05T07:10:00.000Z"
+last_updated: "2026-05-05T07:14:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 37
-  completed_plans: 33
-  percent: 89
+  completed_plans: 34
+  percent: 92
 ---
 
 # STATE — ui-to-hierarchyMCP
@@ -26,7 +26,7 @@ progress:
 ## Current Position
 
 Phase: 06 (hardening-fixture-gates) — EXECUTING
-Plan: 1 of 10
+Plan: 10 of 10 complete (06-07 manual UAT remains; all autonomous plans done)
 
 - **Milestone:** v1
 - **Phase:** 4
@@ -48,6 +48,7 @@ Plan: 1 of 10
 | Phase 02-mcp-transport-shell P05 | 231 | 2 tasks | 3 files |
 | Phase 06-hardening-fixture-gates P08 | ~10m | 2 tasks | 4 files |
 | Phase 06-hardening-fixture-gates P09 | ~30m | 1 task | 2 files |
+| Phase 06-hardening-fixture-gates P10 | ~12m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 - 06-08: format param inlined per-tool (not shared in tools/common.ts) — preserves wire-protocol self-description; default "markdown" preserves backward compat
 - 06-09: resolver wiring done as a post-pass over the built TreeNode tree (rather than threading bindings into renderNodeToTreeNode) — keeps the hot recursive translator clean
 - 06-09: resolved component nodes use `line: 1` (ResolveResult exposes only absolutePath); a discoverComponents lookup for true declaration line is deferred — file pointer alone satisfies R1/R3 acceptance
+- 06-10: TreeNode `attributes` field is literal-string-only (v1 carve-out mirroring scrapeStyleAttributes); expression/spread/non-string-literal attrs are dropped — keeps `Array<{name, value}>` shape simple at the wire boundary
+- 06-10: findByText returns the matched component/element node itself (not a synthetic text node) when an attribute value matches — file:line points at the JSX site that carries the prop
+- 06-10: D-15 schemaVersion '1' preserved (additive optional field is non-breaking per Standard Schema additive-evolution rules)
 
 ### Open Todos
 
@@ -88,8 +92,8 @@ Captured in PROJECT.md Key Decisions table. Highlights:
 
 ## Session Continuity
 
-- Last session: 2026-05-05T07:10:00Z — completed 06-09 (resolver wiring; integration suite 17/20 → 19/20)
-- Next command: `/gsd-execute-phase 06` (continue with plan 06-10: TreeNode attributes field + Analyzer prop emission, DEBUG #3)
+- Last session: 2026-05-05T07:14:00Z — completed 06-10 (TreeNode.attributes + findByText match + markdown surfacing; integration suite 19/20 → 20/20)
+- Next command: `/gsd-execute-phase 06` (only 06-07 remaining — manual UAT execution; all gap-closures done)
 - Prototype reference: `E:\ui-to-hierarch\generate-component-hierarchy.ts` (~60% of v1 logic; port, don't wrap)
 - Research artifacts: `.planning/research/{SUMMARY,STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`
 
