@@ -83,11 +83,11 @@ const shadcnInvariants: FixtureInvariants = {
       case "get_full_hierarchy":
         return { route: "/", format: "json", projectRoot: root };
       case "focus_on":
-        return { component: "Button", scope: "full", projectRoot: root };
+        return { component: "Button", scope: "full", format: "json", projectRoot: root };
       case "find_by_text":
-        return { query: "Click me", projectRoot: root };
+        return { query: "Click me", format: "json", projectRoot: root };
       case "find_by_style":
-        return { class_or_prop: "flex", projectRoot: root };
+        return { class_or_prop: "flex", format: "json", projectRoot: root };
     }
   },
   assert(tool, envelope) {
@@ -116,11 +116,11 @@ const nestedInvariants: FixtureInvariants = {
       case "get_full_hierarchy":
         return { route: "/dashboard/123", format: "json", projectRoot: root };
       case "focus_on":
-        return { component: "DashboardDetail", scope: "full", projectRoot: root };
+        return { component: "DashboardDetail", scope: "full", format: "json", projectRoot: root };
       case "find_by_text":
-        return { query: "Sidebar slot", projectRoot: root };
+        return { query: "Sidebar slot", format: "json", projectRoot: root };
       case "find_by_style":
-        return { class_or_prop: "grid-cols-3", projectRoot: root };
+        return { class_or_prop: "grid-cols-3", format: "json", projectRoot: root };
     }
   },
   assert(tool, envelope) {
@@ -157,11 +157,11 @@ const monorepoWebInvariants: FixtureInvariants = {
       case "get_full_hierarchy":
         return { route: "/", format: "json", projectRoot: root };
       case "focus_on":
-        return { component: "Button", scope: "full", projectRoot: root };
+        return { component: "Button", scope: "full", format: "json", projectRoot: root };
       case "find_by_text":
-        return { query: "Buy now", projectRoot: root };
+        return { query: "Buy now", format: "json", projectRoot: root };
       case "find_by_style":
-        return { class_or_prop: "px-4", projectRoot: root };
+        return { class_or_prop: "px-4", format: "json", projectRoot: root };
     }
   },
   assert(tool, envelope) {
@@ -197,11 +197,11 @@ const monorepoAdminInvariants: FixtureInvariants = {
       case "get_full_hierarchy":
         return { route: "/", format: "json", projectRoot: root };
       case "focus_on":
-        return { component: "DataTable", scope: "full", projectRoot: root };
+        return { component: "DataTable", scope: "full", format: "json", projectRoot: root };
       case "find_by_text":
-        return { query: "Manage users", projectRoot: root };
+        return { query: "Manage users", format: "json", projectRoot: root };
       case "find_by_style":
-        return { class_or_prop: "grid", projectRoot: root };
+        return { class_or_prop: "grid", format: "json", projectRoot: root };
     }
   },
   assert(tool, envelope) {
