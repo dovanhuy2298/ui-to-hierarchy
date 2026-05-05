@@ -503,7 +503,15 @@ function injectChildrenSlots(tree: TreeNode, slotLines: Set<number>, file: strin
         } else {
           // Case B — element already has children; check if any slotLine falls
           // after the last child's line (meaning {children} is a sibling after them).
-          const lastChildLine = Math.max(...newChildren.map((c) => c.line));
+          // WR-04: filter synthetic line:0 nodes (buildFragmentRoot, attachParallelSlot
+          // produce these). If only synthetic nodes are present, lastChildLine collapses
+          // to 0 and any positive slotLine would satisfy `sl > lastChildLine`, claiming
+          // the slot inappropriately. Skip Case B in that scenario.
+          const realChildLines = newChildren.map((c) => c.line).filter((n) => n > 0);
+          if (realChildLines.length === 0) {
+            return { ...tree, children: newChildren };
+          }
+          const lastChildLine = Math.max(0, ...realChildLines);
           for (const sl of slotLines) {
             if (sl > lastChildLine) {
               slotLines.delete(sl);
