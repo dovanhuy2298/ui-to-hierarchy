@@ -1,6 +1,6 @@
 # Phase 6 Performance Baseline
 
-**Generated:** 2026-05-05T04:04:24.285Z
+**Generated:** 2026-05-05T06:40:14.853Z
 
 **Methodology:** cold spawn of dist/cli.js per invocation, 30 samples per tool, end-to-end wall-clock from spawn to JSON-RPC response.
 
@@ -15,9 +15,9 @@
 
 | Tool | min | p50 | p95 | max |
 | ---- | --- | --- | --- | --- |
-| get_full_hierarchy | 399.5 | 430.8 | 568.3 | 590.8 |
-| focus_on | 412.5 | 434.5 | 501.1 | 561.0 |
-| find_by_text | 414.9 | 441.6 | 518.7 | 543.3 |
-| find_by_style | 420.0 | 435.2 | 472.7 | 597.2 |
+| get_full_hierarchy | 410.0 | 425.3 | 531.8 | 550.0 |
+| focus_on | 406.7 | 433.5 | 530.4 | 696.5 |
+| find_by_text | 404.7 | 426.3 | 488.0 | 508.4 |
+| find_by_style | 411.4 | 448.0 | 541.8 | 547.0 |
 
 > Reproducibility: re-running on the same machine should yield p95 within ±20% (manual sanity check, not enforced).
