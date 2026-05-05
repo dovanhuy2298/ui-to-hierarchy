@@ -391,7 +391,12 @@ function replaceSlot(tree: TreeNode, slotName: string, replacement: TreeNode): T
  * The slot marker is a kind:"slot" node; the slot content follows as a kind:"fragment".
  * D-10: lexicographic order after "children" slot is managed by the caller.
  */
-function attachParallelSlot(tree: TreeNode, slotName: string, slotTree: TreeNode): TreeNode {
+function attachParallelSlot(
+  tree: TreeNode,
+  slotName: string,
+  slotTree: TreeNode,
+  warnings: string[],
+): TreeNode {
   const slotMarker: TreeNode = {
     kind: "slot",
     name: slotName,
@@ -411,7 +416,13 @@ function attachParallelSlot(tree: TreeNode, slotName: string, slotTree: TreeNode
     };
   }
 
-  // If tree is not a component at top level, return unchanged
+  // WR-03: tree is not a component at top level — slot data would be silently
+  // dropped. Surface a diagnostic so consumers can detect the correctness loss
+  // (e.g. when buildRouteTree falls back to buildFragmentRoot([]) because no
+  // page file matched, parallel slots like @sidebar / @modal vanish).
+  warnings.push(
+    `parallel slot '@${slotName}' could not be attached: route tree root is kind:'${tree.kind}', not 'component'`,
+  );
   return tree;
 }
 
@@ -793,7 +804,7 @@ export class Analyzer {
         slots: {},
       };
       const slotTree = await this.buildRouteTree(slotRm);
-      tree = attachParallelSlot(tree, slotName, slotTree);
+      tree = attachParallelSlot(tree, slotName, slotTree, this.ctx.warnings);
     }
 
     return tree;
