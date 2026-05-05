@@ -5,8 +5,8 @@
             └── div @ app/(group)/layout.tsx:2
                 └── <DashboardLayout> @ app/(group)/dashboard/layout.tsx:3
                     └── div @ app/(group)/dashboard/layout.tsx:5
-                        ├── <Sidebar> @ app/(group)/dashboard/layout.tsx:6
+                        ├── <Sidebar> @ app/components/Sidebar.tsx:1
                         └── <SettingsPage> @ app/(group)/dashboard/settings/page.tsx:4
                             └── main @ app/(group)/dashboard/settings/page.tsx:6
-                                ├── <Card> @ app/(group)/dashboard/settings/page.tsx:7
+                                ├── <Card> @ app/components/Card.tsx:1
                                 └── <SubmitButton> @ app/(group)/dashboard/settings/page.tsx:8

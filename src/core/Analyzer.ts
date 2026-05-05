@@ -99,6 +99,45 @@ function scrapeStyleAttributes(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Import-binding collection (DEBUG #2 — resolver wiring fix)
+//
+// For a parsed module, return a map: localJsxName → { source, importedName }.
+// Covers:
+//   import { Foo } from "x"          → "Foo"     → { source: "x", importedName: "Foo" }
+//   import { Foo as Bar } from "x"   → "Bar"     → { source: "x", importedName: "Foo" }
+//   import Default from "x"          → "Default" → { source: "x", importedName: "default" }
+//   import * as Ns from "x"          → SKIPPED (Ns.Foo is multi-hop; v1 leaves it
+//                                      at the call-site per 06-DEBUG carve-out).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ImportBinding {
+  source: string;
+  importedName: string;
+}
+
+function collectImportBindings(ast: t.File): Map<string, ImportBinding> {
+  const out = new Map<string, ImportBinding>();
+  traverse(ast, {
+    ImportDeclaration(path: { node: t.ImportDeclaration }) {
+      const source = path.node.source.value;
+      for (const spec of path.node.specifiers) {
+        if (t.isImportSpecifier(spec)) {
+          const localName = spec.local.name;
+          const importedName = t.isIdentifier(spec.imported)
+            ? spec.imported.name
+            : spec.imported.value;
+          out.set(localName, { source, importedName });
+        } else if (t.isImportDefaultSpecifier(spec)) {
+          out.set(spec.local.name, { source, importedName: "default" });
+        }
+        // ImportNamespaceSpecifier intentionally skipped (v1 carve-out).
+      }
+    },
+  });
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RenderNode → TreeNode translation (D-04/D-05/D-06)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -184,6 +223,99 @@ function renderNodeToTreeNode(
         file: toForwardSlash(rn.file),
         line: rn.line,
       };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resolver post-pass (DEBUG #2 — fix Button.file pointing at consumer)
+//
+// For every `kind:"component"` TreeNode produced from an `isComponent` JSX
+// callsite, look up its tag name in the entry's import-binding map and call
+// `adapter.resolveModule`. On a successful local resolution, override the
+// node's `file` (and reset `line` to 1 since ResolveResult does not carry the
+// declaration line). On `ok:false` failures, append a warning. On
+// `ok:true, kind:"external"` (node_modules), leave the node alone silently.
+//
+// The override does NOT cascade into children — a component's TreeNode
+// children are JSX expressions passed AS PROPS in the calling file (e.g.
+// `<Layout><Page/></Layout>`); their file:line still belongs to the consumer.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function resolveComponentCallsites(
+  tree: TreeNode,
+  bindings: Map<string, ImportBinding>,
+  fromFile: string,
+  adapter: FrameworkAdapter,
+  ctx: ParseContext,
+): TreeNode {
+  switch (tree.kind) {
+    case "component": {
+      const newChildren = tree.children.map((c) =>
+        resolveComponentCallsites(c, bindings, fromFile, adapter, ctx),
+      );
+      const binding = bindings.get(tree.name);
+      if (!binding) {
+        // Locally declared, namespaced import (Ns.Foo), or unknown — leave file unchanged.
+        return { ...tree, children: newChildren };
+      }
+      let result;
+      try {
+        result = adapter.resolveModule(ctx, fromFile, binding.source, binding.importedName);
+      } catch (err: unknown) {
+        // R8: never throw out of the IR build path. Treat as a soft failure.
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.warnings.push(
+          `resolver threw for component '${tree.name}' from '${binding.source}' at ${tree.file}:${tree.line}: ${message}`,
+        );
+        return { ...tree, children: newChildren };
+      }
+      if (result.ok && result.kind === "local") {
+        return {
+          ...tree,
+          children: newChildren,
+          file: toForwardSlash(result.absolutePath),
+          line: 1,
+        };
+      }
+      if (!result.ok) {
+        ctx.warnings.push(
+          `unresolved component '${tree.name}' from '${binding.source}' at ${tree.file}:${tree.line}`,
+        );
+      }
+      // external or unresolved: preserve call-site file:line.
+      return { ...tree, children: newChildren };
+    }
+    case "element":
+      return {
+        ...tree,
+        children: tree.children.map((c) =>
+          resolveComponentCallsites(c, bindings, fromFile, adapter, ctx),
+        ),
+      };
+    case "fragment":
+      return {
+        ...tree,
+        children: tree.children.map((c) =>
+          resolveComponentCallsites(c, bindings, fromFile, adapter, ctx),
+        ),
+      };
+    case "branch":
+      return {
+        ...tree,
+        thenBranch: tree.thenBranch
+          ? resolveComponentCallsites(tree.thenBranch, bindings, fromFile, adapter, ctx)
+          : null,
+        elseBranch: tree.elseBranch
+          ? resolveComponentCallsites(tree.elseBranch, bindings, fromFile, adapter, ctx)
+          : null,
+      };
+    case "list":
+      return {
+        ...tree,
+        item: resolveComponentCallsites(tree.item, bindings, fromFile, adapter, ctx),
+      };
+    default:
+      return tree;
   }
 }
 
@@ -548,6 +680,20 @@ export class Analyzer {
         const slotLines = collectChildrenSlotLines(cachedParse.ast);
         if (slotLines.size > 0) {
           bodyTree = injectChildrenSlots(bodyTree, slotLines, fwdFile);
+        }
+
+        // DEBUG #2 fix: resolve component callsites to their definition files.
+        // Walks the body tree and overrides file/line on every kind:"component"
+        // node whose tag resolves locally via tsconfig paths + barrel chase.
+        const bindings = collectImportBindings(cachedParse.ast);
+        if (bindings.size > 0) {
+          bodyTree = resolveComponentCallsites(
+            bodyTree,
+            bindings,
+            absFile,
+            this.adapter,
+            this.ctx,
+          );
         }
       }
 
