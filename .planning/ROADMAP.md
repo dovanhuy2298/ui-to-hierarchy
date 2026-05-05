@@ -7,11 +7,11 @@
 
 ## Phases
 
-- [ ] **Phase 1: Scaffolding & IR Foundation** — Project skeleton, IR types, markdown/JSON renderers unit-testable against fixtures
+- [x] **Phase 1: Scaffolding & IR Foundation** — Project skeleton, IR types, markdown/JSON renderers unit-testable against fixtures (completed 2026-04-20)
 - [x] **Phase 2: MCP Transport Shell** — `npx` stdio server with zod-validated tool surface (stubs return "not implemented")
 - [x] **Phase 3: Parser Core** — Babel AST + module resolution + style extractors + adapter interface (completed 2026-04-29)
-- [ ] **Phase 4: Next.js App Router Adapter** — Routing, layout chains, route groups / parallel / intercepting / dynamic segments
-- [ ] **Phase 5: IR Queries & Tool Wire-up** — All four MCP tools fully functional end-to-end
+- [x] **Phase 4: Next.js App Router Adapter** — Routing, layout chains, route groups / parallel / intercepting / dynamic segments (completed 2026-04-29)
+- [x] **Phase 5: IR Queries & Tool Wire-up** — All four MCP tools fully functional end-to-end (completed 2026-04-29)
 - [ ] **Phase 6: Hardening & Fixture Gates** — Integration tests, Windows/pnpm/shadcn fixtures, real-client verification
 
 ## Phase Details
@@ -94,10 +94,10 @@
 4. Every component node carries `runtime: "server" | "client"` derived from first non-comment `"use client"` / `"use server"` directive
    **Plans**: 4 plans
 
-- [ ] 04-01-PLAN.md — Wave 1: types contracts (RouteMatch + runtime field) + kitchen-sink + detect fixtures
-- [ ] 04-02-PLAN.md — Wave 2: detect.ts + discover.ts (R5 + R6) + tests
-- [ ] 04-03-PLAN.md — Wave 3: segments.ts + route-map.ts (NEXT-01/02/03) + tests
-- [ ] 04-04-PLAN.md — Wave 4: NextJsAdapter wiring + runtime plumbing (NEXT-04) + phase gate
+- [x] 04-01-PLAN.md — Wave 1: types contracts (RouteMatch + runtime field) + kitchen-sink + detect fixtures
+- [x] 04-02-PLAN.md — Wave 2: detect.ts + discover.ts (R5 + R6) + tests
+- [x] 04-03-PLAN.md — Wave 3: segments.ts + route-map.ts (NEXT-01/02/03) + tests
+- [x] 04-04-PLAN.md — Wave 4: NextJsAdapter wiring + runtime plumbing (NEXT-04) + phase gate
    **UI hint**: no
 
 ### Phase 5: IR Queries & Tool Wire-up
@@ -115,11 +115,11 @@
 
 **Plans**: 5 plans
 
-- [ ] 05-01-PLAN.md — Fixtures: kitchen-sink + parse-error + mutation-test under test/fixtures/phase-05/
-- [ ] 05-02-PLAN.md — Analyzer class (IR-build, slot-substitution, 4 query methods, style sidecar, Levenshtein) — single-file src/core/Analyzer.ts
-- [ ] 05-03-PLAN.md — Tier 1 Analyzer unit tests (R1–R8 + ARCH-02 mutation + grep gates)
-- [ ] 05-04-PLAN.md — Wire 4 MCP tool handlers to Analyzer (replace notImplemented; preserve Phase 2 schemas)
-- [ ] 05-05-PLAN.md — Tier 2 MCP integration tests (4 tools via InMemoryTransport) + phase gate
+- [x] 05-01-PLAN.md — Fixtures: kitchen-sink + parse-error + mutation-test under test/fixtures/phase-05/
+- [x] 05-02-PLAN.md — Analyzer class (IR-build, slot-substitution, 4 query methods, style sidecar, Levenshtein) — single-file src/core/Analyzer.ts
+- [x] 05-03-PLAN.md — Tier 1 Analyzer unit tests (R1–R8 + ARCH-02 mutation + grep gates)
+- [x] 05-04-PLAN.md — Wire 4 MCP tool handlers to Analyzer (replace notImplemented; preserve Phase 2 schemas)
+- [x] 05-05-PLAN.md — Tier 2 MCP integration tests (4 tools via InMemoryTransport) + phase gate
 
 **UI hint**: no
 
@@ -152,6 +152,6 @@
 | 1. Scaffolding & IR Foundation | 5/5            | Complete    | 2026-04-20 |
 | 2. MCP Transport Shell         | 5/5            | Complete    | 2026-04-21 |
 | 3. Parser Core                 | 6/6 | Complete    | 2026-04-29 |
-| 4. Next.js App Router Adapter  | 0/0            | Not started | -         |
-| 5. IR Queries & Tool Wire-up   | 0/0            | Not started | -         |
+| 4. Next.js App Router Adapter  | 4/4            | Complete    | 2026-04-29 |
+| 5. IR Queries & Tool Wire-up   | 5/5            | Complete    | 2026-04-29 |
 | 6. Hardening & Fixture Gates   | 0/7            | Not started | -         |

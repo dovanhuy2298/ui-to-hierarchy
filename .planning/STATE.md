@@ -7,9 +7,9 @@ last_updated: "2026-05-04T11:03:57.412Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 25
+  total_plans: 32
   completed_plans: 25
-  percent: 100
+  percent: 78
 ---
 
 # STATE — ui-to-hierarchyMCP
