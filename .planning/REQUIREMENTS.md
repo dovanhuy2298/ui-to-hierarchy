@@ -18,10 +18,10 @@
 
 ### Query Tools
 
-- [ ] **TOOL-01**: `get_full_hierarchy(route, format?)` returns ordered layout chain + page subtree for a given Next.js route (`/`, `/dashboard/[slug]`, etc.), in markdown (default) or JSON
-- [ ] **TOOL-02**: `focus_on(component, scope)` where `scope ∈ {up, full, down}` — returns ancestors chain, ancestors + full subtree, or subtree only
-- [ ] **TOOL-03**: `find_by_text(query)` returns matching nodes with file:line, with fuzzy suggestions when no exact match
-- [ ] **TOOL-04**: `find_by_style(class_or_prop)` returns nodes whose classes/style match, with file:line
+- [x] **TOOL-01**: `get_full_hierarchy(route, format?)` returns ordered layout chain + page subtree for a given Next.js route (`/`, `/dashboard/[slug]`, etc.), in markdown (default) or JSON
+- [x] **TOOL-02**: `focus_on(component, scope)` where `scope ∈ {up, full, down}` — returns ancestors chain, ancestors + full subtree, or subtree only
+- [x] **TOOL-03**: `find_by_text(query)` returns matching nodes with file:line, with fuzzy suggestions when no exact match
+- [x] **TOOL-04**: `find_by_style(class_or_prop)` returns nodes whose classes/style match, with file:line
 
 ### Parser Core
 
@@ -32,14 +32,14 @@
 
 ### Next.js App Router
 
-- [ ] **NEXT-01**: Layout chain reconstruction is directory-based (not import-based) — walks `app/` upward from a route, collecting `layout.tsx` at each level; includes `template.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx` siblings
-- [ ] **NEXT-02**: Route-group `(group)` folders contribute layouts but not URL segments; parallel routes `@slot` emitted as labeled slots on parent; intercepting routes `(.)`, `(..)`, `(...)`, `(..)(..)` resolved with correct segment math; private `_folder` excluded
-- [ ] **NEXT-03**: Dynamic routes `[slug]`, `[...rest]`, `[[...opt]]` resolved when route input matches pattern; route map returned with resolved params where applicable
-- [ ] **NEXT-04**: `"use client"` / `"use server"` detected as first non-comment directive; every component node carries `runtime: "server" | "client"`
+- [x] **NEXT-01**: Layout chain reconstruction is directory-based (not import-based) — walks `app/` upward from a route, collecting `layout.tsx` at each level; includes `template.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx` siblings
+- [x] **NEXT-02**: Route-group `(group)` folders contribute layouts but not URL segments; parallel routes `@slot` emitted as labeled slots on parent; intercepting routes `(.)`, `(..)`, `(...)`, `(..)(..)` resolved with correct segment math; private `_folder` excluded
+- [x] **NEXT-03**: Dynamic routes `[slug]`, `[...rest]`, `[[...opt]]` resolved when route input matches pattern; route map returned with resolved params where applicable
+- [x] **NEXT-04**: `"use client"` / `"use server"` detected as first non-comment directive; every component node carries `runtime: "server" | "client"`
 
 ### Output & Styling
 
-- [ ] **OUT-01**: Markdown tree (default, LLM-friendly) + JSON (structured, programmatic); every node carries `file` + `line`; forward-slash paths on Windows
+- [x] **OUT-01**: Markdown tree (default, LLM-friendly) + JSON (structured, programmatic); every node carries `file` + `line`; forward-slash paths on Windows
 - [x] **OUT-02**: Layout-only class filter by default (preserves flex/grid/spacing/sizing/positioning); `fullClasses: true` flag exposes everything
 - [x] **OUT-03**: Style extractors for Tailwind classNames (including `cn`/`clsx`/`cva`/`twMerge`), inline `style` prop objects, CSS Modules references (`styles.foo @ ./X.module.css`, no CSS parsing in v1), styled-components template literals (best-effort with `{?}` for interpolations)
 - [x] **OUT-04**: Conditional render branches preserved — ternary, `&&`, `||`, `??`, `!`/`!!` wrappers; list renders (`.map`) marked as `list` kind
@@ -47,9 +47,9 @@
 ### Architecture
 
 - [x] **ARCH-01**: `FrameworkAdapter` interface with exactly 5 methods (`detect`, `discoverEntries`, `resolveModule`, `extractComponents`, `mapRouteToEntry`); v1 ships `NextJsAdapter` only; `adapters/` is an island (core/ir/renderers never import framework-specific logic)
-- [ ] **ARCH-02**: Parse on-demand — fresh `Analyzer` instance per tool call with per-call AST cache; no cross-call cache in v1
-- [ ] **ARCH-03**: Project root resolution order — tool input `projectRoot` arg > `UI_TO_HIERARCH_ROOT` env var > `process.cwd()`; resolved root echoed in response metadata
-- [ ] **ARCH-04**: Integration test suite with fixture Next.js projects (shadcn-style barrel re-exports, nested layouts, route groups, parallel slots, pnpm monorepo workspace, Windows path separators); MCP Inspector + one real client (Claude Code) end-to-end verified
+- [x] **ARCH-02**: Parse on-demand — fresh `Analyzer` instance per tool call with per-call AST cache; no cross-call cache in v1
+- [x] **ARCH-03**: Project root resolution order — tool input `projectRoot` arg > `UI_TO_HIERARCH_ROOT` env var > `process.cwd()`; resolved root echoed in response metadata
+- [x] **ARCH-04**: Integration test suite with fixture Next.js projects (shadcn-style barrel re-exports, nested layouts, route groups, parallel slots, pnpm monorepo workspace, Windows path separators); MCP Inspector + one real client (Claude Code) end-to-end verified
 
 ## v2 Requirements (deferred)
 
@@ -80,25 +80,25 @@
 | MCP-02      | Phase 2 | Complete |
 | MCP-03      | Phase 2 | Complete |
 | MCP-04      | Phase 2 | Complete |
-| TOOL-01     | Phase 5 | Pending |
-| TOOL-02     | Phase 5 | Pending |
-| TOOL-03     | Phase 5 | Pending |
-| TOOL-04     | Phase 5 | Pending |
+| TOOL-01     | Phase 5 | Complete |
+| TOOL-02     | Phase 5 | Complete |
+| TOOL-03     | Phase 5 | Complete |
+| TOOL-04     | Phase 5 | Complete |
 | PARSE-01    | Phase 3 | Complete |
 | PARSE-02    | Phase 3 | Complete |
 | PARSE-03    | Phase 3 | Complete |
 | PARSE-04    | Phase 3 | Complete |
-| NEXT-01     | Phase 4 | Pending |
-| NEXT-02     | Phase 4 | Pending |
-| NEXT-03     | Phase 4 | Pending |
-| NEXT-04     | Phase 4 | Pending |
-| OUT-01      | Phase 1 | Pending |
+| NEXT-01     | Phase 4 | Complete |
+| NEXT-02     | Phase 4 | Complete |
+| NEXT-03     | Phase 4 | Complete |
+| NEXT-04     | Phase 4 | Complete |
+| OUT-01      | Phase 1 | Complete |
 | OUT-02      | Phase 3 | Complete |
 | OUT-03      | Phase 3 | Complete |
 | OUT-04      | Phase 3 | Complete |
 | ARCH-01     | Phase 3 | Complete |
-| ARCH-02     | Phase 5 | Pending |
-| ARCH-03     | Phase 1 | Pending |
-| ARCH-04     | Phase 6 | Pending |
+| ARCH-02     | Phase 5 | Complete |
+| ARCH-03     | Phase 1 | Complete |
+| ARCH-04     | Phase 6 | Complete |
 
 **Coverage:** 24/24 v1 requirements mapped, no orphans, no duplicates.

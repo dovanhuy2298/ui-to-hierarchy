@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: parser-core-ast-resolution-extractors
-status: draft
+status: approved
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-29
+approved: 2026-05-05
 ---
 
 # Phase 3 — Validation Strategy
@@ -95,4 +96,4 @@ Wave 0 scaffolding is folded into each plan's first task (per the GSD execution 
 - [x] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter (per-task entries match plan-created paths)
 
-**Approval:** ready
+**Approval:** approved (2026-05-05) — Phase 3 verification passed (16/16 must-haves, see 03-VERIFICATION.md); promoting draft → approved per audit closure.
