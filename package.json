@@ -1,6 +1,6 @@
 {
   "name": "@hudyv2298/ui-hierarchy-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server that returns a Next.js App Router project's UI component hierarchy as a structured tree (markdown + JSON) so AI coding agents can ground image/description-based UI edits in exact file/component locations.",
   "keywords": [
     "mcp",
