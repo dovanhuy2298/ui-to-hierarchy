@@ -1,6 +1,6 @@
-# @hudyv2298/ui-hierarchy-mcp
+# ui-hierarchy-mcp
 
-[![npm version](https://img.shields.io/npm/v/@hudyv2298/ui-hierarchy-mcp.svg)](https://www.npmjs.com/package/@hudyv2298/ui-hierarchy-mcp)
+[![npm version](https://img.shields.io/npm/v/ui-hierarchy-mcp.svg)](https://www.npmjs.com/package/ui-hierarchy-mcp)
 
 MCP (Model Context Protocol) server that parses a Next.js App Router project and returns its UI component hierarchy as structured output (markdown tree + JSON), so AI coding agents can ground image/description-based UI edits in exact file/component locations.
 
@@ -15,7 +15,7 @@ V1 targets **Next.js App Router**. Static analysis only — no runtime execution
 No install needed when used as an MCP server — clients spawn it via `npx`. To try the binary directly:
 
 ```bash
-npx -y @hudyv2298/ui-hierarchy-mcp
+npx -y ui-hierarchy-mcp
 ```
 
 (The server speaks JSON-RPC on stdio. Running it directly will sit idle waiting for an MCP client. Use [MCP Inspector](https://github.com/modelcontextprotocol/inspector) for interactive debugging.)
@@ -31,7 +31,7 @@ Add to `~/.claude.json` (or per-project `.mcp.json`):
   "mcpServers": {
     "ui-hierarchy": {
       "command": "npx",
-      "args": ["-y", "@hudyv2298/ui-hierarchy-mcp"]
+      "args": ["-y", "ui-hierarchy-mcp"]
     }
   }
 }
@@ -46,7 +46,7 @@ Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` per project):
   "mcpServers": {
     "ui-hierarchy": {
       "command": "npx",
-      "args": ["-y", "@hudyv2298/ui-hierarchy-mcp"]
+      "args": ["-y", "ui-hierarchy-mcp"]
     }
   }
 }
@@ -55,7 +55,7 @@ Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` per project):
 ### MCP Inspector (interactive debugging)
 
 ```bash
-npx @modelcontextprotocol/inspector npx -y @hudyv2298/ui-hierarchy-mcp
+npx @modelcontextprotocol/inspector npx -y ui-hierarchy-mcp
 ```
 
 ## Tools
