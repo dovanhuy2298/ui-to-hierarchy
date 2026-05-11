@@ -41,11 +41,15 @@ const { values: meta } = parseArgs({
 });
 
 if (meta.help) {
-  process.stderr.write(HELP_TEXT);
+  // --help / --version output is the explicit successful product of these
+  // short-circuit paths, not a diagnostic — POSIX convention puts it on
+  // stdout. The MCP stdio framing concern (INIT-11) does not apply here
+  // because the server never starts on these branches (WR-04).
+  process.stdout.write(HELP_TEXT);
   process.exit(0);
 }
 if (meta.version) {
-  process.stderr.write(`${__TOOL_VERSION__}\n`);
+  process.stdout.write(`${__TOOL_VERSION__}\n`);
   process.exit(0);
 }
 
