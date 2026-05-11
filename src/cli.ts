@@ -53,16 +53,18 @@ if (meta.version) {
   process.exit(0);
 }
 
-const parsed = parseInitArgs(process.argv.slice(2));
-if (!parsed.ok) {
-  process.stderr.write(`[init] error ${parsed.message}\n`);
-  process.exit(1);
-}
+// Only validate argv with the strict init schema when --init was requested.
+// Otherwise we'd reject any future server-mode flag / positional with a
+// misleading "[init] error ..." even when the user never asked for init
+// (WR-01).
+if (meta.init) {
+  const parsed = parseInitArgs(process.argv.slice(2));
+  if (!parsed.ok) {
+    process.stderr.write(`[init] error ${parsed.message}\n`);
+    process.exit(1);
+  }
 
-const flags = parsed.flags;
-
-if (flags.init) {
-  runInit(flags)
+  runInit(parsed.flags)
     .then((code) => {
       process.exit(code);
     })
