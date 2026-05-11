@@ -37,11 +37,11 @@ fixed:
   - WR-02
   - WR-03
   - WR-04
-fixed_at: 2026-05-11
-remaining:
   - IN-01
   - IN-02
   - IN-03
+fixed_at: 2026-05-11
+remaining: []
 ---
 
 # Phase 7: Code Review Report
@@ -196,7 +196,7 @@ if (meta.version) {
 
 ## Info
 
-### IN-01: Option schema duplicated between `cli.ts` and `argv.ts`
+### IN-01: Option schema duplicated between `cli.ts` and `argv.ts` [FIXED 2026-05-11, commit d7ba997]
 
 **File:** `src/cli.ts:31-40` and `src/init/argv.ts:59-66`
 
@@ -217,7 +217,7 @@ export const INIT_OPTION_SCHEMA = {
 };
 ```
 
-### IN-02: Dead defensive check in `scanBlock`
+### IN-02: Dead defensive check in `scanBlock` [FIXED 2026-05-11, commit 964e2b1]
 
 **File:** `src/init/markers.ts:55-56`
 
@@ -229,7 +229,7 @@ export const INIT_OPTION_SCHEMA = {
 if (!m) return { found: false };
 ```
 
-### IN-03: Empty `existingText` falls into the append branch
+### IN-03: Empty `existingText` falls into the append branch [FIXED 2026-05-11, commit 064b9b3]
 
 **File:** `src/init/index.ts:140-178`
 
