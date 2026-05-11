@@ -25,5 +25,8 @@ export default defineConfig({
   ],
   define: {
     __TOOL_VERSION__: JSON.stringify(pkg.version),
+    __INIT_MARKER_VERSION__: JSON.stringify(
+      pkg.version.split(".").slice(0, 2).join("."),
+    ),
   },
 });
