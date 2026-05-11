@@ -79,13 +79,14 @@ function assembleMarkerBlock(body: string, fingerprint: string): string {
  * skip (hand-edit)`, prefixed with `would ` under `--dry-run`.
  */
 function actionLabel(outcome: Outcome, dryRun: boolean): string {
-  const base =
-    outcome === "skip"
-      ? "skip (hand-edit)"
-      : outcome === "error"
-        ? "error"
-        : outcome;
-  return dryRun && outcome !== "error" ? `would ${base}` : base;
+  // Only prefix mutating outcomes with "would " under --dry-run.
+  // `skip` and `noop` are decided identically with or without --dry-run,
+  // so "would skip (hand-edit)" reads as if the tool is considering
+  // skipping when in fact the skip is unconditional (WR-03).
+  if (outcome === "error") return "error";
+  if (outcome === "skip") return "skip (hand-edit)";
+  if (outcome === "noop") return "noop";
+  return dryRun ? `would ${outcome}` : outcome;
 }
 
 interface TargetResult {
