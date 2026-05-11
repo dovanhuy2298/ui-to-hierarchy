@@ -53,7 +53,10 @@ export function scanBlock(content: string): BlockScanResult {
   // through the exported constant.
   const re = new RegExp(BLOCK_PATTERN.source);
   const m = re.exec(content);
-  if (!m || m.index === undefined) return { found: false };
+  // RegExp.prototype.exec always returns a match object with `index` defined
+  // when it returns non-null, so the prior `m.index === undefined` arm was
+  // unreachable (IN-02).
+  if (!m) return { found: false };
   return {
     found: true,
     version: m[1] as string,
