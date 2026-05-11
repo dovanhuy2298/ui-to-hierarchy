@@ -332,19 +332,21 @@ function applyEolBom(content: string, eol: Eol, hasBom: boolean): string {
 
 ### Pattern 5: Marker Block Scanner
 
-**What:** Single regex captures version and fingerprint from start marker; also handles missing-fingerprint (old format) case.
+**What:** Single regex captures version and fingerprint from start marker. The wrapping newlines are consumed by the regex outside the body capture group — this makes `body` byte-identical to the `renderGuide(...)` output that was used as the fingerprint preimage at write time (the round-trip contract that makes INIT-04 idempotency work).
 **When to use:** `markers.ts scanBlock()`.
 
 ```typescript
 // Source: verified locally — regex tested against real marker content
+// NOTE the explicit \n on both sides of group 3 — they consume the wrapping newlines
+// added during block assembly, so group 3 captures the fingerprint preimage exactly.
 const SCAN_PATTERN =
-  /<!-- ui-hierarchy-mcp:start version=(\S+) fingerprint=([0-9a-f]{64}) -->([\s\S]*?)<!-- ui-hierarchy-mcp:end -->/;
+  /<!-- ui-hierarchy-mcp:start version=(\S+) fingerprint=([0-9a-f]{64}) -->\n([\s\S]*?)\n<!-- ui-hierarchy-mcp:end -->/;
 
 interface BlockScanResult {
   found: true;
   version: string;
   fingerprint: string;
-  body: string;  // bytes between markers (includes surrounding newlines)
+  body: string;  // bytes between markers, NOT including wrapping newlines (fingerprint preimage)
   fullMatch: string;
   startIndex: number;
   endIndex: number;  // exclusive, after end marker
@@ -662,19 +664,22 @@ describe('runInit integration', () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Cwd injection strategy for tests**
+   - **Resolution:** Resolved in Plan 04 `<interfaces>` block — `runInit(flags, { cwd = process.cwd() } = {})` accepts an optional `cwd` parameter. Plan 04 Task 2 integration tests pass `{cwd: tmpDir}` directly without spying on `process.cwd`.
    - What we know: Tests need to run `runInit` against a temp directory, not the actual `process.cwd()`.
    - What's unclear: Whether `runInit` should accept an optional `cwd` parameter (cleaner for testing) or whether tests override `process.cwd` via `vi.spyOn`.
    - Recommendation: Design `runInit(flags, { cwd = process.cwd() } = {})` — passing cwd explicitly makes the function testable without spying on globals. The CONTEXT.md does not lock this; it falls under Claude's Discretion.
 
 2. **Stderr output format in integration tests: assert exact strings or regex?**
+   - **Resolution:** Resolved in Plan 04 Task 2 `<action>` — integration tests use regex `/\[init\] (would )?(create|update|noop|skip)/` and per-target regexes tolerant of both `/` and `\` path separators (e.g. `/\[init\] create .*CLAUDE\.md/`).
    - What we know: INIT-11 specifies `[init] <action> <path>` format.
    - What's unclear: Whether tests should use `toContain('[init] create CLAUDE.md')` or a regex to handle Windows path separators.
    - Recommendation: Use regex `/\[init\] create .+CLAUDE\.md/` to be cross-platform safe (handles both `/` and `\` in path).
 
 3. **`--help` output destination: stdout or stderr?**
+   - **Resolution:** Resolved in Plan 05 (cli dispatch fork) — `--help` and `--version` write to `process.stderr` to keep the stdout invariant absolute across all CLI invocations, matching the Code Examples `cli.ts` snippet in this RESEARCH file.
    - What we know: STDOUT invariant says no `--init` code may write to stdout. `--help`/`--version` are not `--init` code paths.
    - What's unclear: Convention varies (GNU tools use stdout for `--help`; MCP stdio contract requires stdout be clean).
    - Recommendation: Write `--help` and `--version` to `process.stderr` to be safe. The CONTEXT.md says "keep concise" but does not specify the fd; stderr is the safer choice given the stdout invariant.

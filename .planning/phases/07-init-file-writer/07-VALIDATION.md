@@ -38,7 +38,14 @@ created: 2026-05-11
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | INIT-XX | — | — | unit/integration | `npx vitest run <file>` | ❌ W0 | ⬜ pending |
+| 02-T1   | 02   | 1    | INIT-04, INIT-06 | T-07-05 (markers) | block scan + replace + append | unit | `npx vitest run test/init/markers.test.ts` | ❌ W0 | ⬜ pending |
+| 02-T2   | 02   | 1    | INIT-07, INIT-09 | T-07-05/08 | fingerprint LF-normalized + EOL/BOM round-trip | unit | `npx vitest run test/init/fingerprint.test.ts test/init/eol.test.ts` | ❌ W0 | ⬜ pending |
+| 03-T1   | 03   | 1    | INIT-03 | — | argv parse + target enum | unit | `npx vitest run test/init/argv.test.ts` | ❌ W0 | ⬜ pending |
+| 03-T2   | 03   | 1    | INIT-08 | T-07-18 | atomic write + EXDEV fallback | unit | `npx vitest run test/init/writer.test.ts` | ❌ W0 | ⬜ pending |
+| 03-T3   | 03   | 1    | INIT-12 | — | guide template renders 4 sections + cwd | unit | `npx vitest run test/init/template.test.ts` | ❌ W0 | ⬜ pending |
+| 04-T1   | 04   | 2    | INIT-13 (structural) | T-07-17 | runInit composes leaves; stdin/readline/isTTY grep clean | static | `npx tsc --noEmit` + grep gate | ❌ W0 | ⬜ pending |
+| 04-T2   | 04   | 2    | INIT-01, INIT-04, INIT-05, INIT-07, INIT-09, INIT-10, INIT-11, INIT-14 | T-07-15/17/19 | end-to-end idempotency + hand-edit guard + frontmatter preservation | integration | `npx vitest run test/init/integration.test.ts` | ❌ W0 | ⬜ pending |
+| 05-T*   | 05   | 3    | INIT-02 | — | cli dispatch fork; existing smoke test stays green | smoke | `npx vitest run test/mcp/smoke.spawn.test.ts` | ✅ existing | ⬜ pending |
 
 *Populated by planner — see PLAN.md task list. Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -46,12 +53,16 @@ created: 2026-05-11
 
 ## Wave 0 Requirements
 
-- [ ] `test/init/markers.test.ts` — marker scan, fingerprint, hand-edit detection (INIT-09, INIT-10, INIT-12)
-- [ ] `test/init/atomic-write.test.ts` — atomic rename, CRLF/BOM preservation (INIT-07, INIT-08)
-- [ ] `test/init/targets.test.ts` — per-target path + frontmatter (INIT-03, INIT-04, INIT-05, INIT-14)
-- [ ] `test/init/cli.test.ts` — argv parsing, --dry-run, --force, --target enum validation (INIT-01, INIT-02, INIT-06, INIT-11, INIT-13)
-- [ ] `test/init/idempotent.test.ts` — re-run produces zero file changes (INIT-09)
-- [ ] `test/fixtures/init/` — temp-dir helpers, sample CLAUDE.md / AGENTS.md / .cursor/rules / .github fixtures
+These test files must exist before their corresponding tasks can be verified. The plans create them as part of Wave 1 (Plans 02 and 03) and Wave 2 (Plan 04). The executor flips `wave_0_complete: true` and `nyquist_compliant: true` once every entry below has been created and the Wave 1 test files turn green.
+
+- [ ] `test/init/markers.test.ts` — covers INIT-04 (idempotency primitives) and INIT-06 (append after blank line) (created by Plan 02 Task 1)
+- [ ] `test/init/fingerprint.test.ts` — covers INIT-07 (SHA-256 + LF normalization) (created by Plan 02 Task 2)
+- [ ] `test/init/eol.test.ts` — covers INIT-09 (EOL/BOM detect + apply round-trip) (created by Plan 02 Task 2)
+- [ ] `test/init/argv.test.ts` — covers INIT-03 (parseArgs + target enum validation) (created by Plan 03 Task 1)
+- [ ] `test/init/writer.test.ts` — covers INIT-08 (atomic write + EXDEV fallback + tmp cleanup) (created by Plan 03 Task 2)
+- [ ] `test/init/template.test.ts` — covers INIT-12 (renderGuide: 4 sections + cwd substitution) (created by Plan 03 Task 3)
+- [ ] `test/init/integration.test.ts` — covers INIT-01, INIT-04 (idempotency end-to-end + fingerprint-preimage regression), INIT-05, INIT-07, INIT-09, INIT-10, INIT-11, INIT-13 (stdin listener invariant), INIT-14 (created by Plan 04 Task 2)
+- [ ] `vitest.config.ts` — extend `define` block with `__INIT_MARKER_VERSION__: JSON.stringify('0.0-test')` (Plan 01 prerequisite for all test files to compile)
 
 ---
 
