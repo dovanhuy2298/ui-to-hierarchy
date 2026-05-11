@@ -30,7 +30,18 @@ findings:
   warning: 4
   info: 3
   total: 8
-status: issues_found
+status: fixes_applied
+fixed:
+  - CR-01
+  - WR-01
+  - WR-02
+  - WR-03
+  - WR-04
+fixed_at: 2026-05-11
+remaining:
+  - IN-01
+  - IN-02
+  - IN-03
 ---
 
 # Phase 7: Code Review Report
@@ -50,7 +61,7 @@ However, adversarial tracing surfaced one BLOCKER in the EOL/BOM round-trip path
 
 ## Critical Issues
 
-### CR-01: Double UTF-8 BOM written when existing file already has a BOM
+### CR-01: Double UTF-8 BOM written when existing file already has a BOM [FIXED 2026-05-11, commit b3a9bda]
 
 **File:** `src/init/index.ts:108-157`, with `src/init/eol.ts:39-43` and `src/init/markers.ts:87-89`
 
@@ -96,7 +107,7 @@ expect(bomCount).toBe(1);
 
 ## Warnings
 
-### WR-01: `parseInitArgs` strict mode rejects valid server-mode argv
+### WR-01: `parseInitArgs` strict mode rejects valid server-mode argv [FIXED 2026-05-11, commit 2dc28af]
 
 **File:** `src/cli.ts:52-56`
 
@@ -121,7 +132,7 @@ if (meta.init) {
 }
 ```
 
-### WR-02: `appendBlock` produces a file with no trailing newline
+### WR-02: `appendBlock` produces a file with no trailing newline [FIXED 2026-05-11, commit 9828d5a]
 
 **File:** `src/init/markers.ts:87-89`, used in `src/init/index.ts:156`
 
@@ -141,7 +152,7 @@ newContent = applyEolBom(appended, eol, hasBom);
 
 Add a marker test that asserts `appendBlock(...).endsWith("\n")` once you decide on the convention.
 
-### WR-03: `actionLabel("skip", true)` produces semantically odd "would skip (hand-edit)"
+### WR-03: `actionLabel("skip", true)` produces semantically odd "would skip (hand-edit)" [FIXED 2026-05-11, commit f69a39b]
 
 **File:** `src/init/index.ts:81-89`
 
@@ -162,7 +173,7 @@ function actionLabel(outcome: Outcome, dryRun: boolean): string {
 }
 ```
 
-### WR-04: `--help` / `--version` write to stderr instead of stdout
+### WR-04: `--help` / `--version` write to stderr instead of stdout [FIXED 2026-05-11, commit 1880f34]
 
 **File:** `src/cli.ts:43-50`
 
