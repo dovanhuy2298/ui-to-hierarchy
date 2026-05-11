@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { log } from "./mcp/log.js";
 import { startServer } from "./mcp/server.js";
 import { runInit } from "./init/index.js";
-import { parseInitArgs } from "./init/argv.js";
+import { parseInitArgs, INIT_OPTION_SCHEMA } from "./init/argv.js";
 
 // Note: shebang (#!/usr/bin/env node) is injected by tsup banner — do NOT add it here.
 
@@ -28,14 +28,7 @@ Docs: https://www.npmjs.com/package/ui-hierarchy-mcp
 // strict mode to validate the full argv when the user did not ask for help.
 const { values: meta } = parseArgs({
   args: process.argv.slice(2),
-  options: {
-    init: { type: "boolean" },
-    target: { type: "string" },
-    "dry-run": { type: "boolean" },
-    force: { type: "boolean" },
-    help: { type: "boolean", short: "h" },
-    version: { type: "boolean", short: "v" },
-  },
+  options: INIT_OPTION_SCHEMA,
   strict: false,
   allowPositionals: true,
 });

@@ -22,6 +22,21 @@ import {
   type TargetId,
 } from "./targets.js";
 
+/**
+ * Shared option schema for both the loose pre-parse in `cli.ts` and the
+ * strict validation pass below. Exported so the two call sites cannot drift
+ * (IN-01): adding a new flag in only one place would otherwise produce
+ * silent unknown-flag rejection in strict mode.
+ */
+export const INIT_OPTION_SCHEMA = {
+  init: { type: "boolean" as const },
+  target: { type: "string" as const },
+  "dry-run": { type: "boolean" as const },
+  force: { type: "boolean" as const },
+  help: { type: "boolean" as const, short: "h" as const },
+  version: { type: "boolean" as const, short: "v" as const },
+};
+
 /** Normalized flag bag returned to the orchestrator. */
 export interface InitFlags {
   /**
@@ -56,14 +71,7 @@ export function parseInitArgs(argv: string[]): ParseArgsResult {
   try {
     const { values } = parseArgs({
       args: argv,
-      options: {
-        init: { type: "boolean" },
-        target: { type: "string" },
-        "dry-run": { type: "boolean" },
-        force: { type: "boolean" },
-        help: { type: "boolean", short: "h" },
-        version: { type: "boolean", short: "v" },
-      },
+      options: INIT_OPTION_SCHEMA,
       strict: true,
       allowPositionals: false,
     });
