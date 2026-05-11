@@ -24,6 +24,12 @@ import {
 
 /** Normalized flag bag returned to the orchestrator. */
 export interface InitFlags {
+  /**
+   * Whether `--init` itself was present on argv. cli.ts (Plan 05) uses this
+   * as the single source of truth for the dispatch fork: if `false`, the
+   * else branch boots the v1.0 MCP stdio server byte-for-byte (INIT-02).
+   */
+  init: boolean;
   targets: TargetId[];
   dryRun: boolean;
   force: boolean;
@@ -83,6 +89,7 @@ export function parseInitArgs(argv: string[]): ParseArgsResult {
     return {
       ok: true,
       flags: {
+        init: Boolean(values.init),
         // Safe cast: every entry was just checked against VALID_TARGET_IDS.
         targets: rawTargets as TargetId[],
         dryRun: Boolean(values["dry-run"]),
