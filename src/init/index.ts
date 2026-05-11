@@ -160,7 +160,11 @@ async function runTarget(
     if (!scan.found) {
       // File exists, no marker block → append.
       outcome = "create";
-      const appended = appendBlock(lfText, markerBlock);
+      // Trailing "\n" matches the create-from-scratch branch above and the
+      // POSIX text-file convention (avoids "No newline at end of file" in
+      // git diffs). Without it, the file ends with the literal `-->` of
+      // MARKER_END (WR-02).
+      const appended = appendBlock(lfText, markerBlock) + "\n";
       newContent = applyEolBom(appended, eol, hasBom);
     } else if (
       scan.version === __INIT_MARKER_VERSION__ &&
