@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as fsPromises from "node:fs/promises";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writeAtomic, writeAtomicDryRun } from "../../src/init/writer.js";
+import { __fs, writeAtomic, writeAtomicDryRun } from "../../src/init/writer.js";
 
 describe("writeAtomic — happy path", () => {
   let tmpDir: string;
@@ -62,15 +61,15 @@ describe("writeAtomic — EXDEV fallback", () => {
   it("falls back to copyFile + unlink when rename throws EXDEV", async () => {
     const target = join(tmpDir, "out.txt");
 
-    const renameSpy = vi.spyOn(fsPromises, "rename").mockImplementationOnce(
+    const renameSpy = vi.spyOn(__fs, "rename").mockImplementationOnce(
       async () => {
         const err = new Error("EXDEV: cross-device link not permitted") as NodeJS.ErrnoException;
         err.code = "EXDEV";
         throw err;
       },
     );
-    const copyFileSpy = vi.spyOn(fsPromises, "copyFile");
-    const unlinkSpy = vi.spyOn(fsPromises, "unlink");
+    const copyFileSpy = vi.spyOn(__fs, "copyFile");
+    const unlinkSpy = vi.spyOn(__fs, "unlink");
 
     await writeAtomic(target, "exdev-payload");
 
@@ -100,7 +99,7 @@ describe("writeAtomic — error cleanup", () => {
 
   it("removes the tmp file when writeFile throws and rethrows the error", async () => {
     const target = join(tmpDir, "out.txt");
-    const writeSpy = vi.spyOn(fsPromises, "writeFile").mockImplementationOnce(
+    const writeSpy = vi.spyOn(__fs, "writeFile").mockImplementationOnce(
       async () => {
         throw new Error("boom-write");
       },
@@ -117,7 +116,7 @@ describe("writeAtomic — error cleanup", () => {
     const target = join(tmpDir, "existing.txt");
     await writeFile(target, "original", "utf8");
 
-    vi.spyOn(fsPromises, "rename").mockImplementationOnce(async () => {
+    vi.spyOn(__fs, "rename").mockImplementationOnce(async () => {
       const err = new Error("EPERM") as NodeJS.ErrnoException;
       err.code = "EPERM";
       throw err;
@@ -146,11 +145,11 @@ describe("writeAtomicDryRun — no-op contract (INIT-10)", () => {
   });
 
   it("performs zero filesystem operations", async () => {
-    const writeSpy = vi.spyOn(fsPromises, "writeFile");
-    const renameSpy = vi.spyOn(fsPromises, "rename");
-    const copyFileSpy = vi.spyOn(fsPromises, "copyFile");
-    const unlinkSpy = vi.spyOn(fsPromises, "unlink");
-    const mkdirSpy = vi.spyOn(fsPromises, "mkdir");
+    const writeSpy = vi.spyOn(__fs, "writeFile");
+    const renameSpy = vi.spyOn(__fs, "rename");
+    const copyFileSpy = vi.spyOn(__fs, "copyFile");
+    const unlinkSpy = vi.spyOn(__fs, "unlink");
+    const mkdirSpy = vi.spyOn(__fs, "mkdir");
 
     await writeAtomicDryRun(join(tmpDir, "out.txt"), "ignored");
 
