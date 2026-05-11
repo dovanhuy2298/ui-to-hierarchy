@@ -47,7 +47,7 @@ Plans:
 - [x] 07-02-PLAN.md — Pure utilities: marker scan/replace/append, SHA-256 fingerprint, EOL/BOM (INIT-04, INIT-06, INIT-07, INIT-09, INIT-13)
 - [x] 07-03-PLAN.md — Guide template + atomic writer with EXDEV fallback (INIT-08, INIT-12, INIT-13)
 - [x] 07-04-PLAN.md — runInit orchestrator + integration tests (INIT-01, INIT-04, INIT-05, INIT-07, INIT-09, INIT-10, INIT-11, INIT-13, INIT-14)
-- [ ] 07-05-PLAN.md — cli.ts dispatch fork + smoke checkpoint (INIT-01, INIT-02, INIT-03, INIT-11)
+- [x] 07-05-PLAN.md — cli.ts dispatch fork + smoke checkpoint (INIT-01, INIT-02, INIT-03, INIT-11)
 
 ### Phase 8: v1.0 Polish
 
