@@ -255,6 +255,18 @@ describe("runInit integration (Phase 7, Plan 04)", () => {
     // Anti-pitfall: no \r\r\n anywhere (RESEARCH Pitfall 1 / T-07-08).
     expect(bytes1.toString("utf8")).not.toContain("\r\r\n");
 
+    // CR-01 regression: the UTF-8 BOM byte triple must appear at most once.
+    // A prior bug let Node's Buffer.toString("utf8") surface the BOM as
+    // U+FEFF in the decoded string; applyEolBom would then prepend a
+    // second BOM, producing "EF BB BF EF BB BF ..." on disk.
+    let bomCount = 0;
+    for (let i = 0; i + 2 < bytes1.length; i++) {
+      if (bytes1[i] === 0xef && bytes1[i + 1] === 0xbb && bytes1[i + 2] === 0xbf) {
+        bomCount++;
+      }
+    }
+    expect(bomCount).toBe(1);
+
     // Run 2 — must be byte-identical (noop path under matching version/fingerprint).
     await runInit(
       { targets: ["claude"], dryRun: false, force: false },

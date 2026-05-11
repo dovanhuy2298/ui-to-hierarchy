@@ -126,6 +126,13 @@ async function runTarget(
   if (existingBuf !== null && existingText !== null) {
     hasBom = detectBom(existingBuf);
     eol = detectEol(existingText);
+    // Node's Buffer.toString("utf8") does NOT strip a leading UTF-8 BOM —
+    // it surfaces as U+FEFF at index 0. If we leave it in `existingText`,
+    // `applyEolBom(..., hasBom=true)` later prepends ANOTHER BOM,
+    // producing "EF BB BF EF BB BF ..." on disk (CR-01).
+    if (hasBom && existingText.charCodeAt(0) === 0xfeff) {
+      existingText = existingText.slice(1);
+    }
   }
 
   // 3. Render the body (fingerprint preimage).
