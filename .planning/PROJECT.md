@@ -11,7 +11,7 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 ## Current State
 
 **Shipped:** v1.0 — 2026-05-05
-**Released:** [`@hudyv2298/ui-hierarchy-mcp`](https://www.npmjs.com/package/@hudyv2298/ui-hierarchy-mcp) v0.1.0 on npm
+**Released:** [`ui-hierarchy-mcp`](https://www.npmjs.com/package/ui-hierarchy-mcp) v0.1.0 on npm
 **Codebase:** ~4,890 LOC TypeScript, 35 test files, 256 unit + 20 integration + 8/8 UAT all green
 **Stack:** Node ≥20, ESM, `@modelcontextprotocol/sdk@^1.29`, `@babel/parser@^7.29`, `zod@^4.1`, `tsup`, `vitest@^4.3`
 
@@ -20,6 +20,7 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 **Goal:** Help AI coding agents auto-discover this MCP and learn its tools via an `--init` CLI that injects usage guidance into agent instruction files, and close remaining v1.0 polish items on the output surfaces.
 
 **Target features:**
+
 - `--init` CLI command — inject MCP usage guide into agent instruction files. Default (no flag) writes to `CLAUDE.md`. Optional `--target claude,codex,cursor,copilot` opts into additional targets (`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`). Idempotent re-runs via marker tags (`<!-- ui-hierarchy-mcp:start --> ... <!-- ui-hierarchy-mcp:end -->`)
 - Surface envelope warnings on markdown renderer (currently dropped — JSON-only)
 - Markdown surface integration test coverage (currently JSON-only)
@@ -78,20 +79,20 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 ## Key Decisions
 
-| Decision | Rationale | Outcome |
-| --- | --- | --- |
-| Multi-framework architecture, NextJsAdapter only in v1 | Future-proof pluggability without paying the cost now | ✓ Good — `core/`/`ir/` island stayed pristine; FrameworkAdapter has exactly 5 methods |
-| Query-only in v1 (no structural edits) | Keep scope tight; agents already have `Edit` tools | ✓ Good — tight scope, fast ship |
-| Parse on-demand (no cache in v1) | Simpler, correctness guaranteed; cache when perf demands | ✓ Good — fresh `Analyzer` per call (ARCH-02) verified by mutation test |
-| Both markdown and JSON output | Markdown for LLM comprehension, JSON for programmatic traversal | ✓ Good — both surfaces exercised in UAT |
-| Next.js App Router only in v1 | Pages Router is legacy; focus buys deeper quality | ✓ Good |
-| MCP bring-your-own-vision | Agents already have multimodal; MCP stays code-only | ✓ Good |
-| Ship as npm package (stdio MCP) | Standard MCP distribution; `npx` zero-install UX | ✓ Good — published as `@hudyv2298/ui-hierarchy-mcp` v0.1.0 |
-| `traverse.default ?? traverse` interop shim | Babel ESM/CJS interop is a known footgun | ✓ Good — covered by unit test that fails loudly on regression |
-| Per-tool inline `format` param (not shared in `tools/common.ts`) | Preserves wire-protocol self-description; default `markdown` preserves backward compat | ✓ Good (decided 06-08) |
-| TreeNode `attributes` literal-string-only in v1 | Keeps `Array<{name, value}>` shape simple at the wire boundary | ✓ Good (decided 06-10) |
-| `findByText` returns matched component/element node when an attribute matches (not a synthetic text node) | file:line points at the JSX site that carries the prop | ✓ Good (decided 06-10) |
-| Resolved component nodes use `line: 1` placeholder | ResolveResult exposes only absolutePath; true line lookup deferred | ⚠️ Revisit in v1.1 — file pointer alone satisfies v1 acceptance |
+| Decision                                                                                                  | Rationale                                                                              | Outcome                                                                               |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Multi-framework architecture, NextJsAdapter only in v1                                                    | Future-proof pluggability without paying the cost now                                  | ✓ Good — `core/`/`ir/` island stayed pristine; FrameworkAdapter has exactly 5 methods |
+| Query-only in v1 (no structural edits)                                                                    | Keep scope tight; agents already have `Edit` tools                                     | ✓ Good — tight scope, fast ship                                                       |
+| Parse on-demand (no cache in v1)                                                                          | Simpler, correctness guaranteed; cache when perf demands                               | ✓ Good — fresh `Analyzer` per call (ARCH-02) verified by mutation test                |
+| Both markdown and JSON output                                                                             | Markdown for LLM comprehension, JSON for programmatic traversal                        | ✓ Good — both surfaces exercised in UAT                                               |
+| Next.js App Router only in v1                                                                             | Pages Router is legacy; focus buys deeper quality                                      | ✓ Good                                                                                |
+| MCP bring-your-own-vision                                                                                 | Agents already have multimodal; MCP stays code-only                                    | ✓ Good                                                                                |
+| Ship as npm package (stdio MCP)                                                                           | Standard MCP distribution; `npx` zero-install UX                                       | ✓ Good — published as `ui-hierarchy-mcp` v0.1.0                                       |
+| `traverse.default ?? traverse` interop shim                                                               | Babel ESM/CJS interop is a known footgun                                               | ✓ Good — covered by unit test that fails loudly on regression                         |
+| Per-tool inline `format` param (not shared in `tools/common.ts`)                                          | Preserves wire-protocol self-description; default `markdown` preserves backward compat | ✓ Good (decided 06-08)                                                                |
+| TreeNode `attributes` literal-string-only in v1                                                           | Keeps `Array<{name, value}>` shape simple at the wire boundary                         | ✓ Good (decided 06-10)                                                                |
+| `findByText` returns matched component/element node when an attribute matches (not a synthetic text node) | file:line points at the JSX site that carries the prop                                 | ✓ Good (decided 06-10)                                                                |
+| Resolved component nodes use `line: 1` placeholder                                                        | ResolveResult exposes only absolutePath; true line lookup deferred                     | ⚠️ Revisit in v1.1 — file pointer alone satisfies v1 acceptance                       |
 
 ## Evolution
 

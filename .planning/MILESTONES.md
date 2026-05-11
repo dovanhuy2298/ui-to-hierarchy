@@ -8,7 +8,7 @@
 **Phases:** 1–6 (37 plans, ~85 tasks)
 **Source LOC:** ~4,890 TypeScript
 **Test results:** 256 unit + 20 integration + 8/8 UAT, all green
-**Released:** [`@hudyv2298/ui-hierarchy-mcp`](https://www.npmjs.com/package/@hudyv2298/ui-hierarchy-mcp) v0.1.0 on npm
+**Released:** [`ui-hierarchy-mcp`](https://www.npmjs.com/package/ui-hierarchy-mcp) v0.1.0 on npm
 
 **Delivered:** An MCP server (stdio, distributed via `npx`) that parses Next.js App Router projects into a structured UI component hierarchy and exposes it through four query tools so AI coding agents can ground image/description-based UI edits in exact file/component locations.
 
@@ -19,7 +19,7 @@
 3. **Full Next.js App Router coverage** — layout chains, route groups `(group)`, parallel `@slot`, intercepting `(.)/(..)/(...)` routes, dynamic `[slug]/[...rest]/[[...opt]]`, server/client runtime directives.
 4. **Production-grade hardening** — Babel `errorRecovery` so syntax errors become `TreeNode { kind: "error" }` (no silent skips); barrel re-export chase with cycle guard; tsconfig path aliases via `get-tsconfig`; HOC unwrap (`memo`, `forwardRef`, `observer`, `with*`, `*HOC`); Windows path discipline (forward-slash everywhere).
 5. **Real-client verified** — operator UAT 8/8 PASS via MCP Inspector + Claude Code; 18 security threats modeled and closed; integration suite spawns the published binary against 4 fixture projects (shadcn-barrels, nested-routes, pnpm-monorepo apps/web + apps/admin).
-6. **Published to npm and usable today** — `npx -y @hudyv2298/ui-hierarchy-mcp` works from any MCP client config.
+6. **Published to npm and usable today** — `npx -y ui-hierarchy-mcp` works from any MCP client config.
 
 ### Key Decisions
 
@@ -47,4 +47,4 @@
 
 ---
 
-*Next milestone: TBD — run `/gsd-new-milestone` to start.*
+_Next milestone: TBD — run `/gsd-new-milestone` to start._

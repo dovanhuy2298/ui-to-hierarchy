@@ -66,4 +66,4 @@ Captured in PROJECT.md Key Decisions table.
 
 - Last session: 2026-05-11 — v1.1 roadmap written
 - Next command: `/gsd-plan-phase 7`
-- Released artifact: `@hudyv2298/ui-hierarchy-mcp` v0.1.0 on npm
+- Released artifact: `ui-hierarchy-mcp` v0.1.0 on npm

@@ -145,7 +145,7 @@
 
 ### 5.1 Dynamic className defeats static analysis [INHERENT]
 
-- **Failure:** `` className={`bg-${color}-500`} `` / `className={variants[state]}` — can't resolve statically.
+- **Failure:** ``className={`bg-${color}-500`}`` / `className={variants[state]}` — can't resolve statically.
 - **Prevention:** Accept as fundamental limit. For `cn()`/`clsx()`/`cva()`/`twMerge()`, traverse all string-literal args. For `variants[state]`, attempt to resolve `variants` ObjectExpression and collect values (report "any of"). For template literals with interpolation, collect quasis, mark `{?}` positions. **Return both** resolved `classes: [...]` AND original `raw` source slice.
 - **Phase:** Phase 4.
 
@@ -255,6 +255,7 @@ Developers testing only on POSIX never see the failure. Regex anchors `^...$` in
 non-multiline mode eat `\r` differently depending on engine version.
 
 **Prevention:**
+
 1. After reading the file, detect dominant EOL: `const eol = content.includes('\r\n') ? '\r\n' : '\n';`
 2. Normalize to LF for in-memory processing: `const normalized = content.replace(/\r\n/g, '\n');`
 3. When re-serializing, restore original EOL: `output.replace(/\n/g, eol)`
@@ -272,9 +273,11 @@ non-multiline mode eat `\r` differently depending on engine version.
 **What goes wrong:**
 User has two separate sections managed by different tools, both using HTML comment
 markers. The injector's regex is:
+
 ```
 /<!-- ui-hierarchy-mcp:start -->[\s\S]*<!-- ui-hierarchy-mcp:end -->/
 ```
+
 This is greedy and will match from the FIRST start tag to the LAST end tag in the
 file, silently consuming everything between. If the user has manually placed content
 between a start/end pair and then added a second pair later, the greedy match destroys
@@ -287,14 +290,15 @@ greedy regex matches to end-of-file or the next unrelated end tag.
 `[\s\S]*` is maximally greedy. Developers test only the single-block case.
 
 **Prevention:**
+
 1. Use a non-greedy match: `[\s\S]*?` between markers.
 2. After splitting on the start marker, take only the text up to the first occurrence of the end marker — do not use a single spanning regex.
 3. Canonical approach (split-based, regex-free for the inner boundary):
    ```typescript
-   const START = '<!-- ui-hierarchy-mcp:start -->';
-   const END   = '<!-- ui-hierarchy-mcp:end -->';
+   const START = "<!-- ui-hierarchy-mcp:start -->";
+   const END = "<!-- ui-hierarchy-mcp:end -->";
    const startIdx = normalized.indexOf(START);
-   const endIdx   = normalized.indexOf(END, startIdx + START.length);
+   const endIdx = normalized.indexOf(END, startIdx + START.length);
    // startIdx === -1 → no block; append
    // startIdx !== -1 && endIdx === -1 → corrupt block; warn and abort
    // both found → splice [startIdx, endIdx + END.length]
@@ -341,6 +345,7 @@ The injector appends its block content verbatim, then writes the rest of the fil
 content which itself has a trailing newline.
 
 **Prevention:**
+
 1. When appending a new block (no prior block): ensure the file has exactly one `\n`
    before the block start, the block content itself, then exactly one trailing `\n`.
 2. When replacing an existing block: splice the exact byte range `[startIdx, endIdx + END.length]`
@@ -358,9 +363,11 @@ content which itself has a trailing newline.
 
 **What goes wrong:**
 The injector does:
+
 ```typescript
-await fs.writeFile(targetPath, newContent, 'utf8');
+await fs.writeFile(targetPath, newContent, "utf8");
 ```
+
 If the process is killed (Ctrl+C, OOM, power loss) after `writeFile` truncates the
 file but before it finishes writing, the user's `CLAUDE.md` is now a partial file —
 potentially empty or corrupt. There is no recovery path without git history.
@@ -371,22 +378,26 @@ truncation happens before the write completes.
 
 **Prevention:**
 Implement atomic write with temp-file-then-rename:
+
 ```typescript
-import { writeFile, rename, copyFile, unlink } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { writeFile, rename, copyFile, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { randomBytes } from "node:crypto";
 
 async function atomicWrite(targetPath: string, content: string): Promise<void> {
-  const tmpPath = join(dirname(targetPath), `.ui-hierarchy-mcp-${randomBytes(6).toString('hex')}.tmp`);
-  await writeFile(tmpPath, content, 'utf8');
+  const tmpPath = join(
+    dirname(targetPath),
+    `.ui-hierarchy-mcp-${randomBytes(6).toString("hex")}.tmp`,
+  );
+  await writeFile(tmpPath, content, "utf8");
   try {
     await rename(tmpPath, targetPath);
   } catch (err: unknown) {
     // EXDEV: cross-device link not permitted — temp file and target on different drives.
     // Happens on Windows when TEMP env points to a different drive (e.g., D:\Temp vs C:\project).
     // Also triggered by MSIX sandbox virtualizing AppData as a separate filesystem.
-    if ((err as NodeJS.ErrnoException).code === 'EXDEV') {
+    if ((err as NodeJS.ErrnoException).code === "EXDEV") {
       await copyFile(tmpPath, targetPath);
       await unlink(tmpPath);
     } else {
@@ -396,6 +407,7 @@ async function atomicWrite(targetPath: string, content: string): Promise<void> {
   }
 }
 ```
+
 Temp file must be in the SAME DIRECTORY as the target (same filesystem) so rename is
 atomic. Do not use `os.tmpdir()` — it may be on a different drive on Windows.
 
@@ -419,20 +431,24 @@ from "unexpected" ones (permission denied) is easily skipped under time pressure
 
 **Prevention:**
 Never swallow fs errors silently. Classify errors explicitly:
+
 ```typescript
-const EXPECTED_CODES = new Set(['ENOENT']); // file doesn't exist yet — create it
+const EXPECTED_CODES = new Set(["ENOENT"]); // file doesn't exist yet — create it
 try {
   await atomicWrite(path, content);
 } catch (err: unknown) {
   const code = (err as NodeJS.ErrnoException).code;
-  if (code === 'EACCES' || code === 'EPERM') {
-    console.error(`[ui-hierarchy-mcp] Cannot write to ${path}: permission denied.`);
+  if (code === "EACCES" || code === "EPERM") {
+    console.error(
+      `[ui-hierarchy-mcp] Cannot write to ${path}: permission denied.`,
+    );
     console.error(`  Run with elevated permissions or check file ownership.`);
     process.exit(1);
   }
   throw err; // surface unexpected errors
 }
 ```
+
 Return a structured result type from the writer that includes `{ ok: boolean, path, error? }` so the CLI layer can print a consolidated summary of which files succeeded and which failed, instead of aborting on the first error.
 
 **Warning signs:** `--init` exits 0 but some targets were silently skipped. User opens file and finds it unchanged.
@@ -457,10 +473,12 @@ Two defensible strategies — pick one and document it clearly:
 
 **Option A (Warn, don't replace):** On re-run, if the existing block content differs
 from what the tool would write, print:
+
 ```
 [ui-hierarchy-mcp] CLAUDE.md already contains an up-to-date block (version 1.1).
   The block appears to have been manually edited. Pass --force to overwrite.
 ```
+
 Only replace silently when the existing block is byte-for-byte the previous tool version
 (detected via the version comment inside the block — see pitfall 8.10).
 
@@ -491,18 +509,22 @@ Without version metadata inside the block, the tool cannot distinguish "user edi
 
 **Prevention:**
 Embed a version comment as the first line inside the block:
+
 ```
 <!-- ui-hierarchy-mcp:start -->
 <!-- version: 1.1 -->
 ...guide content...
 <!-- ui-hierarchy-mcp:end -->
 ```
+
 On re-run, extract the version comment. If `existingVersion < currentVersion` AND the
 rest of the block content equals the v{existingVersion} canonical template (i.e., not
 hand-edited), auto-upgrade silently and print:
+
 ```
 [ui-hierarchy-mcp] Updated CLAUDE.md guide from v1.0 → v1.1.
 ```
+
 If the block was hand-edited (content differs from canonical v{existingVersion}
 template), print a warning and skip upgrade unless `--force` is passed.
 
@@ -521,7 +543,7 @@ initial design, not a retrofit.
 ### 8.9 `--init` accidentally triggers during MCP server startup [CRITICAL]
 
 **What goes wrong:**
-An MCP client (Claude Code, Cursor) launches the package as `npx -y @hudyv2298/ui-hierarchy-mcp`.
+An MCP client (Claude Code, Cursor) launches the package as `npx -y ui-hierarchy-mcp`.
 The current `src/cli.ts` immediately calls `startServer()`. If `--init` argument
 handling is added carelessly (e.g., a top-level `if (process.argv.includes('--init'))`)
 that runs before the MCP server check, and if an MCP client somehow passes a flag that
@@ -537,10 +559,11 @@ Careless arg parsing in `cli.ts`. Forgetting that `cli.ts` is the entry point fo
 BOTH the MCP server AND the `--init` CLI subcommand.
 
 **Prevention:**
+
 1. Parse `process.argv` at the very top of `cli.ts`, before anything else:
    ```typescript
    const mode = process.argv[2];
-   if (mode === '--init') {
+   if (mode === "--init") {
      // All output goes to stdout (free — not an MCP session). Never call startServer().
      await runInit(process.argv.slice(3));
      process.exit(0);
@@ -575,6 +598,7 @@ running `--init` twice creates two rule files instead of one. Cursor loads both.
 `fs.writeFile` does not create parent directories. Filename instability.
 
 **Prevention:**
+
 1. Use `fs.mkdir(dir, { recursive: true })` before writing any file. This is safe even
    if the directory already exists.
 2. Fix the filename: `ui-hierarchy-mcp.mdc`. Never include timestamps, versions, or
@@ -608,6 +632,7 @@ If the user intended a repo-wide guide, the placement is wrong.
 almost never the git root.
 
 **Prevention:**
+
 1. Detect git root: walk up from `cwd` looking for `.git/`. If found and `cwd !== gitRoot`,
    print a warning:
    ```
@@ -631,13 +656,14 @@ was written to a nested subpackage directory, not the repo root.
 **What goes wrong:**
 User runs `--init --target cursor` in a directory with no `.cursor/`. The tool either:
 (a) silently creates `.cursor/rules/ui-hierarchy-mcp.mdc` in that directory — not
-    what the user wanted (they're in a temp folder, not their project root), or
+what the user wanted (they're in a temp folder, not their project root), or
 (b) refuses with a cryptic `ENOENT` message.
 
 **Why it happens:**
 No pre-flight check for "does this look like a project directory?"
 
 **Prevention:**
+
 1. Before writing any file, check for project indicators: `package.json`, `.git/`,
    `next.config.*`, `tsconfig.json`. If none found:
    ```
@@ -671,6 +697,7 @@ or as inline `⚠` comments).
 The risk: if the fix is implemented carelessly as a format change to the JSON renderer
 or to the Envelope shape, existing callers that parse `envelope.warnings` as a JSON
 array will break. Specifically:
+
 - Consumers that call with `format: "json"` and read `envelope.warnings` are relying
   on warnings being in the structured envelope, not embedded in the markdown string.
 - If warnings are accidentally appended to the `text` field of a JSON response, a
@@ -682,6 +709,7 @@ fixing the markdown path might accidentally change the shared envelope builder a
 affect the JSON path.
 
 **Prevention:**
+
 1. The fix is purely additive to the markdown renderer: change `renderMarkdown` from
    ignoring `_envelope` to reading `envelope.warnings` and appending them after the
    tree. The JSON path is untouched.
@@ -720,6 +748,7 @@ utility exists but must be applied at every emission point. New code paths added
 v1.1 (if any touch file paths) may forget the normalization.
 
 **Prevention:**
+
 1. All integration tests must include `expect(output).not.toContain('\\')` as a
    mandatory assertion before any snapshot check.
 2. Snapshot files committed to the repo must use forward slashes. If a developer
@@ -768,6 +797,7 @@ or `function` declaration line — this is what the agent needs to navigate to t
 component definition. Document this explicitly in the IR spec comment.
 
 **Prevention:**
+
 1. In the resolver post-processing step (currently at `src/core/Analyzer.ts:288-312`),
    after resolving to `result.absolutePath`, parse the resolved file and find the
    declaration node: walk AST for `ExportDefaultDeclaration` whose declaration is a
@@ -810,10 +840,10 @@ not affect other output surfaces. Pair with a regression test for `line: 1` plac
 
 ## Phase-to-Pitfall Mapping (v1.1)
 
-| v1.1 Phase | Pitfalls addressed |
-|---|---|
+| v1.1 Phase                                        | Pitfalls addressed                                                                                                                                                                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase 1 — `--init` file writer infrastructure** | 8.1 (CRLF), 8.2 (greedy regex), 8.3 (BOM), 8.4 (trailing newline), 8.5 (atomic write), 8.6 (permissions), 8.7 (hand-edit warning), 8.8 (versioning), 8.9 (MCP vs CLI mode), 8.10 (cursor dir + frontmatter), 8.11 (monorepo root), 8.12 (no-project UX) |
-| **Phase 2 — v1.0 polish** | 9.1 (warning surface), 9.2 (markdown integration tests), 9.3 (true line) |
+| **Phase 2 — v1.0 polish**                         | 9.1 (warning surface), 9.2 (markdown integration tests), 9.3 (true line)                                                                                                                                                                                |
 
 **Phase 1 owns 12 pitfalls** — the file mutation surface is the riskiest part of v1.1.
 Ship Phase 1 with a `--dry-run` flag that exercises the full path without writing, so
@@ -823,42 +853,44 @@ the end-to-end idempotency tests can run in CI without mutating any files.
 
 ## v1.1 Technical Debt Patterns
 
-| Shortcut | Cost | When acceptable |
-|---|---|---|
-| No `--dry-run` flag | Can't safely test in CI without file mutations | NOT acceptable — build `--dry-run` in Phase 1 |
-| Version hashing without stored canonical templates | Can't detect hand-edits vs old version | Acceptable in v1.1 if only current template is stored; store v1.0 hash as a constant |
-| `AGENTS.md` at cwd without git-root detection | Silently wrong in monorepos | NOT acceptable — always warn if cwd ≠ git root |
-| Skipping `.github/` creation for copilot target | ENOENT on first run | NOT acceptable — always `mkdir -p` |
-| Markdown warning surface as trailing text | Subtle but acceptable for markdown format | Acceptable — annotate the design decision in code |
+| Shortcut                                           | Cost                                           | When acceptable                                                                      |
+| -------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| No `--dry-run` flag                                | Can't safely test in CI without file mutations | NOT acceptable — build `--dry-run` in Phase 1                                        |
+| Version hashing without stored canonical templates | Can't detect hand-edits vs old version         | Acceptable in v1.1 if only current template is stored; store v1.0 hash as a constant |
+| `AGENTS.md` at cwd without git-root detection      | Silently wrong in monorepos                    | NOT acceptable — always warn if cwd ≠ git root                                       |
+| Skipping `.github/` creation for copilot target    | ENOENT on first run                            | NOT acceptable — always `mkdir -p`                                                   |
+| Markdown warning surface as trailing text          | Subtle but acceptable for markdown format      | Acceptable — annotate the design decision in code                                    |
 
 ---
 
 ## Confidence Assessment (v1.1 additions)
 
-| Area | Confidence | Basis |
-|---|---|---|
-| CRLF/LF/BOM handling | HIGH | Ansible blockinfile issue #85283; Node.js fs BOM docs; community reports |
-| Atomic write / EXDEV | HIGH | npm/write-file-atomic; Node.js issue #19077; Claude Code EXDEV issues #25476, #42119 |
-| Marker block design | HIGH | Ansible blockinfile pattern; git-changelog marker convention |
-| AGENTS.md placement | HIGH | Official Codex docs (developers.openai.com/codex/guides/agents-md) |
-| `.cursor/rules/*.mdc` format | HIGH | Cursor official docs (docs.cursor.com/context/rules); community forum patterns |
-| `.github/copilot-instructions.md` | HIGH | GitHub official docs (docs.github.com/copilot) |
-| Block versioning / upgrade UX | MEDIUM | No official standard; pattern derived from changelog tools + semantic versioning norms |
-| MCP vs CLI mode guard | HIGH | Direct analysis of existing `src/cli.ts` + pitfall 1.1 established in v1.0 research |
-| Markdown warnings fix | HIGH | Direct code analysis — `renderMarkdown` signature confirmed, JSON path confirmed separate |
-| True `line` implementation | HIGH | Babel `loc.start.line` 1-indexed confirmed; Analyzer.ts line 304 confirmed as placeholder |
+| Area                              | Confidence | Basis                                                                                     |
+| --------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| CRLF/LF/BOM handling              | HIGH       | Ansible blockinfile issue #85283; Node.js fs BOM docs; community reports                  |
+| Atomic write / EXDEV              | HIGH       | npm/write-file-atomic; Node.js issue #19077; Claude Code EXDEV issues #25476, #42119      |
+| Marker block design               | HIGH       | Ansible blockinfile pattern; git-changelog marker convention                              |
+| AGENTS.md placement               | HIGH       | Official Codex docs (developers.openai.com/codex/guides/agents-md)                        |
+| `.cursor/rules/*.mdc` format      | HIGH       | Cursor official docs (docs.cursor.com/context/rules); community forum patterns            |
+| `.github/copilot-instructions.md` | HIGH       | GitHub official docs (docs.github.com/copilot)                                            |
+| Block versioning / upgrade UX     | MEDIUM     | No official standard; pattern derived from changelog tools + semantic versioning norms    |
+| MCP vs CLI mode guard             | HIGH       | Direct analysis of existing `src/cli.ts` + pitfall 1.1 established in v1.0 research       |
+| Markdown warnings fix             | HIGH       | Direct code analysis — `renderMarkdown` signature confirmed, JSON path confirmed separate |
+| True `line` implementation        | HIGH       | Babel `loc.start.line` 1-indexed confirmed; Analyzer.ts line 304 confirmed as placeholder |
 
 ---
 
 ## Sources
 
 **v1.0 sources (archived)**
+
 - MCP spec and debugging guides (modelcontextprotocol.io)
 - Next.js official docs (parallel-routes, intercepting-routes, use-client, generateMetadata)
 - Babel `@babel/traverse` + GitHub issues (#14375, #7554, #10022)
 - TypeScript TSConfig Reference; pnpm workspaces; React forwardRef/memo docs
 
 **v1.1 sources**
+
 - [Ansible blockinfile CRLF idempotency bug — Issue #85283](https://github.com/ansible/ansible/issues/85283) — HIGH: canonical evidence that CRLF breaks marker-block detection
 - [Ansible blockinfile keeps adding block — Issue #45848](https://github.com/ansible/ansible/issues/45848) — HIGH: greedy-regex double-block failure mode documented
 - [Node.js fs.rename EXDEV cross-device — Issue #19077](https://github.com/nodejs/node/issues/19077) — HIGH: Windows cross-drive rename limitation
