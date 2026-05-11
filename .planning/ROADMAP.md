@@ -59,7 +59,13 @@ Plans:
 1. Calling any MCP tool with `format: "markdown"` when the analyzer produces warnings returns those warnings as an HTML-comment block at the top of the markdown output — not silently dropped as in v1.0
 2. The integration suite covers at least 2 fixture projects with `format: "markdown"`, asserting tree glyphs, `@` file:line separators, and absence of Windows backslashes in any path
 3. Resolved component nodes in any tool response carry the actual source declaration line (not `line: 1`), verifiable by inspecting a known fixture with a component declared past line 1
-   **Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — POLISH-01: renderMarkdown surfaces envelope.warnings as HTML-comment prefix
+- [ ] 08-02-PLAN.md — POLISH-03 part A: parseFile populates ParseResult.declLines map in existing parse pass
+- [ ] 08-03-PLAN.md — POLISH-03 part B: ResolveResult.local carries true line; Analyzer writes result.line; regression fixture
+- [ ] 08-04-PLAN.md — POLISH-02: integration suite exercises format:markdown against phase-05/micro + kitchen-sink
 
 ## Progress
 
