@@ -53,7 +53,27 @@
 
 ## Traceability
 
-(Filled by roadmap.)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INIT-01 | Phase 7 | Pending |
+| INIT-02 | Phase 7 | Pending |
+| INIT-03 | Phase 7 | Pending |
+| INIT-04 | Phase 7 | Pending |
+| INIT-05 | Phase 7 | Pending |
+| INIT-06 | Phase 7 | Pending |
+| INIT-07 | Phase 7 | Pending |
+| INIT-08 | Phase 7 | Pending |
+| INIT-09 | Phase 7 | Pending |
+| INIT-10 | Phase 7 | Pending |
+| INIT-11 | Phase 7 | Pending |
+| INIT-12 | Phase 7 | Pending |
+| INIT-13 | Phase 7 | Pending |
+| INIT-14 | Phase 7 | Pending |
+| POLISH-01 | Phase 8 | Pending |
+| POLISH-02 | Phase 8 | Pending |
+| POLISH-03 | Phase 8 | Pending |
+
+**Coverage:** 17/17 requirements mapped
 
 ---
 
