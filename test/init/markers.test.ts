@@ -154,7 +154,11 @@ describe("appendBlock", () => {
     expect(appendBlock("# Notes", NEW_BLOCK)).toBe("# Notes\n\n" + NEW_BLOCK);
   });
 
-  it("on empty existing string emits the two-newline separator prefix", () => {
-    expect(appendBlock("", NEW_BLOCK)).toBe("\n\n" + NEW_BLOCK);
+  it("on empty existing string returns newBlock without leading blank lines (IN-03)", () => {
+    expect(appendBlock("", NEW_BLOCK)).toBe(NEW_BLOCK);
+  });
+
+  it("on whitespace-only existing string returns newBlock without leading blank lines (IN-03)", () => {
+    expect(appendBlock("   \n\n", NEW_BLOCK)).toBe(NEW_BLOCK);
   });
 });

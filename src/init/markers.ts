@@ -86,7 +86,11 @@ export function replaceBlock(
  * Append `newBlock` to `existing` separated by exactly one blank line.
  * Collapses any number of trailing newlines (including zero) in
  * `existing` to a single `\n\n` separator. INIT-06.
+ *
+ * If `existing` is empty (or only whitespace), return `newBlock` directly
+ * to avoid leading blank lines on the empty-file path (IN-03).
  */
 export function appendBlock(existing: string, newBlock: string): string {
-  return existing.trimEnd() + "\n\n" + newBlock;
+  const trimmed = existing.trimEnd();
+  return trimmed.length === 0 ? newBlock : trimmed + "\n\n" + newBlock;
 }
