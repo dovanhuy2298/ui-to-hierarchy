@@ -1,501 +1,577 @@
-# ARCHITECTURE — ui-to-hierarchyMCP
+# Architecture Patterns — v1.1 Integration
 
-**Domain:** MCP stdio server — static-analysis code parser with pluggable framework adapters
-**Researched:** 2026-04-20
-**Confidence:** HIGH on MCP wiring, project layout, IR-plus-renderers pattern, and the adapter contract. MEDIUM on Next.js App Router route-file-to-entry edge cases (parallel routes, intercepting routes).
-
----
-
-## System Overview
-
-Classic **frontend → IR → backend** compiler architecture wrapped in an MCP stdio transport. Four horizontal layers, narrow contracts, swappable at layer 2 (adapters).
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│  TRANSPORT LAYER                                                          │
-│  MCP stdio server (@modelcontextprotocol/sdk)                             │
-│    • Server metadata + capabilities                                       │
-│    • ListTools handler (static tool manifest)                             │
-│    • CallTool handler → dispatches to tool implementations                │
-├──────────────────────────────────────────────────────────────────────────┤
-│  TOOL HANDLER LAYER  (one handler per MCP tool — thin glue)              │
-│  get_full_hierarchy │ focus_on │ find_by_text │ find_by_style            │
-│    validates input (zod) → calls core services                           │
-├──────────────────────────────────────────────────────────────────────────┤
-│  CORE LAYER (framework-agnostic)                                          │
-│    AdapterDispatcher  — detects project framework, returns adapter       │
-│    Pipeline Orchestrator (Analyzer)                                      │
-│      discoverEntry → parseFiles → resolveImports → buildGraph → IR       │
-│    IR (ComponentGraph) — stable schema, framework-agnostic               │
-│    Renderers: markdown / json  (IR → string; pluggable)                  │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ADAPTER LAYER  (pluggable; v1 ships NextJsAdapter only)                 │
-│  NextJsAdapter │ (future) ReactNativeAdapter │ VueAdapter │ SvelteAdapter│
-│    all adapters implement: detect / discoverEntries / resolveModule /    │
-│                            extractComponents / mapRouteToEntry           │
-├──────────────────────────────────────────────────────────────────────────┤
-│  INFRASTRUCTURE                                                          │
-│  @babel/parser + @babel/traverse │ fs (async) │ tsconfck (paths)         │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component                            | Responsibility                                                                                                  | Implementation                                                                                                                                                                         |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **MCP Server**                       | Wire stdio transport, register tools, route requests.                                                           | `@modelcontextprotocol/sdk` — use `McpServer.registerTool(name, { inputSchema: zod }, handler)` over low-level `Server.setRequestHandler(...)`. Zod gives runtime validation for free. |
-| **Tool Handlers**                    | Parse/validate input, call `AdapterDispatcher`, pipe IR through renderer. No parsing logic.                     | One file per tool in `src/tools/`. ~30 lines each.                                                                                                                                     |
-| **AdapterDispatcher**                | Ask each adapter `detect(root)` in priority order; return first match.                                          | Simple registry array. No DI container in v1.                                                                                                                                          |
-| **Pipeline Orchestrator (Analyzer)** | Sequence stages (discover → parse → resolve → graph → IR). Hold ASTs in memory for one tool call; GC on return. | One `Analyzer` per tool invocation. Matches "parse on-demand, no cache".                                                                                                               |
-| **FrameworkAdapter**                 | All framework-specific knowledge — nothing else knows "Next.js App Router".                                     | Interface + one concrete class per framework.                                                                                                                                          |
-| **IR (ComponentGraph)**              | Stable, typed, framework-agnostic tree. Contract between pipeline and renderers.                                | Plain TypeScript types. JSON-serializable directly.                                                                                                                                    |
-| **Renderers**                        | IR → output string. Pure functions.                                                                             | One file per format in `src/renderers/`.                                                                                                                                               |
-| **Babel infra**                      | AST parse + traverse.                                                                                           | `@babel/parser` with `["jsx", "typescript", ...]`; `@babel/traverse` visitors.                                                                                                         |
-| **Module resolver**                  | Resolve imports to absolute files.                                                                              | `tsconfck`/`get-tsconfig` + extension walk.                                                                                                                                            |
+**Domain:** MCP server CLI — agent onboarding + output surface polish
+**Researched:** 2026-05-11
+**Scope:** v1.1 features integration into existing `@hudyv2298/ui-hierarchy-mcp` architecture
 
 ---
 
-## Recommended Project Structure
+## Existing Architecture Map (v1.0 Baseline)
 
 ```
-ui-to-hierarch/
-├── src/
-│   ├── index.ts                    # bin entry — starts stdio MCP server (~5 lines)
-│   ├── server/
-│   │   ├── createServer.ts         # builds McpServer + registers tools
-│   │   └── transport.ts            # StdioServerTransport wiring
-│   ├── tools/                      # one file per MCP tool (thin glue)
-│   │   ├── getFullHierarchy.ts
-│   │   ├── focusOn.ts
-│   │   ├── findByText.ts
-│   │   ├── findByStyle.ts
-│   │   └── schemas.ts              # shared zod input schemas
-│   ├── core/
-│   │   ├── analyzer.ts             # Pipeline Orchestrator (per-call instance)
-│   │   ├── adapterDispatcher.ts    # registry: detect → adapter
-│   │   ├── moduleResolver.ts       # tsconfig paths + extension walk
-│   │   ├── astCache.ts             # in-memory, per-call (no disk cache v1)
-│   │   └── errors.ts               # typed error taxonomy
-│   ├── ir/
-│   │   ├── types.ts                # ComponentGraph, TreeNode, RenderFlow
-│   │   ├── build.ts                # ASTs + ComponentDefinitions → IR
-│   │   └── queries.ts              # focus, findByText, findByStyle on IR
-│   ├── adapters/
-│   │   ├── FrameworkAdapter.ts     # THE interface
-│   │   ├── next/
-│   │   │   ├── index.ts            # NextJsAdapter (implements FrameworkAdapter)
-│   │   │   ├── detect.ts
-│   │   │   ├── discoverEntries.ts  # walk app/ for layout|page|loading|error|not-found
-│   │   │   ├── routeMap.ts         # route string → entry chain
-│   │   │   └── useClientBoundary.ts
-│   │   └── README.md               # "how to write a new adapter"
-│   ├── extractors/                 # style extractors — composed, not inherited
-│   │   ├── tailwind.ts
-│   │   ├── cssModules.ts
-│   │   ├── inlineStyle.ts
-│   │   └── styledComponents.ts
-│   ├── renderers/
-│   │   ├── markdown.ts             # IR → markdown tree
-│   │   ├── json.ts                 # IR → JSON
-│   │   └── types.ts                # Renderer<T> = (ir, opts) => string
-│   └── utils/
-│       ├── jsx.ts                  # jsxNameToString, unwrapExpression, ...
-│       └── paths.ts                # rel(), absolute(), forward-slash normalize
-├── tests/
-│   ├── fixtures/                   # tiny Next.js projects to parse
-│   └── adapters/next/*.test.ts
-├── package.json                    # "bin": { "ui-to-hierarch": "dist/index.js" }, "type": "module"
-├── tsconfig.json                   # target ES2022, module Node16, strict
-└── README.md
+src/
+  cli.ts                        <- bin entry (3 lines: import + startServer())
+  mcp/
+    server.ts                   <- createServer() + startServer()
+    log.ts
+    errors.ts
+    tools/
+      index.ts                  <- ToolModule registry (tools array)
+      get-full-hierarchy.ts
+      focus-on.ts
+      find-by-text.ts
+      find-by-style.ts
+  core/
+    Analyzer.ts                 <- per-call orchestrator (ARCH-02)
+    babel-shim.ts
+    paths.ts
+    parser/
+    resolver/
+      index.ts                  <- resolveModule() entry; no-throw per D-12
+      barrel.ts
+      relative.ts
+      tsconfig.ts
+      node-modules.ts
+    render-flow/
+    extractors/
+  ir/
+    schema.ts                   <- TreeNode 9-kind union
+    envelope.ts                 <- Envelope { schemaVersion, warnings[], tree }
+    index.ts
+  adapters/
+    FrameworkAdapter.ts         <- 5-method interface
+    types.ts                    <- ResolveResult, RenderNode, ComponentDefinition, ...
+    next/
+      NextJsAdapter.ts
+      detect.ts
+      discover.ts
+      route-map.ts
+      segments.ts
+  renderers/
+    markdown.ts                 <- renderMarkdown(tree, _envelope): string
+    json.ts                     <- renderJson(tree, envelope): Envelope
+    index.ts
 ```
 
-### Structure Rationale
-
-- **`tools/` ≠ `core/`** — Tool handlers are transport glue; MUST stay trivial so new tools don't touch parsing logic.
-- **`adapters/` is an island** — Nothing outside `adapters/<framework>/` may import framework-specific logic. `core/` and `ir/` never mention "layout.tsx". Enforce via lint rule or directory convention.
-- **`extractors/` live outside adapters** — Tailwind, CSS Modules, etc. are framework-orthogonal. Next.js and Vue both use Tailwind. Composing at `ir/build.ts` means new adapters get style support for free. (Exception: RN `style={{...}}` vs web `className` — adapter's `extractComponents` decides which extractors to invoke.)
-- **`ir/` stands alone** — No imports from adapters, no Babel JSX types. Adding XML/Mermaid renderer later = 100-line change.
-- **`src/index.ts` is ~5 lines** — Just `createServer()` + `transport.connect()`. Fast `npx` startup.
+**Key invariant (ARCH-01 / D-11):** `src/core/`, `src/ir/`, `src/renderers/` have zero runtime imports from `src/adapters/`. Enforced by Biome `noRestrictedImports` + `test/architecture/island.test.ts`. New code in `src/init/` must respect this — init has no reason to touch `adapters/` anyway.
 
 ---
 
-## Adapter Contract (load-bearing)
+## Q1: CLI Subcommand Dispatch
+
+### Current state
+
+`src/cli.ts` is 3 lines:
+```typescript
+import { log } from "./mcp/log.js";
+import { startServer } from "./mcp/server.js";
+startServer().catch(...);
+```
+
+There is no CLI framework (`commander`, `yargs`, `meow`, etc.). The bin entry is a direct boot.
+
+### Recommended pattern: hand-rolled argv switch in cli.ts
+
+No framework needed. `--init` is a single subcommand with one optional flag (`--target`). A framework would add a runtime dep and increase install footprint for one `if` branch.
 
 ```typescript
-// src/adapters/FrameworkAdapter.ts
-import type { File as BabelFile } from "@babel/types";
+// src/cli.ts (v1.1 shape)
+import { log } from "./mcp/log.js";
+import { startServer } from "./mcp/server.js";
 
-export interface FrameworkAdapter {
-  /** Unique adapter id: "next", "react-native", "vue", ... */
-  readonly id: string;
+const args = process.argv.slice(2);
+const isInit = args.includes("--init");
 
-  /** Precedence when multiple adapters detect() true. Higher wins. */
-  readonly priority: number;
-
-  /**
-   * Does this adapter know how to analyze the project at `projectRoot`?
-   * Cheap file-existence checks only — Next: `next.config.*` or `app/` with `layout.{tsx,jsx}`.
-   * Do NOT parse code here.
-   */
-  detect(projectRoot: string): Promise<boolean>;
-
-  /**
-   * Enumerate the framework's entry points. Next.js App Router: every
-   * `app/**\/page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`,
-   * plus the route each one owns. ONLY method that knows file-naming conventions.
-   */
-  discoverEntries(projectRoot: string): Promise<Entry[]>;
-
-  /**
-   * Given an import specifier and the file it came from, return the absolute
-   * path. Null = not resolvable in project (node_modules/framework module).
-   * Adapters own this because path aliases live in per-framework configs.
-   */
-  resolveModule(
-    fromFile: string,
-    specifier: string,
-    ctx: ResolveContext,
-  ): Promise<string | null>;
-
-  /**
-   * Given a parsed AST, find every component definition and return a
-   * framework-agnostic description (exported name, render flow, children,
-   * Next "use client" flag, RN StyleSheet refs, Vue <script setup>, ...).
-   */
-  extractComponents(
-    file: ParsedFile,
-    extractors: StyleExtractorSet,
-  ): ComponentDefinition[];
-
-  /**
-   * Resolve a route (e.g. "/dashboard/[slug]") to the ordered chain of
-   * entry files composing it — Next.js: root layout → nested layouts → page,
-   * plus loading/error siblings relevant to the view.
-   * Returns null = route not found.
-   */
-  mapRouteToEntry(route: string, entries: Entry[]): EntryChain | null;
-}
-
-export interface Entry {
-  filePath: string; // absolute
-  kind: EntryKind;
-  route?: string; // "/dashboard/[slug]" for Next; undefined for RN screens
-  metadata?: Record<string, unknown>;
-}
-
-export type EntryKind =
-  | "root" // RN _layout.tsx, Vue App.vue
-  | "layout" // Next layout.tsx
-  | "page" // Next page.tsx, RN screen
-  | "loading"
-  | "error"
-  | "not-found"
-  | "screen"; // RN / Expo Router
-
-export interface EntryChain {
-  route: string;
-  layouts: Entry[]; // outermost → innermost
-  leaf: Entry; // page/screen
-  siblings?: { loading?: Entry; error?: Entry; notFound?: Entry };
-}
-
-export interface ResolveContext {
-  projectRoot: string;
-  tsconfigPaths?: Record<string, string[]>;
-}
-
-export interface ParsedFile {
-  filePath: string;
-  relPath: string; // repo-relative, forward slashes
-  source: string;
-  ast: BabelFile;
-}
-
-export interface StyleExtractorSet {
-  tailwind: (attrValue: unknown) => string | null;
-  cssModules: (importSpecifier: string, memberAccess: string) => string | null;
-  inlineStyle: (objectExpr: unknown) => Record<string, string>;
-  styledComponents: (taggedTemplate: unknown) => string | null;
-}
-```
-
-`ComponentDefinition`, `RenderFlow`, and `TreeNode` are **the IR** — already exist in the prototype (`generate-component-hierarchy.ts` lines 96–114). Lift into `src/ir/types.ts` verbatim, tighten `any` to proper Babel types, freeze the contract.
-
-### Why this contract is minimal and correct
-
-| Requirement                             | How the contract handles it                                                   |
-| --------------------------------------- | ----------------------------------------------------------------------------- |
-| v1 Next.js only, future RN/Vue/Svelte   | Five methods. Only `NextJsAdapter` in v1.                                     |
-| Entry discovery                         | `discoverEntries()` — framework enumerates its own conventions                |
-| File resolution                         | `resolveModule()` — owns tsconfig paths, aliases, extensions                  |
-| Component extraction                    | `extractComponents()` — owns `"use client"`, Vue SFC, RN StyleSheet           |
-| Route → entry mapping                   | `mapRouteToEntry()` — only method turning URL into files                      |
-| Style extractors shared across adapters | Passed INTO `extractComponents` as dependencies — not subclass responsibility |
-
-### What does NOT belong in the adapter
-
-- **Tree building** (`buildNodesFromJsx`, branch/conditional resolution) → `ir/build.ts`. Adapter feeds `ComponentDefinition`s; IR builder walks render flows identically across frameworks.
-- **Rendering** — adapters never touch output format.
-- **MCP protocol** — adapters never import `@modelcontextprotocol/sdk`.
-- **Caching** — out of scope for v1.
-
----
-
-## Data Flow
-
-### Request: tool call → response
-
-```
-Agent (Claude Code, Cursor, ...)
-     │  JSON-RPC over stdin
-     ▼
-StdioServerTransport (sdk)
-     │  CallToolRequest { name: "focus_on", arguments: {...} }
-     ▼
-McpServer.registerTool handler
-     │  (zod validates arguments)
-     ▼
-Tool handler  [src/tools/focusOn.ts]
-     │  { projectRoot, component, scope }
-     ▼
-AdapterDispatcher.resolveAdapter(projectRoot)
-     │  tries adapters in priority order → NextJsAdapter
-     ▼
-Analyzer (per-call instance)
-     │
-     ├─ stage 1: adapter.discoverEntries(root) → Entry[]
-     ├─ stage 2: parse entry files + transitively parse imports (per-call astCache)
-     ├─ stage 3: for each ParsedFile:
-     │             components = adapter.extractComponents(file, extractors)
-     │             resolve JSX tags via adapter.resolveModule()
-     ├─ stage 4: build IR (ComponentGraph) — walk render flows, inline same-project
-     │           components, mark recursion & duplicates
-     └─ stage 5: IR queries (focus / findByText / findByStyle)
-     │
-     ▼
-Renderer  [src/renderers/markdown.ts | json.ts]
-     │  returns content: [{ type: "text", text: "..." }]
-     ▼
-McpServer → StdioServerTransport → agent stdout
-```
-
-**Invariant:** only stages 1–3 call adapter methods; stages 4–5 are framework-agnostic. This is what makes the IR pluggable.
-
-### Project root discovery
-
-Checked in order:
-
-1. **Tool input `projectRoot` arg** (preferred) — every tool's zod schema includes optional `projectRoot: z.string()`. How MCP clients drive from any cwd.
-2. **Env var `UI_TO_HIERARCH_ROOT`** — set by client's MCP config.
-3. **Server cwd** (`process.cwd()`) — fallback.
-
-Do NOT auto-walk upward — surprising behavior can analyze wrong repo. Include resolved root in response metadata for agent sanity-check.
-
-### IR stability (future renderers trivial)
-
-```typescript
-// src/renderers/mermaid.ts — entire new file
-export function renderMermaid(root: TreeNode): string {
-  const lines = ["graph TD"];
-  walk(root, (node, parent) => {
-    if (parent) lines.push(`  ${parent.id} --> ${node.id}[${node.name}]`);
+if (isInit) {
+  // lazy import keeps MCP server code out of init path
+  const { runInit } = await import("./init/index.js");
+  const targetIdx = args.indexOf("--target");
+  const targetArg = targetIdx !== -1 ? args[targetIdx + 1] : undefined;
+  const targets = targetArg ? targetArg.split(",") : ["claude"];
+  await runInit({ targets }).catch((err: unknown) => {
+    process.stderr.write(JSON.stringify({ level: "error", msg: String(err) }) + "\n");
+    process.exit(1);
   });
+} else {
+  startServer().catch((err: unknown) => {
+    log.error("server error", { message: err instanceof Error ? err.message : String(err) });
+    process.exit(1);
+  });
+}
+```
+
+**Why dynamic `import()`:** Avoids loading Babel, MCP SDK, and zod into the init path. Init only needs `node:fs/promises` and `node:path`. The lazy import also avoids the `__TOOL_VERSION__` define requirement in non-build contexts (tsx dev run) — `startServer` is the only path that needs it.
+
+**Dispatch contract:**
+- Bare `node dist/cli.js` -> MCP server (existing behavior, zero change to `startServer`)
+- `node dist/cli.js --init` -> init handler, exits 0 on success
+- `node dist/cli.js --init --target claude,cursor` -> init with targets list
+- Unknown flags pass through to server path (existing MCP clients are unaffected)
+
+**Build impact:** `tsup.config.ts` entry remains `["src/cli.ts"]` — no change needed. `src/init/` is reachable from `cli.ts` so tsup bundles it automatically. No new entry points.
+
+---
+
+## Q2: Init Module Layout
+
+### Recommended: `src/init/` island
+
+```
+src/init/
+  index.ts          <- exports runInit({ targets }): Promise<void>
+  targets.ts        <- TARGET_MAP: record of target-id -> { paths, heading, frontmatter? }
+  mutator.ts        <- readSplice(filePath, content, markers): Promise<void>
+  template.ts       <- GUIDE_CONTENT: string constant (the injected markdown)
+```
+
+**Rationale for `src/init/` over `src/cli/init.ts`:**
+- `src/init/` enforces the same island discipline pattern used by `src/core/`, `src/ir/`, `src/renderers/`. One directory = one concern.
+- `src/cli/init.ts` implies init is a CLI concern — it's not. Init is a standalone write operation. A future HTTP transport or script invoker could call `runInit` directly.
+- The directory boundary makes it easy to assert the island doesn't import MCP/Babel internals.
+
+**Dependency rules for `src/init/`:**
+- MAY import: `node:fs/promises`, `node:path`, `node:os`
+- MUST NOT import: `src/mcp/`, `src/core/`, `src/ir/`, `src/adapters/`, `src/renderers/`
+- Zero external runtime deps (no `@modelcontextprotocol/sdk`, no `zod`, no Babel)
+
+**`runInit` signature:**
+```typescript
+export async function runInit(opts: {
+  targets: string[];          // validated against TARGET_MAP keys
+  cwd?: string;               // defaults to process.cwd()
+}): Promise<void>
+```
+
+`runInit` validates targets, resolves output paths relative to `cwd`, calls `readSplice` for each, and writes to stderr (not stdout — stdout is reserved for MCP JSON-RPC in server mode, but when init runs, server never starts, so this is moot; stderr is still correct for human-readable output).
+
+---
+
+## Q3: Template Asset — Constant vs File
+
+### Recommended: TypeScript string constant in `src/init/template.ts`
+
+Do NOT use a runtime `fs.readFile` for the template. Reasons:
+
+1. **tsup bundles `src/init/` into `dist/cli.js`** — a single JS file. There is no `dist/` subdirectory for assets. An `fs.readFile` would need a path relative to `import.meta.url`, which is fragile across dev (`tsx src/cli.ts`), built (`node dist/cli.js`), and global install (`npx`).
+
+2. **The template is small** (a few hundred bytes of markdown). No size reason to externalize.
+
+3. **`import.meta.url`-relative file access in tsup bundles** requires `import.meta.url` to resolve to the actual `.js` file's directory — which works in Node ESM but would require `__dirname` shims and `tsup`'s `metafile` option. This adds complexity for zero benefit.
+
+4. **String constant is zero-dep, zero-config, survives any tsup externalization** strategy. It is also testable as a plain string import.
+
+```typescript
+// src/init/template.ts
+export const GUIDE_CONTENT = `
+## ui-hierarchy-mcp — Usage Guide
+
+<!-- ui-hierarchy-mcp:start -->
+...
+<!-- ui-hierarchy-mcp:end -->
+`;
+```
+
+**If the template grows large** (>2KB), it can still be inlined as a template literal. No structural change needed.
+
+---
+
+## Q4: Target File Writers — Interface Design
+
+### Recommended: single generic `readSplice` + per-target config map
+
+Do NOT write per-target writer functions. The per-target differences are data, not logic:
+
+```typescript
+// src/init/targets.ts
+export interface TargetConfig {
+  id: string;
+  label: string;
+  /** Relative to cwd. For .cursor/rules the file name can be fixed. */
+  relativePath: string;
+  /** Heading to prepend when creating a new section. Null = no heading. */
+  sectionHeading: string | null;
+  /** If true, prepend YAML frontmatter block on new file creation. */
+  frontmatter: string | null;
+}
+
+export const TARGET_MAP: Record<string, TargetConfig> = {
+  claude:  { id: "claude",  label: "CLAUDE.md",                       relativePath: "CLAUDE.md",                           sectionHeading: "## ui-hierarchy-mcp",  frontmatter: null },
+  codex:   { id: "codex",   label: "AGENTS.md",                       relativePath: "AGENTS.md",                           sectionHeading: "## ui-hierarchy-mcp",  frontmatter: null },
+  cursor:  { id: "cursor",  label: ".cursor/rules/ui-hierarchy.mdc",   relativePath: ".cursor/rules/ui-hierarchy.mdc",       sectionHeading: null,                   frontmatter: "---\ndescription: ui-hierarchy-mcp usage\nglobs:\nalwaysApply: true\n---\n" },
+  copilot: { id: "copilot", label: ".github/copilot-instructions.md",  relativePath: ".github/copilot-instructions.md",      sectionHeading: "## ui-hierarchy-mcp",  frontmatter: null },
+};
+```
+
+```typescript
+// src/init/mutator.ts
+const START = "<!-- ui-hierarchy-mcp:start -->";
+const END   = "<!-- ui-hierarchy-mcp:end -->";
+
+export async function readSplice(
+  filePath: string,
+  newContent: string,
+  heading: string | null,
+  frontmatter: string | null,
+): Promise<"created" | "updated" | "noop">
+```
+
+**Algorithm in `readSplice`:**
+1. Try `fs.readFile(filePath)`. If ENOENT, create parent dirs, write fresh file (prepend `frontmatter` if set, then marker block).
+2. If file exists, scan for `START` + `END` markers.
+3. If markers found: splice the content between them (idempotent — same content = "noop", different content = "updated").
+4. If markers NOT found: append the block (with `heading` if set) to the existing file.
+
+**Why this handles both `.cursor/rules/*.mdc` and plain markdown:** The frontmatter distinction is purely at creation time. For existing files both formats use the same marker-splice algorithm. The `heading` field handles whether a section header is injected before the markers.
+
+**Directory creation:** `fs.mkdir(dir, { recursive: true })` before write — covers `.cursor/rules/` which may not exist.
+
+---
+
+## Q5: Markdown Warnings Surfacing
+
+### Current state
+
+`renderMarkdown(tree, _envelope): string` — the `_envelope` parameter is named with `_` prefix, explicitly ignoring it. Warnings are dropped silently.
+
+`renderJson(tree, envelope): Envelope` — passes the whole envelope through including `envelope.warnings[]`.
+
+### Recommended change
+
+Modify `renderMarkdown` signature to actually consume `envelope.warnings`:
+
+```typescript
+// src/renderers/markdown.ts — modified export
+export function renderMarkdown(tree: TreeNode, envelope: Envelope): string {
+  const lines: string[] = [];
+  // Warnings block (if any) — rendered before the tree
+  if (envelope.warnings.length > 0) {
+    lines.push("<!-- warnings:");
+    for (const w of envelope.warnings) lines.push(`  - ${w}`);
+    lines.push("-->");
+    lines.push("");
+  }
+  walk(tree, "", true, true, lines);
   return lines.join("\n");
 }
 ```
 
-No changes to adapters, pipeline, tools, or MCP layer.
+**Placement: above the tree, as an HTML comment block.** Rationale:
+- Agents reading markdown see warnings before the tree, not after — context before data.
+- HTML comment syntax is invisible to most markdown renderers but readable by LLMs in raw form.
+- Alternative (footer): warnings after a long tree get truncated by token windows.
+- Alternative (`>` blockquote): visually noisier, harder to strip programmatically.
+
+**Affect on JSON output:** None. `renderJson` already includes `envelope.warnings` in the returned envelope. No change to `src/renderers/json.ts`.
+
+**Affect on existing tests:**
+- `test/renderers/markdown.test.ts` uses fixtures from `test/fixtures/ir/` — all four fixtures have `warnings: []`. Existing snapshots are not invalidated by this change.
+- The `_envelope` rename to `envelope` is the only call-site signature change. The four MCP tool handlers call `renderMarkdown(tree, envelope)` — the argument was already passed, just ignored. No call-site changes needed.
+- New test needed: a fixture with `warnings: ["some warning"]` to assert the HTML comment block appears in output and precedes the tree root line.
+
+**Blast radius: minimal.** One function body change in `src/renderers/markdown.ts`. No type changes. No IR changes.
 
 ---
 
-## Architectural Patterns
+## Q6: True `line` for Resolved Component Nodes
 
-### Pattern 1: Strategy / Adapter for frameworks
+### Root cause
 
-Single `FrameworkAdapter` interface, one impl per framework, chosen at runtime by `detect()`. New framework = one new directory, zero changes to core. Risk: resist putting framework-agnostic logic into an adapter "for convenience".
-
-### Pattern 2: IR with pluggable renderers (LLVM/Rustc/Pandoc pattern)
-
-Compile many frontends (frameworks) → one IR → many backends (markdown, JSON, XML, Mermaid). O(N+M) vs O(N×M). Adding an IR field is a versioned contract change — do cautiously.
-
-### Pattern 3: Per-call pipeline (no global state)
-
-Every tool call creates fresh `Analyzer` with fresh AST cache, runs pipeline, returns, GC'd. Impossible to get stale results; trivially thread-safe. Matches PROJECT.md's no-cache-in-v1 constraint.
-
-### Pattern 4: Composition over inheritance for extractors
-
-Style extractors passed INTO `extractComponents` as `StyleExtractorSet`, not implemented as adapter subclasses. Next.js and Vue both get Tailwind from one implementation. Extractor API must stay framework-neutral.
-
----
-
-## Build Order (roadmap-facing)
-
-Top → bottom = dependency order; same-level items parallel.
-
-```
-Level 0 (foundations, parallel):
-  ├─ IR types                    (src/ir/types.ts)   — port from prototype
-  ├─ Babel infra & utilities     (src/utils/*)
-  └─ Project scaffolding         (package.json, tsconfig.json, bin entry)
-
-Level 1 (needs IR types):
-  ├─ FrameworkAdapter interface  (src/adapters/FrameworkAdapter.ts)
-  ├─ Module resolver             (src/core/moduleResolver.ts)
-  ├─ Style extractors            (src/extractors/*)
-  └─ Renderers                   (src/renderers/markdown.ts, json.ts)
-        ↑ CAN be unit-tested against hand-written IR fixtures
-          without any adapter yet — build early to de-risk output
-
-Level 2 (needs adapter interface + extractors + resolver):
-  └─ NextJsAdapter               (src/adapters/next/*)
-        ├─ detect()                    (trivial, hours)
-        ├─ discoverEntries()           (fs walk of app/, days)
-        ├─ resolveModule()             (wraps moduleResolver + Next aliases)
-        ├─ extractComponents()         (port prototype analyzeFile, days)
-        └─ mapRouteToEntry()           (layout-chain composition, non-trivial)
-
-Level 3 (needs adapter + IR + renderers):
-  ├─ AdapterDispatcher           (src/core/adapterDispatcher.ts) — tiny
-  ├─ Analyzer / Pipeline         (src/core/analyzer.ts)
-  └─ IR query module             (src/ir/queries.ts)
-
-Level 4 (needs Analyzer):
-  ├─ MCP server + registerTool wiring (src/server/*)
-  └─ Tool handlers                    (src/tools/*)
-
-Level 5 (whole system exists):
-  └─ Integration tests against fixture Next.js projects
+In `src/core/Analyzer.ts`, function `resolveComponentCallsites()` around line 299:
+```typescript
+if (result.ok && result.kind === "local") {
+  return {
+    ...tree,
+    children: newChildren,
+    file: toForwardSlash(result.absolutePath),
+    line: 1,   // <- placeholder: ResolveResult carries no line info
+  };
+}
 ```
 
-**Strategic notes:**
+`ResolveResult` is defined in `src/adapters/types.ts` line 259:
+```typescript
+export type ResolveResult =
+  | { ok: true; kind: "local"; absolutePath: string }
+  | { ok: true; kind: "external"; packageName: string }
+  | ...
+```
 
-- **Renderers at Level 1** is counterintuitive but correct — pure IR→string; validate against fixtures before the parser exists. Any later bugs are adapter bugs.
-- **`extractComponents` is the longest single task** — effectively a port of `analyzeFile` + `buildNodesFromJsx` from prototype.
-- **`mapRouteToEntry` is the riskiest Next.js-specific task** — route groups `(auth)`, parallel `@slot`, intercepting `(.)foo`, dynamic `[slug]`/`[...rest]`/`[[...opt]]`. Likely deserves its own sub-phase.
-- **MCP layer is thin** — don't over-allocate; it's mostly wiring once Analyzer works.
+The `local` variant has only `absolutePath` — no `line` or `column`.
 
----
+### Recommended fix: add `line` to `ResolveResult` local variant
 
-## Error Modes
+```typescript
+// src/adapters/types.ts — modified
+export type ResolveResult =
+  | { ok: true; kind: "local"; absolutePath: string; line: number }  // add line
+  | { ok: true; kind: "external"; packageName: string }
+  | { ok: false; kind: "cycle"; chain: string[] }
+  | { ok: false; kind: "not-found"; specifier: string; tried: string[] }
+  | { ok: false; kind: "ambiguous"; specifier: string; candidates: string[] };
+```
 
-Query-only, best-effort parser. A single bad file must never crash the whole tool call. Typed taxonomy in `src/core/errors.ts`:
+The `line` is the line of the **export declaration** in the resolved file, not the import site. This is the most useful value: it points the agent directly to where the component is defined.
 
-| Failure mode                                                                                                | Where handled                                  | Behavior                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Syntax error** in user file                                                                               | `parseFile()` catches Babel error              | Log warning to **stderr** (not stdout). Emit `TreeNode { kind: "error", name: "[unparseable]", fileRel, text: <msg> }`. Pipeline continues. |
-| **Unresolved import**                                                                                       | `resolveModule()` returns null                 | Treat as external — emit framework node with `module: "<unresolved>"`, no children.                                                         |
-| **Dynamic component** (`<Components[key] />`, `<A ?? B />`, `React.createElement(type)` with variable type) | Component resolver in `ir/build.ts`            | Emit `TreeNode { kind: "dynamic", name: "<dynamic: " + sourceSlice + ">" }`.                                                                |
-| **Missing entry file** (route doesn't exist)                                                                | `mapRouteToEntry()` returns null               | Tool returns MCP error response with `isError: true` + helpful message listing discovered routes.                                           |
-| **Project root not a supported framework**                                                                  | `AdapterDispatcher` finds no match             | MCP error response: `"No framework adapter matched <root>. Supported: next"`.                                                               |
-| **Recursion** (component includes itself)                                                                   | Already in prototype via `stack.includes(key)` | Mark `recursive: true`, don't recurse.                                                                                                      |
-| **Cross-component reuse** (same component twice)                                                            | Prototype's `expandedComponents` set           | Mark second `duplicate: true`, no children.                                                                                                 |
-| **FS error** (permissions, mid-parse delete)                                                                | Top-level try/catch in `Analyzer.run()`        | Wrap in typed `AnalyzerError`, surface as MCP error.                                                                                        |
+### How to populate `line` in the resolver
 
-**Iron rule:** MCP server never exits. Only MCP JSON-RPC frames to stdout. All logs → stderr.
+The resolver (`src/core/resolver/index.ts`) already parses the resolved file to chase barrels (`parseFile(ctx, fileResult.absolutePath)`). After confirming `foundLocal = true`, it has the parsed AST. A second targeted traverse finds the declaration line:
 
----
+```typescript
+// In doResolve(), after foundLocal = true is confirmed:
+let declarationLine = 1; // fallback
+traverse(parsed.ast, {
+  FunctionDeclaration(p) {
+    if (p.node.id?.name === importedName) declarationLine = p.node.loc?.start.line ?? 1;
+  },
+  VariableDeclarator(p) {
+    if (t.isIdentifier(p.node.id) && p.node.id.name === importedName)
+      declarationLine = p.node.loc?.start.line ?? 1;
+  },
+  ClassDeclaration(p) {
+    if (p.node.id?.name === importedName) declarationLine = p.node.loc?.start.line ?? 1;
+  },
+  ExportDefaultDeclaration(p) {
+    if (importedName === "default") declarationLine = p.node.loc?.start.line ?? 1;
+  },
+});
+return { ok: true, kind: "local", absolutePath: fileResult.absolutePath, line: declarationLine };
+```
 
-## Anti-Patterns
+**Babel AST guarantees `loc`** when `@babel/parser` is invoked without `{ loc: false }`. The existing `parseFile` does not disable `loc`, so `node.loc.start.line` is always populated.
 
-### AP1: Framework knowledge in `core/` or `ir/`
+**Barrel chase path:** `chaseBarrel` in `src/core/resolver/barrel.ts` returns a `ResolveResult`. It must also add `line` when it resolves to a local file. The barrel chase ends when `foundLocal` is true in the target file — same pattern applies.
 
-- **Problem:** An `if (adapter.id === "next") ...` in `ir/build.ts` to handle `"use client"` or route groups. Five such conditionals and the architecture is no longer pluggable.
-- **Do instead:** Extend `ComponentDefinition` / `Entry` with normalized fields (e.g. `clientBoundary: boolean`); adapter populates; core consumes normalized field.
+### Blast radius: all call sites of `ResolveResult { ok: true; kind: "local" }`
 
-### AP2: Per-adapter rendering
+Every location that reads `result.absolutePath` from a successful local resolution:
 
-- **Problem:** `adapter.renderMarkdown(ir)` — "the adapter knows best." N×M output implementations; new format changes every adapter.
-- **Do instead:** Renderers consume IR only. If a format genuinely needs framework metadata, push into IR as optional fields.
+| File | Location | Change required |
+|------|----------|-----------------|
+| `src/core/Analyzer.ts` | `resolveComponentCallsites()` line ~300 | Change `line: 1` to `line: result.line` |
+| `src/core/resolver/index.ts` | `resolveSpecifierToFile()` — two return sites emitting `{ ok: true, kind: "local", absolutePath: fwd }` | Add `line: 1` structural placeholder — these are intermediate results not consumed by `resolveComponentCallsites` directly |
+| `src/core/resolver/barrel.ts` | `chaseBarrel()` — return sites | Add `line` from declaration traverse |
+| `src/adapters/next/NextJsAdapter.ts` | `resolveModule()` delegates to `coreResolveModule` — no direct construction | No change at this layer |
+| `test/core/resolver/barrel.test.ts` | Assertions on `result` objects | Add `line` to expected shapes or switch to `toMatchObject()` |
+| `test/core/resolver/relative.test.ts` | Assertions on `result` objects | Same — add `line` or use `toMatchObject()` |
+| `test/core/resolver/tsconfig-paths.test.ts` | Assertions on `result` objects | Same |
 
-### AP3: Using `McpServer` and `Server` interchangeably
+**Specifier-only results (`resolveSpecifierToFile`):** These are intermediate results used as inputs to barrel-chase and `doResolve`. They are never returned as the final `ResolveResult` to `resolveComponentCallsites` — only `doResolve`'s return value is. So `resolveSpecifierToFile` can keep `line: 1` as a structural placeholder without behavioral regression.
 
-- **Problem:** Copy `server.setRequestHandler(CallToolRequestSchema, ...)` into a file that imports `McpServer` → `setRequestHandler does not exist`. (SDK issue #642.)
-- **Do instead:** Pick `McpServer.registerTool` with zod input schemas. SDK validates inputs for free. Drop to `Server` only if needed (not in v1).
+**The critical path is:** `doResolve` return when `foundLocal` -> `chaseBarrel` returns -> `resolveComponentCallsites` receives and writes to `TreeNode.line`.
 
-### AP4: stdout for logs
-
-- **Problem:** `console.log("parsing file...")` corrupts stdio transport silently.
-- **Do instead:** `console.error(...)` or route to stderr/file.
-
-### AP5: Cross-call AST caching in v1
-
-- **Problem:** "Parsing is slow, let's keep a module-level `Map<filePath, AST>`." Cache-invalidation bugs (stale tree after user edit) break the value prop.
-- **Do instead:** Per-call astCache (many files reference same imports), discard on return. Cross-call cache behind same `Analyzer` interface later if measurement shows need.
-
----
-
-## Integration Points
-
-### External
-
-| Service                                     | Integration                                        | Notes                                                                   |
-| ------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
-| MCP clients (Claude Code, Cursor, Continue) | JSON-RPC 2.0 over stdio via `StdioServerTransport` | Clients launch per MCP config, typically `npx ui-to-hierarch`           |
-| npm registry                                | Distribution                                       | `package.json` `"bin"` + published package. UX: `npx -y ui-to-hierarch` |
-
-### Internal boundaries
-
-| Boundary            | Communication                                                   |
-| ------------------- | --------------------------------------------------------------- |
-| tool handler ↔ core | Direct typed function call                                      |
-| core ↔ adapter      | Calls on `FrameworkAdapter` interface (only `Analyzer` crosses) |
-| adapter ↔ extractor | Adapter calls extractor fn with Babel nodes; one-way            |
-| pipeline ↔ IR       | Pipeline builds IR, hands to renderer; IR is JSON-serializable  |
-| server ↔ transport  | Via SDK abstraction (never touch stdio directly)                |
+**`column` field:** Not recommended for v1.1. The v1.0 wire protocol has no column on `TreeNode` (not in `src/ir/schema.ts`), and adding column to `ResolveResult` without surfacing it on `TreeNode` gains nothing. Defer to v1.2 if agents need column-level precision.
 
 ---
 
-## Scaling Considerations
+## Q7: Markdown Integration Tests
 
-| Scale                           | What matters                   | Adjustment                                                                            |
-| ------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
-| Tiny Next.js (< 50 files)       | Nothing — parse-per-call ~50ms | Ship as-is                                                                            |
-| Medium (~500 files, typical v1) | First call 1–3s                | Fine. Parse in parallel via `Promise.all`                                             |
-| Large (~5000 files, monorepo)   | Parse time user-visible        | Add **optional** on-disk AST cache keyed by `(filePath, mtime)` behind same interface |
-| Huge (~50k files)               | Memory per call                | Parse only transitive closure from queried route, not whole project                   |
+### Current state
 
-**Don't add caching in v1 even if it seems free.** Correctness > perf at v1 scale.
+`test/integration/mcp-e2e.test.ts` spawns `dist/cli.js` via `StdioClientTransport`. Every tool invocation passes `format: "json"` (hardcoded in all four `FixtureInvariants.argsFor()` methods). The test parses the response as JSON via `EnvelopeSchema.parse()` and asserts structural invariants.
+
+The unit-level markdown tests (`test/renderers/markdown.test.ts`) call `renderMarkdown` directly with IR fixtures — they do not exercise the full MCP request/response pipeline.
+
+### Assessment: existing harness supports format: "markdown" with minimal changes
+
+The integration test spawns the binary and calls tools via the MCP client. The response is a `{ content: [{ type: "text", text: string }] }` object. For `format: "json"`, `text` is a JSON string that gets parsed. For `format: "markdown"`, `text` is a markdown string.
+
+A markdown integration test case does NOT need `EnvelopeSchema.parse()`. Instead:
+- Assert `result.isError` is falsy
+- Assert `result.content[0].text` is a non-empty string
+- Assert structural markers: ` @ ` (file:line separator), tree glyphs (`├──` / `└──`), the root component name
+
+### Recommended approach: add markdown assertions inside the existing `makeFixtureSuite` factory
+
+Rather than a new harness, extend `makeFixtureSuite` with an additional `it` block per fixture. This keeps all per-fixture integration state (client, transport, stderrChunks) in scope:
+
+```typescript
+// In mcp-e2e.test.ts, inside makeFixtureSuite — add after the existing tool loop:
+it(
+  "get_full_hierarchy: markdown format returns tree glyphs and file:line",
+  async () => {
+    const result = await client.callTool({
+      name: "get_full_hierarchy",
+      arguments: { ...invariants.argsFor("get_full_hierarchy", fixturePath), format: "markdown" },
+    });
+    expect(result.isError).toBeFalsy();
+    const text = (result as { content: Array<{ type: string; text?: string }> })
+      .content.find(c => c.type === "text")?.text ?? "";
+    expect(text).toContain(" @ ");
+    expect(text.length).toBeGreaterThan(10);
+    // At least one tree glyph present:
+    expect(text.match(/[├└]/)).toBeTruthy();
+  },
+  30_000,
+);
+```
+
+**Why not snapshot the full markdown output in the integration suite:** The integration fixture projects' exact tree output will change whenever the parser changes. Snapshot-asserting the full markdown would make every parser improvement fail the integration test. Structural assertions (glyphs, ` @ ` separator, non-empty) are more durable.
+
+**Snapshot tests for markdown format belong in `test/renderers/markdown.test.ts`** (already exist for IR fixtures). For the new warnings-surfacing behavior, add an IR fixture with `warnings: ["w1"]` and snapshot-assert it.
+
+**New fixture needed:** `test/fixtures/ir/with-warnings.ts` — one fixture that produces a non-empty `warnings` array to test the HTML comment block in markdown output.
 
 ---
 
-## Confidence Assessment
+## Component Boundaries — New vs Modified
 
-| Claim                                                              | Confidence | Basis                                                                                                                                                             |
-| ------------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `McpServer.registerTool` with zod is recommended wiring            | HIGH       | Official SDK docs, PR #816, DeepWiki walkthrough                                                                                                                  |
-| `Server` + `setRequestHandler` still works but is low-level        | HIGH       | Official docs, Issue #642                                                                                                                                         |
-| Stdout must stay clean on stdio transport                          | HIGH       | Universal MCP guidance                                                                                                                                            |
-| IR-with-pluggable-renderers maps to this problem                   | HIGH       | LLVM, Rustc, Pandoc all use this                                                                                                                                  |
-| Adapter contract covers all v1-planned frameworks                  | MEDIUM     | Validated against Next.js + RN/Expo (prototype proves RN). Vue SFC / Svelte stores may push small additions to `extractComponents` — no changes to 5-method shape |
-| Parse-on-demand under 3s for medium projects                       | MEDIUM     | Prototype runs fast on RN/Expo; unvalidated on large Next.js monorepos                                                                                            |
-| `mapRouteToEntry` with parallel/intercepting routes is non-trivial | HIGH       | Official Next.js docs document 5+ special route folder types                                                                                                      |
+### New components (v1.1)
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| Init orchestrator | `src/init/index.ts` | `runInit()` — validates targets, iterates, writes |
+| Target config | `src/init/targets.ts` | `TARGET_MAP` data, `TargetConfig` interface |
+| File mutator | `src/init/mutator.ts` | `readSplice()` idempotent marker-splice writer |
+| Template | `src/init/template.ts` | `GUIDE_CONTENT` string constant |
+| Warnings fixture | `test/fixtures/ir/with-warnings.ts` | IR fixture with non-empty warnings array |
+
+### Modified components (v1.1)
+
+| Component | Path | Change | Risk |
+|-----------|------|--------|------|
+| CLI entry | `src/cli.ts` | Argv dispatch (if/else + dynamic import) | Low — existing path unchanged |
+| ResolveResult type | `src/adapters/types.ts` | Add `line: number` to local variant | Medium — TypeScript-enforced blast radius |
+| doResolve | `src/core/resolver/index.ts` | Populate `line` from declaration traverse | Medium — new traverse pass in existing function |
+| resolveSpecifierToFile | `src/core/resolver/index.ts` | Add `line: 1` to satisfy updated type | Low — structural only |
+| chaseBarrel | `src/core/resolver/barrel.ts` | Add `line` to terminal resolution | Medium — must audit barrel.ts return sites |
+| resolveComponentCallsites | `src/core/Analyzer.ts` | Change `line: 1` to `line: result.line` | Low — one field change |
+| renderMarkdown | `src/renderers/markdown.ts` | Consume `envelope.warnings` | Low — additive body change |
+| Integration test | `test/integration/mcp-e2e.test.ts` | Add markdown format assertions | Low — additive |
+| Resolver unit tests | `test/core/resolver/*.test.ts` | Update local result assertions for `line` | Low — update toMatchObject calls |
+
+---
+
+## Data Flow Changes
+
+### Init flow (new)
+
+```
+process.argv
+  -> cli.ts (--init detected)
+  -> dynamic import("./init/index.js")
+  -> runInit({ targets, cwd })
+  -> targets.ts: TARGET_MAP lookup + validation
+  -> for each target: mutator.ts readSplice(resolvedPath, GUIDE_CONTENT, heading, frontmatter)
+    -> node:fs/promises: readFile -> splice -> writeFile
+  -> process.stderr: human-readable success/skip/error messages
+  -> process.exit(0)
+```
+
+No MCP SDK, no Babel, no zod touched.
+
+### True line flow (modified)
+
+```
+resolveComponentCallsites() [Analyzer.ts]
+  -> adapter.resolveModule() -> coreResolveModule()
+  -> doResolve() [resolver/index.ts]
+    -> resolveSpecifierToFile() -> { ok:true, kind:"local", absolutePath, line:1 }
+    -> parseFile(ctx, absolutePath) [already done for barrel check]
+    -> traverse AST for declaration line [NEW]
+    -> return { ok:true, kind:"local", absolutePath, line: N }  [NEW field]
+  OR:
+    -> chaseBarrel() [barrel.ts]
+    -> ... -> final file parse -> declaration line [NEW]
+    -> return { ok:true, kind:"local", absolutePath, line: N }
+  <- result.line consumed: TreeNode.line = result.line  [was hardcoded: 1]
+```
+
+### Markdown warnings flow (modified)
+
+```
+MCP tool handler
+  -> Analyzer.query()
+  -> envelope { warnings: [...] }
+  -> renderMarkdown(tree, envelope)  [was: _envelope ignored]
+  -> if envelope.warnings.length > 0: prepend HTML comment block
+  -> return markdown string with warnings above tree
+```
+
+---
+
+## Recommended Build Order
+
+Dependencies between the four v1.1 items:
+
+```
+(D) --init subcommand    -- fully independent
+(A) true line fix        -> (B) markdown integration tests (lines now real)
+(C) warnings surface     -> (B) markdown integration tests (warnings assertions)
+```
+
+**Sequence:**
+
+**Step 1 — `--init` subcommand** (independent, zero regression risk)
+Create `src/init/` island. Extend `src/cli.ts` with argv dispatch. Write unit tests for `readSplice` (marker present/absent/idempotent) and `runInit` (target validation, file creation, directory creation for `.cursor/rules/`). Validates new cli.ts dispatch pattern without touching any existing MCP or parser code.
+
+**Step 2 — True `line` fix**
+Start at `src/adapters/types.ts` (type change) — TypeScript immediately surfaces all sites requiring `line`. Fix `resolveSpecifierToFile` (add `line: 1` placeholder), then `doResolve` (add declaration traverse), then `chaseBarrel` (propagate line). Finally update `resolveComponentCallsites` in `Analyzer.ts` to consume `result.line`. Run `pnpm typecheck` between each file change to verify blast radius is fully addressed. Update resolver unit tests last.
+
+**Step 3 — Markdown warnings surface**
+Rename `_envelope` to `envelope` in `renderMarkdown`. Add the warnings block render. Add `test/fixtures/ir/with-warnings.ts`. Update `test/renderers/markdown.test.ts` with a new snapshot case. No compiler errors expected.
+
+**Step 4 — Markdown integration tests**
+Extend `test/integration/mcp-e2e.test.ts` with markdown format assertions inside `makeFixtureSuite`. This is the only step that requires a fresh `pnpm build` before running. Benefits from both Step 2 (real lines in markdown output) and Step 3 (warnings visible in markdown).
+
+**Parallelism:** Steps 1, 2, and 3 are safe to develop in parallel by separate developers. Step 4 depends on both 2 and 3.
+
+---
+
+## Anti-Patterns to Avoid
+
+### Writing to stdout in --init mode
+**What goes wrong:** `startServer()` reserves stdout for MCP JSON-RPC. Even though init exits before connecting a transport, init output on stdout confuses any wrapper that captures stdout generically.
+**Instead:** All init human-readable output goes to `process.stderr`. Success status: exit code 0. Failure: exit code 1 with error on stderr.
+
+### init importing from src/mcp/ or src/core/
+**What goes wrong:** Pulls in Babel, MCP SDK, and zod at init time. Increases cold-start latency for a write-file operation that needs none of these.
+**Instead:** `src/init/` has zero imports outside `node:` built-ins and its own files. Add an island assertion test similar to `test/architecture/island.test.ts` if the init module grows beyond 4 files.
+
+### Snapshot-asserting full markdown output in integration tests
+**What goes wrong:** Any parser change (new node kind, new layoutHint, fixture file edit) invalidates the snapshot — high maintenance overhead for integration-level tests.
+**Instead:** Structural assertions in integration tests (`toContain(" @ ")`, glyph regex, length > 0). Full snapshots only in `test/renderers/markdown.test.ts` against stable IR fixtures.
+
+### Eager `line` resolution in `resolveSpecifierToFile`
+**What goes wrong:** `resolveSpecifierToFile` is called as an intermediate step during barrel chase. Parsing the file for a declaration line at this stage is wasteful — the file may be a barrel that re-exports elsewhere.
+**Instead:** Only `doResolve` (when `foundLocal = true`) and the terminal step of `chaseBarrel` resolve the declaration line. Intermediate `resolveSpecifierToFile` results stay as `line: 1`.
+
+### Adding `column` to TreeNode for v1.1
+**What goes wrong:** `TreeNode` in `src/ir/schema.ts` is the wire contract. Adding `column` is an additive breaking change for consumers that match the schema exhaustively.
+**Instead:** `line` only for v1.1. `column` is a v1.2 decision when a concrete agent need arises.
+
+### Using a separate tsup entry for src/init/
+**What goes wrong:** A separate entry produces a separate `dist/init.js` file that needs to be included in `package.json "files"` and referenced with `import.meta.url` path gymnastics.
+**Instead:** Single entry `src/cli.ts` with dynamic `import("./init/index.js")` — tsup follows the import and bundles `src/init/` into `dist/cli.js`. Zero config change.
+
+### Runtime fs.readFile for the template asset
+**What goes wrong:** Paths break across dev (`tsx src/cli.ts`), built (`node dist/cli.js`), and global install (`npx`) because tsup bundles everything into a single flat `dist/cli.js` with no adjacent asset files.
+**Instead:** TypeScript string constant in `src/init/template.ts`. Bundled inline. Zero path resolution needed.
+
+---
+
+## Scalability Considerations
+
+| Concern | v1.1 scope | Future |
+|---------|-----------|--------|
+| Template content growth | String constant — no size issue for foreseeable future | If > 5KB, consider externalize with `import.meta.url` path, but not needed now |
+| New `--init` targets | Add entry to `TARGET_MAP` — O(1) change | No architectural change required for 10+ targets |
+| `line` traverse performance | One extra AST traverse per resolved component per query call. Cache is already `per-call` (ParseContext.astCache) so no extra file reads. Acceptable for v1.1 (parse-on-demand). | If hot, combine `foundLocal` traverse and declaration-line traverse into a single pass |
+| Warnings in large trees | HTML comment block is O(warnings.length) lines — trivial | No concern |
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
-
-- [typescript-sdk repo](https://github.com/modelcontextprotocol/typescript-sdk) — canonical SDK source
-- [typescript-sdk/docs/server.md](https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/server.md)
-- [@modelcontextprotocol/sdk on npm](https://www.npmjs.com/package/@modelcontextprotocol/sdk)
-- [Issue #642 — setRequestHandler on McpServer](https://github.com/modelcontextprotocol/typescript-sdk/issues/642)
-- [PR #816 — registerTool ZodType<object>](https://github.com/modelcontextprotocol/typescript-sdk/pull/816)
-- [Next.js Project Structure](https://nextjs.org/docs/app/getting-started/project-structure)
-- [Next.js Parallel Routes](https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes)
-- [Next.js Route Groups](https://nextjs.org/docs/app/api-reference/file-conventions/route-groups)
-- [Next.js Layouts and Pages](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
-
-### Secondary (MEDIUM confidence)
-
-- [Tool Registration — DeepWiki](https://deepwiki.com/modelcontextprotocol/typescript-sdk/3.2-tool-registration-and-execution)
-- [Build an MCP server](https://modelcontextprotocol.io/docs/develop/build-server)
-- [@babel/traverse docs](https://babeljs.io/docs/babel-traverse)
-- [Intermediate Representation — Wikipedia](https://en.wikipedia.org/wiki/Intermediate_representation)
-- [tsconfig-paths on npm](https://www.npmjs.com/package/tsconfig-paths)
-- [Adapter pattern in TS (refactoring.guru)](https://refactoring.guru/design-patterns/adapter/typescript/example)
-
-### In-repo
-
-- `E:\ui-to-hierarch\generate-component-hierarchy.ts` — existing parser for RN/Expo; IR types (lines 96–114) and tree-building algorithms port over directly
-- `E:\ui-to-hierarch\.planning\PROJECT.md` — authoritative v1 scope
+- `src/cli.ts` (v1.0) — confirmed 3-line direct boot, no framework
+- `src/mcp/server.ts` — `createServer()` / `startServer()` separation, `__TOOL_VERSION__` define
+- `src/adapters/types.ts` lines 259-264 — `ResolveResult` definition, `local` variant fields
+- `src/core/Analyzer.ts` lines 135-160 — `ImportBinding`, `collectImportBindings()`
+- `src/core/Analyzer.ts` lines 256-314 — `resolveComponentCallsites()`, `line: 1` placeholder with explanatory comment
+- `src/core/resolver/index.ts` — `resolveSpecifierToFile()`, `doResolve()`, call structure
+- `src/renderers/markdown.ts` — `renderMarkdown(tree, _envelope)` with `_envelope` ignored
+- `src/renderers/json.ts` — `renderJson` passes envelope through including `warnings`
+- `test/integration/mcp-e2e.test.ts` — `format: "json"` hardcoded in all four `FixtureInvariants.argsFor()` methods
+- `test/architecture/island.test.ts` — D-11 island enforcement pattern; template for `src/init/` island assertion
+- `test/renderers/markdown.test.ts` — existing file-snapshot harness; all fixtures use `warnings: []`
+- `tsup.config.ts` — single entry `src/cli.ts`, ESM-only, externals list; no change needed for init
+- `package.json` — `"bin": { "ui-hierarchy-mcp": "dist/cli.js" }`, `"type": "module"`
