@@ -15,14 +15,15 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 **Codebase:** ~4,890 LOC TypeScript, 35 test files, 256 unit + 20 integration + 8/8 UAT all green
 **Stack:** Node ≥20, ESM, `@modelcontextprotocol/sdk@^1.29`, `@babel/parser@^7.29`, `zod@^4.1`, `tsup`, `vitest@^4.3`
 
-## Next Milestone Goals
+## Current Milestone: v1.1 Agent Onboarding & v1.0 Polish
 
-To be defined via `/gsd-new-milestone`. v1.1 backlog candidates:
-- Surface envelope warnings on markdown renderer (currently dropped)
+**Goal:** Help AI coding agents auto-discover this MCP and learn its tools via an `--init` CLI that injects usage guidance into agent instruction files, and close remaining v1.0 polish items on the output surfaces.
+
+**Target features:**
+- `--init` CLI command — inject MCP usage guide into agent instruction files. Default (no flag) writes to `CLAUDE.md`. Optional `--target claude,codex,cursor,copilot` opts into additional targets (`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`). Idempotent re-runs via marker tags (`<!-- ui-hierarchy-mcp:start --> ... <!-- ui-hierarchy-mcp:end -->`)
+- Surface envelope warnings on markdown renderer (currently dropped — JSON-only)
 - Markdown surface integration test coverage (currently JSON-only)
 - True `line` for resolved component nodes (replace `line: 1` placeholder)
-- Live Claude Code transcript export (close F-01 defer)
-- Cleanup orphan exports in `src/mcp/errors.ts`
 
 ## Requirements
 
@@ -113,4 +114,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-_Last updated: 2026-05-05 after v1.0 milestone_
+_Last updated: 2026-05-11 — v1.1 milestone started_

@@ -1,11 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: shipped
-last_shipped: v1.0
-last_shipped_date: "2026-05-05"
-last_updated: "2026-05-05T17:00:00.000Z"
+milestone: v1.1
+milestone_name: Agent Onboarding & v1.0 Polish
+status: planning
+last_updated: "2026-05-11T04:15:03.802Z"
+last_activity: 2026-05-11
 progress:
   total_phases: 0
   completed_phases: 0
@@ -29,9 +28,10 @@ See: .planning/PROJECT.md (updated 2026-05-05)
 
 ## Current Position
 
-**Status:** v1.0 SHIPPED 2026-05-05 — see [MILESTONES.md](MILESTONES.md).
-
-No active milestone. Run `/gsd-new-milestone` to start the next milestone cycle.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-11 — Milestone v1.1 started
 
 ## Accumulated Context
 
