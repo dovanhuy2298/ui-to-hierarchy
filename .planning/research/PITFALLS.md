@@ -1,907 +1,435 @@
-# PITFALLS — ui-to-hierarchyMCP
+# Pitfalls Research — v1.2 Expo Router + React Native Adapter
 
-**Domain:** MCP server + Babel AST + Next.js App Router static analysis
-**Researched:** 2026-04-20 (v1.0); extended 2026-05-11 (v1.1 `--init` + polish)
-**Confidence:** HIGH (verified against official MCP/Next.js docs + community issue trackers)
+**Domain:** Integration pitfalls — adding a SECOND `FrameworkAdapter` (Expo Router + RN) to a system shipped with NextJsAdapter only
+**Researched:** 2026-05-12
+**Confidence:** HIGH on the code-archaeology pitfalls (verified against `src/adapters/`, `src/core/`, `src/core/extractors/`, `Analyzer.ts`); MEDIUM on RN/Expo ecosystem specifics (cross-checked against Expo Router docs, NativeWind docs, RN StyleSheet docs; flagged where LOW)
 
----
-
-<!-- ============================================================ -->
-<!-- PART A — v1.0 pitfalls (archived, shipped, not re-litigated) -->
-<!-- ============================================================ -->
-
-## Category 1 — MCP Server Development (stdio / lifecycle / schema)
-
-### 1.1 stdout corruption from `console.log` or library banners [CRITICAL]
-
-- **Failure:** Any stray `console.log`, dependency banner, or deprecation warning corrupts the JSON-RPC stream. Client reports `-32000 connection closed`.
-- **Prevention:** ESLint `no-console` on server + imports. All diagnostics via `process.stderr` or MCP `sendLoggingMessage`. Smoke test parses every stdout line as JSON. `dotenv.config({ quiet: true })`.
-- **Warning signs:** Client disconnects immediately; manual `node server.js` looks fine.
-- **Phase:** Phase 1 (MCP skeleton) — bake in from day 1.
-
-### 1.2 stdin lifecycle / Windows SIGINT quirks
-
-- **Failure:** Server exits early or leaks after client disconnect; Windows SIGINT doesn't fire consistently.
-- **Prevention:** Use official `StdioServerTransport`. Register `SIGINT`, `SIGTERM`, `stdin` `end` handlers that call `server.close()`. Test on Windows.
-- **Phase:** Phase 1.
-
-### 1.3 Tool schemas too loose → agents pass garbage args
-
-- **Failure:** Agent calls `focus_on("the top nav")` because schema doesn't guide it.
-- **Prevention:** `zod` + `.describe()` on every field. Tool descriptions: 3-4 sentences, state when to call, what it returns, an example. Use `z.enum(...)` for fixed choices. Return structured errors with valid-shape guidance, not exceptions.
-- **Phase:** Phase 2 (tool surface) — first tool sets the pattern.
-
-### 1.4 Throwing exceptions instead of returning MCP errors
-
-- **Failure:** Unhandled throws crash stdio server or return cryptic `-32603`.
-- **Prevention:** Wrap every tool handler in try/catch; return `{ content: [...], isError: true }`. Top-level `uncaughtException` + `unhandledRejection` handlers log to stderr. Parse failure for user's file is expected data, not exception.
-- **Phase:** Phase 2.
+> Supersedes the v1.0/v1.1 pitfalls research previously at this path. v1.0/v1.1 pitfalls are now part of the validated shipping discipline (Windows path forward-slash invariant, `traverse` ESM interop shim, MCP stdio stderr-only diagnostics, atomic `--init` write with EXDEV fallback) and aren't re-litigated here.
 
 ---
 
-## Category 2 — Babel AST Traversal
+## Critical Pitfalls
 
-### 2.1 Missing parser plugins → silent TSX parse failure
-
-- **Failure:** Decorators / `using` / JSX-in-.ts / import assertions cause parse throw; whole subtree vanishes silently.
-- **Prevention:** `parse(..., { errorRecovery: true })`. Broad plugin list: `jsx`, `typescript`, `decorators-legacy`, `classProperties`, `classPrivateProperties`, `classPrivateMethods`, `dynamicImport`, `topLevelAwait`, `importAssertions`, `explicitResourceManagement`. On parse failure, emit a `parseError` node — don't skip silently. Fixture suite of "cursed but valid" TSX.
-- **Phase:** Phase 3 (parser core); enforced by Phase 5 fixtures.
-
-### 2.2 `React.createElement` / `cloneElement` invisibility
-
-- **Failure:** Libraries using `createElement` (Radix, compiled output) render invisibly.
-- **Prevention:** Handle `CallExpression` where callee resolves to `React.createElement`, `createElement`, `_jsx`/`_jsxs`. Treat `cloneElement` as prop-override. Or document "JSX only" as known v1 gap.
-- **Phase:** Phase 3 (low priority — can ship v1 documented).
-
-### 2.3 Namespaced JSX (`<Foo.Bar/>`) — partial in prototype
-
-- **Failure:** `<Dialog.Content>` via `import * as Dialog` doesn't resolve through barrel re-exports.
-- **Prevention:** For namespace imports, resolve file → look up named export. Library imports (node_modules) → treat as framework node labeled with module name. Support deep nesting `<A.B.C>`.
-- **Phase:** Phase 3 — audit prototype's `resolveLocalComponentKey`.
-
-### 2.4 Conditional render truncation (`&&`, `||`, ternary, `??`)
-
-- **Failure:** Short-circuits with `||`/`??` treated as siblings not alternates; `A && B && C` chains collapse; `!!x && <Foo/>` misses `UnaryExpression`.
-- **Prevention:** Recursively unwrap `LogicalExpression` with `&&` (guard), `||`/`??` (fallback). Nested ternaries produce nested branch tree. Descend through `UnaryExpression` `!`/`!!`.
-- **Phase:** Phase 3.
-
-### 2.5 Array `.map` render — key/item binding confusion
-
-- **Failure:** `items.map(renderItem)` misses JSX entirely; prop values unresolvable.
-- **Prevention:** When `x.map(...)`, mark child as "list" kind. If callback is Identifier, try to resolve to local function binding and recurse. Document cross-file callback resolution as limitation if deferred.
-- **Phase:** Phase 3.
-
-### 2.6 HOC / `forwardRef` / `memo` unwrapping is shallow
-
-- **Failure:** `memo(forwardRef(observer(X)))` loses wrapper chain; class components skipped entirely.
-- **Prevention:** Detect wrapper callees by name (`memo`, `forwardRef`, `observer`, `with*`, `*HOC`) and annotate `wrappers: [...]`. Add `ClassDeclaration` visitor for class components extending `Component`/`PureComponent`. For `forwardRef((props, ref) => ...)`, treat arrow as component function.
-- **Phase:** Phase 3 (class + forwardRef); Phase 4 (wrapper annotation).
-
-### 2.7 Fragment handling gaps
-
-- **Failure:** `import { Fragment as F } from 'react'` + `<F>` not detected; `React.Fragment` in createElement missed.
-- **Prevention:** Resolve import of any tagName; if it maps to React's `Fragment` export, treat as fragment regardless of local alias.
-- **Phase:** Phase 3.
-
----
-
-## Category 3 — Next.js App Router specifics
-
-### 3.1 Layout chain reconstruction is directory-based, not import-based [CRITICAL]
-
-- **Failure:** `page.tsx` doesn't import its `layout.tsx`. Following imports alone produces a tree with no layouts.
-- **Prevention:** Build a **route resolver** that walks `app/` upward from route, collecting `layout.tsx` at each level. Output: `[RootLayout] → [DashboardLayout] → [SettingsLayout] → [SettingsPage]`. Handle `template.tsx` (remounts on nav) separately. `get_full_hierarchy(route)` input is a route path, not a component name.
-- **Phase:** Phase 3 (Next.js parser) — THE core abstraction.
-
-### 3.2 Route groups `(marketing)` and parallel routes `@modal`
-
-- **Failure:** `(marketing)/about/page.tsx` maps to `/about` but parser may ignore the group's `layout.tsx`; `@modal` treated as a phantom page.
-- **Prevention:** Build a **route matcher**, not path joiner. Route groups `(name)` contribute layouts but don't count as URL segments. Parallel routes `@name` emit as labeled slots on parent (`{slots: {children: [...], modal: [...]}}`). Intercepting routes `(.)`, `(..)`, `(...)`, `(..)(..)` — segment-counting (tricky). Exclude private folders `_name`.
-- **Phase:** Phase 3 — dedicate sub-phase to routing conventions.
-
-### 3.3 `"use client"` boundary not propagated
-
-- **Failure:** Agent suggests `useState` in a server component; can't diagnose hydration errors.
-- **Prevention:** Detect `"use client"` / `"use server"` as first non-comment statement. Propagate in output: `runtime: "server" | "client"`. Simplification note: server components passed as `children` prop into a client component remain server-rendered — document as known v1 limitation if full analysis too hard.
-- **Phase:** Phase 3 (mark boundary); Phase 4 (prop-children refinement).
-
-### 3.4 Conflating `page.tsx` default export with named exports
-
-- **Failure:** `generateMetadata` / `metadata` / `dynamic` / `revalidate` pollute tree as phantom components.
-- **Prevention:** For App Router special files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `template.tsx`, `default.tsx`, `route.ts`), treat **only default export** as rendered component. Named exports → metadata sidebar. `route.ts` is API, not UI. `loading.tsx`/`error.tsx`/`not-found.tsx` emit as Suspense/ErrorBoundary siblings labeled.
-- **Phase:** Phase 3.
-
----
-
-## Category 4 — Module Resolution
-
-### 4.1 `tsconfig.json` paths ≠ simple prefix map
-
-- **Failure:** Real tsconfig supports multi-target aliases, wildcards, baseUrl, `extends`, project references. Prototype's `--alias key=value` misses most.
-- **Prevention:** Use `tsconfig-paths` or `get-tsconfig` package. Read nearest `tsconfig.json` + `extends` chain. Try each target in order. Fallback to Node resolution for node_modules, but mark external (don't parse).
-- **Phase:** Phase 3 — integrate from day 1.
-
-### 4.2 Barrel re-exports (`export * from './foo'`)
-
-- **Failure:** `import { Button } from '@/components'` lands in `index.ts` barrel; `Button` not defined there, resolution fails.
-- **Prevention:** When named import resolves to file but name isn't local, scan `ExportNamedDeclaration` and `ExportAllDeclaration`; recurse into re-export target. Cache export map per file. Handle `export { default as X } from './Y'`. Guard against re-export cycles.
-- **Phase:** Phase 3 — required for any real Next.js app.
-
-### 4.3 Symlinks (pnpm / Yarn PnP / monorepos / Windows junctions)
-
-- **Failure:** `fs.realpath` returns content-addressable pnpm path; `fileRel` reports wrong location; agent's Edit can't find file.
-- **Prevention:** Don't call `fs.realpath` for `fileRel`. Always re-root under project root. Detect monorepo workspaces, emit `workspace: "packages/ui"` annotations. Skip node_modules. Test pnpm, yarn, npm on Windows + POSIX.
-- **Phase:** Phase 3 (hygiene); Phase 5 (monorepo fixtures).
-
-### 4.4 Mixed ESM/CJS, `package.json` exports
-
-- **Failure:** Parser tries to read bundled 2MB library CJS file; throws or is slow.
-- **Prevention:** In v1, **don't parse node_modules at all**. Treat libraries as external framework nodes with module name. Only parse project-owned files.
-- **Phase:** Phase 3 — hard-code project-only rule.
-
----
-
-## Category 5 — Styling Extraction
-
-### 5.1 Dynamic className defeats static analysis [INHERENT]
-
-- **Failure:** ``className={`bg-${color}-500`}`` / `className={variants[state]}` — can't resolve statically.
-- **Prevention:** Accept as fundamental limit. For `cn()`/`clsx()`/`cva()`/`twMerge()`, traverse all string-literal args. For `variants[state]`, attempt to resolve `variants` ObjectExpression and collect values (report "any of"). For template literals with interpolation, collect quasis, mark `{?}` positions. **Return both** resolved `classes: [...]` AND original `raw` source slice.
-- **Phase:** Phase 4.
-
-### 5.2 CSS Modules reference without file resolution
-
-- **Failure:** `styles.wrapper` recorded but agent doesn't know what CSS it maps to.
-- **Prevention:** v1 — record reference (`styles.wrapper @ ./Card.module.css`) without resolving; agents can read CSS themselves. v2+ — PostCSS parser for layout-relevant declarations only. Skip composed/nested/`:global`.
-- **Phase:** Phase 4 (reference); v2 (CSS parsing).
-
-### 5.3 CSS-in-JS template literals — unresolvable
-
-- **Failure:** styled-components/emotion with theme interpolations can't be resolved statically.
-- **Prevention:** Extract literal text, report quasis with `{?}` placeholders. Pattern-match common fixed properties (`display: flex`, etc.). Skip `${...}`. Detect library (styled-components/emotion/linaria/stitches) via import source, annotate. Be transparent about partial coverage.
-- **Phase:** Phase 4 (best-effort).
-
-### 5.4 Tailwind arbitrary values and variant prefixes
-
-- **Failure:** Arbitrary variants `[&>svg]:size-6` break naive variant regex.
-- **Prevention:** Update variant-strip regex: `^(?:\[[^\]]+\]|[a-zA-Z0-9_-]+):` repeated. Test on Tailwind v4 fixture. Be lenient — false positive cheaper than false negative.
-- **Phase:** Phase 4.
-
----
-
-## Category 6 — Hierarchy Output Quality for LLMs
-
-### 6.1 Output too verbose → blows context
-
-- **Failure:** 50-component page = 10k tokens; agent can't reason through it.
-- **Prevention:** Default compact shape: `[Name] - path:line (layout-hint)`. Promote prototype's `--scope up|full|down` to tool args. `find_by_*` for search. Layout-only class filter by default. Token budget measured in tests.
-- **Phase:** Phase 4 — budget from day 1.
-
-### 6.2 Output too compressed → loses signal
-
-- **Failure:** `[Button] [Card] [Button]` with no file paths — agent opens every file.
-- **Prevention:** Every node MUST carry `file:line` (PROJECT.md contract). Differentiate duplicates by key attribute. Include first 80 chars of visible text. Preserve conditional structure (branches), not just consequents.
-- **Phase:** Phase 4.
-
-### 6.3 Markdown tree indentation confusing at depth
-
-- **Failure:** `├──`/`└──` at depth 15+ becomes noise for LLMs.
-- **Prevention:** Offer two formats: Markdown nested list (`-` indentation, `#` headings for layouts/pages) as default; JSON for programmatic. ASCII box-drawing as opt-in "terminal display" mode. Depth cap with "..." + `request more depth` hint. file:line redundant to indentation.
-- **Phase:** Phase 4.
-
-### 6.4 Missing file:line kills value prop
-
-- **Failure:** HOC unwrap / fragment flatten loses `loc` info.
-- **Prevention:** Every Babel AST node has `loc` — propagate to every tree node. For component references, record BOTH use-site and define-site file:line. Unit test: every node in fixture tree has `file && line`.
-- **Phase:** Phase 3 (propagate); Phase 5 (test).
-
----
-
-## Category 7 — Agent UX
-
-### 7.1 Tool names agents don't discover
-
-- **Failure:** Generic names (`hierarchy`, `query`, `search`) clash with other MCP servers; agent picks wrong.
-- **Prevention:** Unique namespace prefix: `ui_hierarchy_get_full`, `ui_hierarchy_focus`, etc. Action-oriented (`get_`, `find_`, `focus_on_`). Description starts with use case: "When the user provides a screenshot or vague UI description and you need to find which file and component to edit...".
-- **Phase:** Phase 2 — names lock in expensively.
-
-### 7.2 Chatty tools force pagination
-
-- **Failure:** `get_full_hierarchy` returns 50KB flooding UI.
-- **Prevention:** Default scoped; `depth` and `include` args to expand. `find_by_*` caps results with total count. Return URI/handle for drill-down rather than everything upfront.
-- **Phase:** Phase 2 + Phase 4.
-
-### 7.3 Loose schemas → wrong types
-
-- **Failure:** `focus_on: string` accepts `"the top nav"`; empty response with no hint.
-- **Prevention:** Precise types: `component_name: z.string().regex(/^[A-Z]\w*(\.[A-Z]\w*)*$/).describe('PascalCase identifier, e.g. UserCard or Tabs.Root')`. Not-found → structured response with fuzzy-match suggestions. Route validation (`^/`). `z.enum()` where possible.
-- **Phase:** Phase 2.
-
-### 7.4 No "how to use this output" guidance
-
-- **Failure:** Agent doesn't know it can pass node's `fileRel:line` into Edit; re-asks user.
-- **Prevention:** In tool **description**, add: "Each node shows `file:line` — use directly with Edit. For detail, call `ui_hierarchy_focus_on` with name." Response-level hints only for errors (save tokens).
-- **Phase:** Phase 2 + Phase 4.
-
----
-
-<!-- ============================================================ -->
-<!-- PART B — v1.1 pitfalls: --init file injector + polish items  -->
-<!-- ============================================================ -->
-
-## Category 8 — `--init` File Mutation (HIGHEST RISK SURFACE IN v1.1)
-
-This is the first time the package mutates files on the user's machine. Every prior
-surface was read-only (AST parsing) or protocol-bounded (stdio JSON-RPC). File mutation
-is categorically different: it is irreversible without a backup and the error modes are
-subtle. The pitfalls below must be addressed before the first alpha of `--init`.
-
----
-
-### 8.1 Marker-block detection breaks on CRLF / LF mismatch [CRITICAL]
+### Pitfall 1: Cementing Next.js assumptions into the IR/Analyzer by writing the second adapter against today's `FrameworkAdapter` contract
 
 **What goes wrong:**
-User's `CLAUDE.md` was edited in VS Code on Windows: it has CRLF line endings
-(`\r\n`). The injector reads it and splits on `\n` only. The existing marker tags
-`<!-- ui-hierarchy-mcp:start -->` survive but carry a trailing `\r`. The regex
-`/<!-- ui-hierarchy-mcp:start -->/` does not match because the line is
-`"<!-- ui-hierarchy-mcp:start -->\r"`. The tool concludes no block exists and writes
-a second block, producing two consecutive marker sections. Every subsequent re-run
-doubles the block again.
+The 5-method `FrameworkAdapter` interface looks framework-agnostic, but the call sites in `src/core/Analyzer.ts` are not. Concrete leaks discovered in code:
+
+1. `deriveRoutesFromEntries` (Analyzer.ts:1194-1233) is hard-coded to Next.js: it walks `app/` or `src/app/`, treats `(group)` as transparent, `@slot` as parallel-route folder, and `_` prefix as private. Expo Router uses `(group)` and `[param]` similarly **but has NO `@slot` concept**, has NO private-folder convention, and adds `+not-found.tsx` + `+html.tsx` + `+native-intent.tsx` that this function does not know about. Routes for an Expo project will be silently mis-derived.
+2. `buildRouteTree` (Analyzer.ts:891-932) hard-codes Next.js file-role semantics via `isPageFile` / `isLayoutFile` / `isSpecialFile` (Analyzer.ts:663-677) using regexes for `page|layout|template|loading|error|not-found|default`. Expo Router's equivalents are `_layout.tsx` (NOT `layout.tsx`) and the page is **any non-`_`-prefixed file**, not specifically `page.tsx`. These regexes will reject every Expo file.
+3. `attachParallelSlot` (Analyzer.ts:396-429) only exists because Next.js has parallel routes. The slot infra is in the framework-agnostic Analyzer, not the adapter. For Expo it is dead weight that should still be reachable (zero parallel slots is fine), but surrounding code treats `rm.slots` as always-meaningful.
+4. `runtime: "use client" | "server"` propagation (NextJsAdapter.ts:137-140, Analyzer.ts:178-196 `layoutHint = "client"`) is App-Router-specific. RN has no client/server boundary. The `TreeNode.layoutHint` field needs either a Native-flavored value or to stay unset — but the markdown renderer probably emits `[client]` glyphs based on it.
+5. The `<Slot/>` problem: `collectChildrenSlotLines` (Analyzer.ts:495-507) looks for `Identifier("children")`. Expo Router's analogue is `<Slot/>` from `expo-router` — a JSX element, not an identifier. Layout-chain wrapping will produce empty children arrays for every Expo `_layout.tsx`.
 
 **Why it happens:**
-Node.js `fs.readFile(..., 'utf8')` returns raw bytes without EOL normalization.
-Developers testing only on POSIX never see the failure. Regex anchors `^...$` in
-non-multiline mode eat `\r` differently depending on engine version.
+v1.0 shipped one adapter. Every place the Analyzer "knew about routing" was free to assume Next.js semantics because the test fixtures all looked like Next.js. The 5-method interface was the *narrow waist*, but the wide ends on either side (`deriveRoutesFromEntries`, `isPageFile`, `injectChildrenSlots`) silently absorbed Next.js conventions.
 
-**Prevention:**
+**How to avoid:**
+- Move `deriveRoutesFromEntries`, `isPageFile`, `isLayoutFile`, `isSpecialFile` into the adapter, or expose them as additional methods on `FrameworkAdapter`. Concretely: add `classifyEntry(absPath): "page" | "layout" | "other"` and `enumerateRoutes(absRoot): Promise<string[]>` to the contract. (The locked-5-methods test at `test/adapters/FrameworkAdapter.test.ts` will fail — that is the *correct* trigger to widen the interface deliberately, with a milestone amendment note.)
+- For slot injection: add an adapter-provided slot-marker predicate `(name: string, importSource: string) => boolean` so Next.js still uses `{children}` and Expo uses `<Slot/>` from `expo-router`.
+- Treat `layoutHint = "client"` as a Next-specific value. Introduce `layoutHint?: "client" | "native"` (or framework-neutral set) in `src/ir/schema.ts` and let each adapter populate it.
+- Write the ExpoRouterAdapter *test fixture first* (Pitfall 9) and run the existing Analyzer against it as a forcing function — every place it silently produces an empty tree marks a leaked assumption.
 
-1. After reading the file, detect dominant EOL: `const eol = content.includes('\r\n') ? '\r\n' : '\n';`
-2. Normalize to LF for in-memory processing: `const normalized = content.replace(/\r\n/g, '\n');`
-3. When re-serializing, restore original EOL: `output.replace(/\n/g, eol)`
-4. Marker regex must strip `\r` before comparing: trim each candidate line before match, or use `/<!-- ui-hierarchy-mcp:start -->\r?/`.
-5. Write an explicit CRLF fixture test (`\r\n` throughout) that asserts idempotency.
+**Warning signs:**
+- ExpoRouterAdapter passes its unit tests but `getFullHierarchy("/")` against an Expo fixture returns `buildFragmentRoot([])`.
+- Snapshot diffs show Expo `_layout.tsx` entries dropped because the file-role regex matched `layout.` but not `_layout.`.
+- `collectChildrenSlotLines` returns 0 lines on an Expo `_layout.tsx` that visibly contains `<Slot/>`.
+- v1.0 snapshots flip when the abstraction is widened — those are *real* changes the locking test should catch.
 
-**Warning signs:** Running `--init` twice on a Windows checkout produces a growing file. CI on Linux passes while user bug reports pile up from Windows users.
-
-**Phase to address:** Phase 1 of v1.1 milestone (file writer module), before any other `--init` work.
+**Phase to address:**
+Phase 1 — Interface widening & Analyzer de-Next-ification. Must precede any ExpoRouterAdapter implementation, otherwise the second adapter will be born monkey-patching around Analyzer assumptions.
 
 ---
 
-### 8.2 Greedy regex eats multiple blocks [CRITICAL]
+### Pitfall 2: Adapter auto-detect that reads `package.json` naively — false positives, monorepos, missing files
 
 **What goes wrong:**
-User has two separate sections managed by different tools, both using HTML comment
-markers. The injector's regex is:
 
-```
-/<!-- ui-hierarchy-mcp:start -->[\s\S]*<!-- ui-hierarchy-mcp:end -->/
-```
-
-This is greedy and will match from the FIRST start tag to the LAST end tag in the
-file, silently consuming everything between. If the user has manually placed content
-between a start/end pair and then added a second pair later, the greedy match destroys
-it all.
-
-Additionally: if the user copy-pasted a start tag without its matching end tag, the
-greedy regex matches to end-of-file or the next unrelated end tag.
+1. **Monorepo with both** — `apps/web/` has `next` and `apps/mobile/` has `expo-router`, both in the workspace root's `package.json` (yarn classic hoists; pnpm doesn't). The current Next detect (`src/adapters/next/detect.ts:14-35`) anchors on `next.config.*` + `app/` directory presence, **not** `package.json`. That heuristic is robust. If the Expo detect uses only `package.json`, the two strategies disagree and both can "win" — non-deterministic adapter selection.
+2. **Dep present, not used** — a project includes `expo-router` for a sub-package or doc example, but `app/` is empty or doesn't follow Expo conventions. A package-only check returns `true` and the adapter then returns 0 entries from `discoverEntries`, producing an empty IR with no diagnostic.
+3. **Missing `package.json`** — passing `--root` at a sub-directory inside an Expo app where the `package.json` lives one level up. `fs.access` of the missing file should yield `false`, not throw.
+4. **Tooling-only Expo presence** — `expo` installed without `expo-router` (plain Expo app using React Navigation). Auto-detect should NOT claim this is "Expo Router" — only the *router* package signals our adapter applies.
+5. **Conflict resolution** — both `expo-router` AND `next.config.*` + `app/` exist. PROJECT.md v1.2 says "conflict → error rõ ràng". The error must tell the user *which sub-directories matched* and how to disambiguate, not just "ambiguous".
 
 **Why it happens:**
-`[\s\S]*` is maximally greedy. Developers test only the single-block case.
+`package.json` is the lazy "what is this project" lookup. Real projects mix tooling. Next.js's detector anchored on `next.config.*` (a config file is harder to leave behind by accident than a dep). Expo Router has no equivalent always-present marker — its config lives in `app.json`/`app.config.{js,ts}` which exist in *every* Expo project, not just Router ones.
 
-**Prevention:**
+**How to avoid:**
+- Mirror Next's two-signal pattern: **Expo Router detect = `expo-router` in `package.json` deps AND `app/` directory with at least one `_layout.tsx` OR a route file**. The `_layout.tsx` is the cheapest unique-to-Router signal.
+- Make detect run in parallel and require **exactly one** to return `true`. Two → fail with both matches in the error; zero → fail with both negatives. Wire this in CLI/MCP boot, not adapters.
+- Surface the detected adapter on stderr at boot (existing stderr convention): "detected: ExpoRouterAdapter (matched: package.json/expo-router, app/_layout.tsx)".
+- Add an explicit `--framework next|expo` CLI override that bypasses auto-detect — escape hatch for conflict case and CI determinism.
+- Treat *any* fs error in detect as `false` (D-12 no-throw, mirroring `next/detect.ts:38-45`).
 
-1. Use a non-greedy match: `[\s\S]*?` between markers.
-2. After splitting on the start marker, take only the text up to the first occurrence of the end marker — do not use a single spanning regex.
-3. Canonical approach (split-based, regex-free for the inner boundary):
-   ```typescript
-   const START = "<!-- ui-hierarchy-mcp:start -->";
-   const END = "<!-- ui-hierarchy-mcp:end -->";
-   const startIdx = normalized.indexOf(START);
-   const endIdx = normalized.indexOf(END, startIdx + START.length);
-   // startIdx === -1 → no block; append
-   // startIdx !== -1 && endIdx === -1 → corrupt block; warn and abort
-   // both found → splice [startIdx, endIdx + END.length]
-   ```
-4. If both markers exist but `endIdx < startIdx`, treat as corrupt and refuse to proceed — print a clear error instead of silently mangling the file.
+**Warning signs:**
+- Test runs choose the wrong adapter on a monorepo fixture and produce empty trees.
+- "Framework not detected" fires on a valid Expo project with `app.json` but no `_layout.tsx` at root (signals markers too strict).
+- "Both matched" error doesn't name the matching paths.
 
-**Warning signs:** File grows much larger than expected. User reports "my entire CLAUDE.md was replaced."
-
-**Phase to address:** Phase 1 of v1.1 milestone — block splicing logic.
+**Phase to address:**
+Phase 2 — adapter detection + selection wiring. Ship with at least one monorepo fixture exercising both adapters present (mirroring v1.0's `pnpm-monorepo` fixture).
 
 ---
 
-### 8.3 BOM (byte-order mark) at file start breaks marker detection
+### Pitfall 3: `StyleSheet.create({...})` lookups assumed to be locally declared and statically literal
 
 **What goes wrong:**
-Windows Notepad and some editors write UTF-8-BOM files (`﻿` as first byte).
-Node.js `fs.readFile(..., 'utf8')` does NOT strip the BOM. A `CLAUDE.md` that starts
-with `﻿<!-- ui-hierarchy-mcp:start -->` will not match the start-marker string
-`<!-- ui-hierarchy-mcp:start -->` because the BOM character precedes it.
+Obvious implementation: walk AST, find `const styles = StyleSheet.create({ card: { padding: 8 } })`, build `Map<keyName, propsObject>`, then on `<View style={styles.card}/>` look up `card` and emit `{ padding: "8" }`. This breaks on every realistic codebase:
+
+1. **Styles imported from another file** — `import { styles } from "./styles"`. The `styles` binding inside the component file points at an external module; the single-file extractor pipeline (`src/core/extractors/index.ts`) doesn't follow it.
+2. **Computed keys** — `styles[variant]` / `styles["card-" + size]`. No static answer; must collapse to `{ raw }` per inline-style precedent (`extractInlineStyle` line 47).
+3. **Spread inside `StyleSheet.create`** — `StyleSheet.create({ ...baseStyles, card: {...} })` — same cross-file problem as #1 if `baseStyles` is imported.
+4. **Factory functions** — `const makeStyles = (theme) => StyleSheet.create({...}); const styles = makeStyles(useTheme())`. The walker sees `styles = makeStyles(...)` — a CallExpression, not `StyleSheet.create`. No way to resolve without execution.
+5. **Hook-returned styles** — `const styles = useStyles()`. Same as #4.
+6. **`StyleSheet.flatten([...])`** — merges array of style objects/IDs. RN-specific.
+7. **Re-export through a barrel** — `import { styles } from "@/styles"`. Existing barrel chase covers this *if* we plug into it.
 
 **Why it happens:**
-Developers on POSIX never produce BOM files. The BOM is invisible in most terminals.
+StyleSheet is a runtime registry — the `{padding:8}` only exists at runtime. Static analysis has to accept low-recall/high-precision subset or pretend to handle more and silently lie.
 
-**Prevention:**
-Strip BOM immediately after reading: `content = content.replace(/^﻿/, '');`
-When writing back, preserve BOM if present: track `const hasBOM = original.startsWith('﻿');` and prepend `﻿` to the written content if it was there.
+**How to avoid:**
+- Define an explicit **support matrix** before coding. v1.2 target: (a) in-file `StyleSheet.create({...})` with literal keys, identifier lookups `styles.card`; (b) imported `styles` from a sibling file, **single-hop only** (no re-export chains in this pass — defer); (c) computed/factory/hook → `{ raw }` + warning; (d) `StyleSheet.flatten` → unsupported, raw + warning.
+- For case (b): reuse `core/resolver` — call `adapter.resolveModule` for the import source, parse the resolved file (reuse `ParseContext.astCache`), find the named export, walk its `StyleSheet.create`. Bounded one-hop work.
+- Snapshot tests must include fixtures for *each unsupported case* asserting the `{ raw }` shape + warning.
+- Decide explicitly whether `styleKeys` holds the *property keys* (e.g. `padding`, `margin`) or the *named StyleSheet key* (e.g. `card`). Keep Next.js interpretation ("CSS property names") and have `find_by_style("card")` match the lookup-key separately (new index dimension).
 
-**Warning signs:** `--init` reports "block not found" and appends a new block on every run even though the file visibly contains the markers.
+**Warning signs:**
+- A user file using `import { styles } from "./styles"` returns no `styleKeys` for any element.
+- `find_by_style("padding")` works on inline-style fixtures but returns nothing on `StyleSheet.create` fixtures with `padding:`.
+- A computed-key access throws or returns empty object instead of `{ raw }`.
 
-**Phase to address:** File reader utility, before marker detection logic.
+**Phase to address:**
+Phase 4 — RN style signal extraction. Publish the support matrix as a doc comment in `src/core/extractors/rn-stylesheet.ts` so reviewers can confirm scope before debating implementation.
 
 ---
 
-### 8.4 Trailing-newline drift causes spurious diffs
+### Pitfall 4: `style={[a, b, dynamic && styles.c]}` array merge — falsy branches and `layoutHint`
 
 **What goes wrong:**
-The user's `CLAUDE.md` ends with exactly one `\n`. After the first `--init` run, the
-injected block ends with `\n`. The file now ends with `\n\n` (block's trailing newline
-plus file's trailing newline). On the second run, the file ends with `\n\n\n`. Git
-shows the file as "modified" on every re-run, which erodes user trust.
+RN `style` accepts an array: `style={[styles.base, styles.padded, isActive && styles.active, { marginTop: top }]}`. Concrete issues:
+
+1. **Order matters** — later entries override earlier (last-wins per property). IR has no property-level merge; just records keys. For `find_by_style` the union is what matters.
+2. **Falsy / conditional entries** — `isActive && styles.active`. At static time we don't know `isActive`. **Both branches** should contribute to the styleIndex (so `find_by_style("active")` still finds the element), but `src/core/render-flow/conditionals.ts` is built for JSX children, not attribute values. v1's `findByStyle` walks the tree and matches via the sidecar keyed by `file:line:tag`, so a conditional style branch attached to the same JSX element hits the same key with merged data. **Recommend: union flatten** (recall-favoring).
+3. **Spread arrays** — `style={[...baseStyles, styles.x]}` — cross-file problem (Pitfall 3).
+4. **Nested arrays** — `style={[[a, b], c]}` is legal. Recursive flatten required.
+5. **`layoutHint` consequences** — if `isLayoutClass` (`tailwind/layout-prefixes.ts`) is generalized for RN, conditional `flex: 1` inside a falsy entry should still mark element as "potentially layout-affecting". Conservative answer: treat conditional layout signals as layout-affecting (precision loss but keeps the agent-helpfulness property).
+6. **Mixed object + ID** — legacy `StyleSheet.create` returned numeric IDs. `style={[42, {...}]}` is technically valid; treat as opaque.
 
 **Why it happens:**
-The injector appends its block content verbatim, then writes the rest of the file
-content which itself has a trailing newline.
+Web `className` is a flat string. RN `style` is a polymorphic mini-DSL (object | array | falsy | ID), and conditional contribution to layout-hint has no parallel in v1 Next.js code.
 
-**Prevention:**
+**How to avoid:**
+- Write array-flatten as a small dedicated function (`flattenStyleArray(expr): StyleEntry[]`) before integrating. Unit-test in isolation against ≥8 shapes (literal array, conditional entry, spread, nested, mixed types, empty array, single element, expression-only).
+- Falsy-branch entries contribute to the styleIndex *union*; warn if the branch contains an identifier lookup we couldn't resolve.
+- Pin the v1.2 stance on conditional `layoutHint` in `ARCHITECTURE.md` so it doesn't become a litigation point during phase reviews.
+- Mirror inline-style's `__spread_${i}` convention (`extractInlineStyle:33`) for array entries we can't statically resolve.
 
-1. When appending a new block (no prior block): ensure the file has exactly one `\n`
-   before the block start, the block content itself, then exactly one trailing `\n`.
-2. When replacing an existing block: splice the exact byte range `[startIdx, endIdx + END.length]`
-   and replace with the new block content. Do not touch content outside that range.
-3. Normalize final output to end with exactly one `\n`: `output = output.replace(/\n+$/, '') + '\n';`
-4. Test: hash of file after N runs equals hash after first run (idempotency assertion).
+**Warning signs:**
+- `find_by_style("active")` misses elements styled as `style={[base, cond && styles.active]}`.
+- Array-form style emits single `{raw}` instead of decomposed keys.
+- Snapshot of `<View style={[styles.row, isOpen && styles.expanded]}>` doesn't show `expanded`'s keys present.
 
-**Warning signs:** `git diff CLAUDE.md` always shows changes even after running `--init` twice with no version change.
-
-**Phase to address:** Phase 1 of v1.1 milestone — write-back normalization.
+**Phase to address:**
+Phase 4 — style signal extraction. Lands *after* Pitfall 3's StyleSheet resolution because the array-flatten calls into it.
 
 ---
 
-### 8.5 Non-atomic writes corrupt on crash mid-write [CRITICAL]
+### Pitfall 5: NativeWind className treated as web Tailwind by `find_by_style` and `isLayoutClass`
 
 **What goes wrong:**
-The injector does:
+NativeWind v4 uses Tailwind class names on RN elements (`<View className="flex-1 p-4 bg-red-500">`). Temptation: reuse `extractTailwindClasses` and the `LAYOUT_PREFIXES` list. Where this breaks:
 
-```typescript
-await fs.writeFile(targetPath, newContent, "utf8");
-```
-
-If the process is killed (Ctrl+C, OOM, power loss) after `writeFile` truncates the
-file but before it finishes writing, the user's `CLAUDE.md` is now a partial file —
-potentially empty or corrupt. There is no recovery path without git history.
+1. **`bg-*` / `text-*` colors** — identical to web. ✓ Reuse works.
+2. **Platform variants** — NativeWind v4 supports `ios:`, `android:`, `web:`, `native:` variants (e.g. `ios:bg-blue-500`). v1's variant-strip regex needs to handle arbitrary `prefix:` — verify before assuming reuse. If it strips them, layout-class check matches; if not, layout detection silently fails on every prefixed class.
+3. **Web-only no-ops** — `block`, `inline-block`, `float-left`, `clear-both`, `cursor-pointer`. NativeWind ignores them at runtime. `find_by_style("inline-block")` would still match (we don't know it's a no-op on RN). Precision loss, not correctness bug — callout only.
+4. **RN-only classes** — `font-system` or platform-specific colors. `isLayoutClass` is allow-list so unknowns pass through `kind:"raw"` (`extractTailwindClasses:37`). ✓ Probably fine.
+5. **`tw\`...\`` tagged template** — current extractor only looks at `className` attributes. **Decide: support `tw\`...\`` in v1.2 or document unsupported.** Recommend: unsupported, warn when seen.
+6. **`className` on non-NativeWind RN primitives** — someone passes `className` to `<View>` without `nativewind` configured. Meaningless at runtime, but we'll index it. Acceptable precision loss.
+7. **`space-y-*`** — web-only utility (sibling margin). No great RN equivalent; arguably shouldn't be promoted to layout-hint. Edge case; document, don't fix in v1.2.
 
 **Why it happens:**
-`fs.writeFile` is not atomic: it opens the file, truncates it, then writes. The
-truncation happens before the write completes.
+NativeWind is *deliberately* compatible with web Tailwind syntax. 80% just works. The 20% is where wrongness hides.
 
-**Prevention:**
-Implement atomic write with temp-file-then-rename:
+**How to avoid:**
+- Add NativeWind variants test to the Tailwind extractor: assert `ios:` / `android:` / `web:` / `native:` strip the same way `hover:` / `md:` do.
+- Document in `STACK.md` that v1.2 reuses `extractTailwindClasses` unchanged for NativeWind; only the *extraction-trigger predicate* might need to expand.
+- Add fixture: Expo Router project with `nativewind` + `tailwind.config.js`, exercising at least one platform-variant class and one falsy-conditional via `cn(...)` helper. Snapshot `find_by_style`.
+- For `tw\`...\``: catch the binding usage with a one-line check and emit a warning. Don't silently miss it.
 
-```typescript
-import { writeFile, rename, copyFile, unlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { randomBytes } from "node:crypto";
+**Warning signs:**
+- `find_by_style("flex-1")` works on `className="flex-1"` but misses `className="ios:flex-1"`.
+- Snapshot for NativeWind fixture shows no `classNames` populated despite className attributes in source.
+- Agent reports "Tailwind classes my screenshot suggests aren't matching" on a real Expo project.
 
-async function atomicWrite(targetPath: string, content: string): Promise<void> {
-  const tmpPath = join(
-    dirname(targetPath),
-    `.ui-hierarchy-mcp-${randomBytes(6).toString("hex")}.tmp`,
-  );
-  await writeFile(tmpPath, content, "utf8");
-  try {
-    await rename(tmpPath, targetPath);
-  } catch (err: unknown) {
-    // EXDEV: cross-device link not permitted — temp file and target on different drives.
-    // Happens on Windows when TEMP env points to a different drive (e.g., D:\Temp vs C:\project).
-    // Also triggered by MSIX sandbox virtualizing AppData as a separate filesystem.
-    if ((err as NodeJS.ErrnoException).code === "EXDEV") {
-      await copyFile(tmpPath, targetPath);
-      await unlink(tmpPath);
-    } else {
-      await unlink(tmpPath).catch(() => undefined); // best-effort cleanup
-      throw err;
-    }
-  }
-}
-```
-
-Temp file must be in the SAME DIRECTORY as the target (same filesystem) so rename is
-atomic. Do not use `os.tmpdir()` — it may be on a different drive on Windows.
-
-**Warning signs:** User reports empty `CLAUDE.md` after hitting Ctrl+C. CI occasionally produces zero-byte files.
-
-**Phase to address:** Phase 1 of v1.1 milestone — the atomic write utility is a precondition of ALL other `--init` file operations.
+**Phase to address:**
+Phase 4 — combined with Pitfall 4. Variant-strip test lives next to existing `tailwind/layout-prefixes` tests.
 
 ---
 
-### 8.6 File-permission errors swallowed silently
+### Pitfall 6: Expo Router routing edge cases — groups, `+`-prefixed specials, typed routes, tabs introspection
 
 **What goes wrong:**
-The target file is read-only (checked out from a git repo with restricted perms, on a
-network drive, or inside a company-managed directory). `fs.writeFile` throws `EACCES`
-or `EPERM`. If the caller catches the error with a generic `.catch(() => undefined)`,
-the user sees no output and assumes success. Their file was never updated.
+Expo Router's filesystem routing *looks* like Next.js but diverges. Verified against Expo Router docs:
+
+1. **Group routes `(group)` don't add URL segments** — same as Next.js; ✓ existing logic handles it (Analyzer.ts:1221) once moved into the adapter.
+2. **Tab/stack layouts** — `_layout.tsx` inside `(tabs)/` typically default-exports `<Tabs>` from `expo-router`, with `<Tabs.Screen>` children. The agent needs to see tab structure: walk JSX of `<Tabs>` and surface its `<Tabs.Screen name="...">` children as virtual entries. Without this, tabs `_layout.tsx` looks empty of meaningful structure.
+3. **`+not-found.tsx`** — wildcard 404 route, matched only when no other route matches. The `+`-prefix is **not** in any current regex. It will either be treated as a static segment (wrong) or rejected (loses the file). Recommend: register but exclude from URL-walk, surface in fixture tests.
+4. **`+html.tsx` / `+native-intent.tsx`** — web/native entry points. Out of scope for v1.2 routing; explicit exclusion list with rationale comment.
+5. **`index.tsx` semantics** — same as Next's `page.tsx` (file represents the route at parent's URL). Map `index.tsx` → "page at this segment" inside the Expo adapter's tree-builder.
+6. **Dynamic segments `[param]`, `[...rest]`, `[[...opt]]`** — same syntax. ✓ `classifySegment` (`src/adapters/next/segments.ts`) is reusable *if lifted* to a framework-neutral location. Refactor, don't copy-paste.
+7. **No `@slot` parallel routes** — drop that branch in Expo route-map.
+8. **No intercepting routes** — drop those too.
+9. **Typed routes (Expo Router v3+)** — generates `.expo/types/router.d.ts`. **Does NOT affect filesystem routing.** Just ensure `tinyglobby` ignores it (already excluded via `node_modules` rule — verify `.expo/` too).
+10. **Root layout vs nested layouts** — `app/_layout.tsx` is always-present at runtime. Static analysis can tolerate its absence (just less wrapping).
+11. **`(tabs)/(stack)/route` deep nesting** — multiple group + layout layers. Existing Next layout-chain walker handles this *if* `discoverEntries` returns root-down order. Confirm.
 
 **Why it happens:**
-Overly broad catch blocks. Distinguishing "expected" errors (file doesn't exist yet)
-from "unexpected" ones (permission denied) is easily skipped under time pressure.
+The two systems share heritage but diverge in details. Re-implementing from Next adapter line-by-line is faster than reading docs — exactly where bugs come from.
 
-**Prevention:**
-Never swallow fs errors silently. Classify errors explicitly:
+**How to avoid:**
+- Lift `classifySegment` to `src/core/routing/segments.ts` or accept duplication explicitly with a `// SHARED` comment block and sync test.
+- Write Expo route-map to handle: groups (transparent), dynamic/catch-all (same as Next), `index.tsx` (page), `_layout.tsx` (layout), `+*.tsx` (registered but not URL-mapped).
+- Tabs/Stack/Drawer recognition: when `_layout.tsx` default-export's JSX root is `Tabs`/`Stack`/`Drawer` from `expo-router`, record `<Tabs.Screen>` `name` props in the IR. v1.2 minimum: enumerate in a warning. v2 ambition: model as virtual route segments.
+- Fixture coverage: (a) basic single-route, (b) tabs with three screens + one nested stack, (c) dynamic param `[id].tsx` inside a group, (d) deep group nesting `(tabs)/(stack)/foo`.
 
-```typescript
-const EXPECTED_CODES = new Set(["ENOENT"]); // file doesn't exist yet — create it
-try {
-  await atomicWrite(path, content);
-} catch (err: unknown) {
-  const code = (err as NodeJS.ErrnoException).code;
-  if (code === "EACCES" || code === "EPERM") {
-    console.error(
-      `[ui-hierarchy-mcp] Cannot write to ${path}: permission denied.`,
-    );
-    console.error(`  Run with elevated permissions or check file ownership.`);
-    process.exit(1);
-  }
-  throw err; // surface unexpected errors
-}
-```
+**Warning signs:**
+- `get_full_hierarchy("/")` on Expo fixture returns just `app/index.tsx` — no `_layout.tsx` wrapping.
+- Route accessible via tabs (`/profile` inside `(tabs)/profile.tsx`) returns "route not matched".
+- `+not-found.tsx` appears as route `/+not-found`.
+- Typed-routes-enabled project produces parse errors on `.expo/types/router.d.ts`.
 
-Return a structured result type from the writer that includes `{ ok: boolean, path, error? }` so the CLI layer can print a consolidated summary of which files succeeded and which failed, instead of aborting on the first error.
-
-**Warning signs:** `--init` exits 0 but some targets were silently skipped. User opens file and finds it unchanged.
-
-**Phase to address:** Phase 1 of v1.1 milestone — error classification in the writer.
+**Phase to address:**
+Phase 3 — ExpoRouterAdapter routing. The `<Tabs>`-introspection nicety is a Phase 3 stretch; basic routing lands cleanly first.
 
 ---
 
-### 8.7 Preserving (or warning about) hand-edits inside marker block
+### Pitfall 7: RN primitive vs user-defined `<Text>` — disambiguate via import source, not name
 
 **What goes wrong:**
-User ran `--init`, then customized the injected guide (added project-specific usage
-examples inside the marker block). On the next `--init` run, the entire block is
-replaced and their edits are lost.
+RN has **capitalized** primitive names: `<View>`, `<Text>`, `<ScrollView>`, `<Image>`, `<Pressable>`, `<FlatList>`, `<SectionList>`, `<Touchable*>`, `<Modal>`, `<Switch>`, `<TextInput>`, `<KeyboardAvoidingView>`. The capital-letter convention means existing `isComponent` detection (which keys on capitalized JSX names per `src/core/render-flow/component-detect.ts`) will treat ALL of these as "components" — even though for layout-hint purposes they're primitives (the RN equivalent of `<div>`).
+
+The disambiguation: a user writes their own `Text` component in `@/components/Text`. Now `<Text>` in JSX could be the RN primitive (no navigable file — it's in `node_modules/react-native`) or their wrapper (resolve to `@/components/Text.tsx`). Verified in current code: `resolveComponentCallsites` (Analyzer.ts:273-349) **already uses import bindings** to disambiguate — it calls `adapter.resolveModule(...)` per callsite and respects `kind:"external"` vs `kind:"local"`. The *machinery is there*. What's missing:
+
+1. An "RN primitives" recognition list, to mark `<View>`/`<Text>`/etc imported *from `"react-native"`* with `kind:"element"` (like `<div>`) or `layoutHint:"rn-primitive"`. Without it, the markdown renderer prints every `<View>` as a component (technically true, but loses the visual cue distinguishing "RN scaffolding" from "user component I can drill into").
+2. Recognition keys on **import source `"react-native"`**, not tag name. `<Text>` from `@/components/Text` stays a component; `<Text>` from `"react-native"` reclassifies.
+3. Namespace imports (`import * as RN from "react-native"; <RN.View/>`) — explicitly skipped by `collectImportBindings` (Analyzer.ts:155 carve-out). Acceptable v1.2 limitation; warn when detected.
+4. Re-exports — `export { View } from "react-native"` in a shim file. The barrel-chase resolver (`core/resolver/barrel.ts`) should follow this. Verify with a fixture.
+5. Sister-package primitives: `<SafeAreaView>` in `"react-native-safe-area-context"`; `<Image>` may be RN built-in OR `expo-image`; `<StatusBar>` in `expo-status-bar`. **Decide: strictly `"react-native"` in v1.2** with a doc comment listing deferred packages and an extension point.
 
 **Why it happens:**
-Injectors replace the entire block contents with the canonical template on every run.
-This is safe for machine-generated content but destructive for human edits.
+Capitalization-based heuristic is the JSX standard for distinguishing components from intrinsic elements. RN broke that convention by making all primitives capitalized. The resolver-based disambiguation is the correct fix; the v1.0 architecture already supports it — we just have to use it.
 
-**Prevention:**
-Two defensible strategies — pick one and document it clearly:
+**How to avoid:**
+- Define `RN_PRIMITIVES: ReadonlySet<string>` in `src/adapters/expo/primitives.ts`. Verify against `react-native`'s types to avoid drift (pin version in `STACK.md`).
+- In the resolver pass, after resolving the import source, if `source === "react-native"` AND `importedName ∈ RN_PRIMITIVES`, set TreeNode's `kind:"element"` OR keep `kind:"component"` + add `layoutHint:"rn-primitive"`. Latter is less invasive but requires renderer updates.
+- Snapshot test: `<View>` from `react-native` vs `<View>` from user component file produce visibly different tree nodes.
 
-**Option A (Warn, don't replace):** On re-run, if the existing block content differs
-from what the tool would write, print:
+**Warning signs:**
+- `focus_on("View")` returns hundreds of matches across every RN component (true but useless).
+- `find_by_text` on `<Text>Hello</Text>` works, but tree printer shows `Text` as navigable component with `file: node_modules/react-native/...`.
+- User-wrapped `<Text>` misclassified as RN primitive because resolver doesn't follow its import.
 
-```
-[ui-hierarchy-mcp] CLAUDE.md already contains an up-to-date block (version 1.1).
-  The block appears to have been manually edited. Pass --force to overwrite.
-```
-
-Only replace silently when the existing block is byte-for-byte the previous tool version
-(detected via the version comment inside the block — see pitfall 8.10).
-
-**Option B (Replace always, but warn):** Always replace, but before writing, check if
-`existingBlockContent !== previousVersionContent && existingBlockContent !== newContent`.
-If so: print a warning listing which lines were customized, and offer to diff.
-
-**Recommendation:** Option A for v1.1. It is conservative and reversible. `--force`
-is the escape hatch. Users who want auto-update can pass `--force` in their CI scripts.
-
-**Warning signs:** User files a bug saying "init deleted my notes." No warning was printed.
-
-**Phase to address:** Block-replace logic in Phase 1 of v1.1 milestone.
+**Phase to address:**
+Phase 5 — RN primitive recognition + IR plumbing. Depends on Phase 1 (interface widening) only for the `layoutHint` field if that route is chosen.
 
 ---
 
-### 8.8 Block versioning — stale guides silently persist after upgrades
+### Pitfall 8: Platform-specific extensions `.ios.tsx` / `.android.tsx` / `.web.tsx` / `.native.tsx`
 
 **What goes wrong:**
-User installs v1.1 of the package. Their `CLAUDE.md` was injected by v1.0 and contains
-the v1.0 guide. The v1.1 guide adds a new tool (`--init --target codex`). The user
-never learns about it because re-running `--init` without `--force` sees an existing
-block and does nothing. The injected docs are now stale.
+Metro's resolution: tries `Foo.ios.tsx`, `Foo.android.tsx`, `Foo.native.tsx`, `Foo.tsx` (web target reverses). A file `Button.ios.tsx` + `Button.android.tsx` coexist; at runtime only one loads per platform. For static analysis:
+
+1. **`tinyglobby` enumeration includes ALL of them** — `discoverEntries` picks up `index.ios.tsx` and `index.android.tsx` as two separate entries. If both compile to route `/`, we either pick arbitrarily (loses info) or report a conflict (annoying for legitimate cross-platform projects).
+2. **Resolver semantics** — `import Button from "./Button"` should resolve to *which* `Button.*.tsx`? Currently `src/core/resolver/relative.ts` doesn't know about platform suffixes. It falls back to `Button.tsx` (non-suffixed) and misses platform-specific variants — sometimes correct (if a base exists), sometimes producing an "unresolved" warning.
+3. **`.web.tsx`** — same problem reversed. Many Expo projects target web.
+4. **`.native.tsx`** — covers both iOS and Android, used when web has a different impl. Often paired with base `.tsx` or `.web.tsx`.
+5. **v1.1 Windows path discipline gate passed** — that gate covered forward-slash normalization. Platform-suffix is orthogonal; don't claim coverage.
 
 **Why it happens:**
-Without version metadata inside the block, the tool cannot distinguish "user edited" from
-"old version". It conservatively refuses to overwrite either.
+Metro's resolution is a runtime layer above the filesystem. Static-analysis tools have to reimplement it or punt.
 
-**Prevention:**
-Embed a version comment as the first line inside the block:
+**How to avoid:**
+- Choose a default static-analysis platform. **Recommend: prefer `.tsx` (no suffix) > `.native.tsx` > `.ios.tsx` > `.android.tsx` > `.web.tsx`**. Reason: no-suffix is the most common "shared" implementation; `.native.*` is the universal mobile variant.
+- Surface a warning when platform variants exist: `"platform-variants for Button: [Button.ios.tsx, Button.android.tsx]; analyzing Button.ios.tsx (use --platform to override)"`.
+- In `discoverEntries`, dedupe by stripping platform suffix and keeping one representative per logical path with the preference above.
+- In the resolver, after relative-resolve fails (or as a parallel check), try platform-suffixed variants in preference order. Cache result.
+- Add fixture with `Button.ios.tsx` + `Button.android.tsx` to lock behavior.
+- Optional CLI flag `--platform ios|android|web|native` for CI determinism — cheap if implemented as a `ParseContext` field.
 
-```
-<!-- ui-hierarchy-mcp:start -->
-<!-- version: 1.1 -->
-...guide content...
-<!-- ui-hierarchy-mcp:end -->
-```
+**Warning signs:**
+- Route enumeration shows two entries for `/` because `index.ios.tsx` and `index.android.tsx` both exist.
+- Import of `./Button` reports unresolved even though `Button.ios.tsx` is present.
+- Snapshot diffs differ across CI runners that sort files differently.
 
-On re-run, extract the version comment. If `existingVersion < currentVersion` AND the
-rest of the block content equals the v{existingVersion} canonical template (i.e., not
-hand-edited), auto-upgrade silently and print:
-
-```
-[ui-hierarchy-mcp] Updated CLAUDE.md guide from v1.0 → v1.1.
-```
-
-If the block was hand-edited (content differs from canonical v{existingVersion}
-template), print a warning and skip upgrade unless `--force` is passed.
-
-**Implementation note:** The canonical template for each past version must be stored in
-the package (even if only as a hash for comparison). A simple approach: store a
-`TEMPLATE_HASH_V1_0` constant and compare `sha256(existingBlockContent)` to it.
-
-**Warning signs:** Users stuck on v1.0 guide long after upgrading the npm package.
-Support requests about "missing features" that were already shipped.
-
-**Phase to address:** Phase 1 of v1.1 milestone — block version metadata is part of the
-initial design, not a retrofit.
+**Phase to address:**
+Phase 3 (discoverEntries dedup) + Phase 6 (resolver path-suffix awareness). The discoverEntries side is small; the resolver side is a careful diff to existing logic.
 
 ---
 
-### 8.9 `--init` accidentally triggers during MCP server startup [CRITICAL]
+### Pitfall 9: Test fixtures that "look like Expo Router" but don't exercise routing semantics
 
 **What goes wrong:**
-An MCP client (Claude Code, Cursor) launches the package as `npx -y ui-hierarchy-mcp`.
-The current `src/cli.ts` immediately calls `startServer()`. If `--init` argument
-handling is added carelessly (e.g., a top-level `if (process.argv.includes('--init'))`)
-that runs before the MCP server check, and if an MCP client somehow passes a flag that
-triggers `--init`, the tool will start writing to the user's `CLAUDE.md` without
-consent during a normal MCP session.
+The temptation: copy Next.js fixture, rename `page.tsx` → `index.tsx`, swap `<div>` for `<View>`, call it an Expo fixture. Result: fixture compiles in snapshot tests, but doesn't exercise divergent semantics (no `_layout.tsx` with `<Slot/>`, no tabs, no platform-suffix files, no `StyleSheet.create`). Adapter passes tests yet fails on real projects.
 
-More concretely: if `--init` logic is added to `cli.ts` without an explicit guard that
-`stdout` is NOT an MCP JSON-RPC channel, and the tool prints `--init` status messages
-to stdout, it will corrupt the JSON-RPC stream (see pitfall 1.1).
+Specific things v1.0 fixtures don't have analogs for:
+1. **`_layout.tsx` with `<Slot/>`** — most common Expo Router layout. Without a fixture, `<Slot/>`-injection (analog to `injectChildrenSlots`) is untested.
+2. **`StyleSheet.create({...})` + lookup** — needed to exercise Pitfall 3.
+3. **`style={[...]}` array form** — needed for Pitfall 4.
+4. **NativeWind `className` with platform variants** — needed for Pitfall 5.
+5. **Platform-suffix files** — needed for Pitfall 8.
+6. **`<Tabs>` with `<Tabs.Screen>` children** — needed for Pitfall 6's tab story.
+7. **`expo-router` and `react-native` imports actually resolved** — without these in fixture's `node_modules` (or a stub), the resolver returns `unresolved` for every primitive. Either install minimal `node_modules` per fixture (heavy) OR add a stub (lighter). Pick a precedent and follow it.
+
+Harder problem: an Expo Router project is only minimally valid when `package.json` declares `expo-router`, `app.json` (or `app.config.*`) exists, `expo` SDK version is set, and `app/_layout.tsx` exists. Skipping any makes it "not really" Expo Router for detect purposes. Detect must pass on the fixture, OR fixture marked as partial-detect-skip (with explicit `--framework expo` override).
 
 **Why it happens:**
-Careless arg parsing in `cli.ts`. Forgetting that `cli.ts` is the entry point for
-BOTH the MCP server AND the `--init` CLI subcommand.
+Fixtures grow path-of-least-resistance. Copy, mutate, ship. Minimal-viable-fixture is much smaller than minimal-viable-project-that-detects-as-Expo.
 
-**Prevention:**
+**How to avoid:**
+- Before writing adapter code, design fixture tree (≥2 per PROJECT.md):
+  - **Fixture A — `expo-basic`**: `package.json` with `expo-router` + `react-native`, `app.json`, `app/_layout.tsx` (with `<Slot/>` from `expo-router`), `app/index.tsx` (with `<View>` + `<Text>` + a `StyleSheet.create`), `tsconfig.json` with path aliases.
+  - **Fixture B — `expo-tabs-and-dynamic`**: A plus `app/(tabs)/_layout.tsx` (with `<Tabs>`), `app/(tabs)/index.tsx`, `app/(tabs)/profile.tsx`, `app/post/[id].tsx`, `app/+not-found.tsx`, NativeWind `className` usage, a `Button.ios.tsx` + `Button.android.tsx` pair.
+- Stub `react-native` and `expo-router` per fixture as a single-file `.d.ts` or minimal `index.ts` exporting the names we care about (`View`, `Text`, `Slot`, `Tabs`, `Stack`, `Drawer`, etc.) so the resolver returns `kind:"external"` with `source:"react-native"`/`"expo-router"` instead of `unresolved`.
+- Drive ≥50% of fixture coverage through integration tests that spawn the published binary (mirroring v1.0 pattern). Unit tests on `Analyzer` can pass while the binary path is broken.
+- Lock fixture conventions in `ARCHITECTURE.md` so subsequent fixtures don't drift.
 
-1. Parse `process.argv` at the very top of `cli.ts`, before anything else:
-   ```typescript
-   const mode = process.argv[2];
-   if (mode === "--init") {
-     // All output goes to stdout (free — not an MCP session). Never call startServer().
-     await runInit(process.argv.slice(3));
-     process.exit(0);
-   } else {
-     // MCP server mode: stdout is sacred JSON-RPC. No console.log ever.
-     await startServer();
-   }
-   ```
-2. `runInit` must write ALL output to `process.stdout` or `process.stderr` using
-   `console.log`/`console.error` — never to the MCP log channel.
-3. Add an integration test: spawn the binary with `--init --dry-run` and assert
-   stdout does NOT contain a JSON-RPC envelope.
+**Warning signs:**
+- Adapter unit tests pass but integration tests fail (or vice versa).
+- Fixture has `_layout.tsx` but snapshot doesn't show `<Slot/>` injection — fixture missing the actual `<Slot/>` JSX.
+- Resolver returns `unresolved` for `View` because fixture doesn't stub `react-native`.
+- Fixture passes detect but `discoverEntries` returns `[]`.
 
-**Warning signs:** MCP client reports parse errors on connection. `--init` modifies
-files without the user explicitly invoking `ui-hierarchy-mcp --init`.
-
-**Phase to address:** `cli.ts` refactor is the first task of v1.1 Phase 1 — gate everything on `mode`.
+**Phase to address:**
+Phase 0 — fixture design + stub package shape. **Must come before any adapter code.** This is the lesson v1.0's integration phase learned the hard way.
 
 ---
 
-### 8.10 `.cursor/rules/` directory must be created, filename must be stable
-
-**What goes wrong:**
-User runs `--init --target cursor` in a project that has never used Cursor. The
-`.cursor/rules/` directory does not exist. `fs.writeFile` throws `ENOENT` (parent
-directory missing). The error is either swallowed or produces a confusing message.
-
-Separately: if the filename is chosen dynamically (e.g., `ui-hierarchy-${timestamp}.mdc`),
-running `--init` twice creates two rule files instead of one. Cursor loads both.
-
-**Why it happens:**
-`fs.writeFile` does not create parent directories. Filename instability.
-
-**Prevention:**
-
-1. Use `fs.mkdir(dir, { recursive: true })` before writing any file. This is safe even
-   if the directory already exists.
-2. Fix the filename: `ui-hierarchy-mcp.mdc`. Never include timestamps, versions, or
-   random suffixes in the filename. Idempotency requires a stable path.
-3. For `.mdc` format: include the required YAML frontmatter that Cursor expects:
-   ```yaml
-   ---
-   description: ui-hierarchy-mcp usage guide for AI coding agents
-   alwaysApply: true
-   ---
-   ```
-   Without `alwaysApply: true` or a `globs` pattern, Cursor will not auto-include the rule.
-
-**Warning signs:** `--init --target cursor` prints success but Cursor never sees the
-guide. Rule file silently not loaded because frontmatter is missing.
-
-**Phase to address:** Phase 1 of v1.1 milestone — Cursor target handler.
-
----
-
-### 8.11 `AGENTS.md` placement — repo root only, monorepo consideration
-
-**What goes wrong:**
-User runs `--init --target codex` from a monorepo subdirectory (e.g., `apps/web/`).
-The tool writes `apps/web/AGENTS.md`. Codex reads AGENTS.md starting from the git root
-and walking down — it will find this file, but only for work rooted in `apps/web/`.
-If the user intended a repo-wide guide, the placement is wrong.
-
-**Why it happens:**
-`--init` defaults to `process.cwd()` as the target directory. In a monorepo this is
-almost never the git root.
-
-**Prevention:**
-
-1. Detect git root: walk up from `cwd` looking for `.git/`. If found and `cwd !== gitRoot`,
-   print a warning:
-   ```
-   [ui-hierarchy-mcp] Warning: current directory is not the git root.
-     Writing AGENTS.md to: apps/web/AGENTS.md (Codex scope: this subpackage only)
-     To write repo-wide guide: ui-hierarchy-mcp --init --target codex --root /path/to/root
-   ```
-2. Provide a `--root <path>` flag that overrides the target directory for all writes.
-3. Document: AGENTS.md at repo root = all Codex sessions; at subdir = only sessions
-   within that subtree. This matches verified Codex behavior (developers.openai.com).
-
-**Warning signs:** User says "Codex doesn't see the guide in some repos." The guide
-was written to a nested subpackage directory, not the repo root.
-
-**Phase to address:** Phase 1 of v1.1 milestone — target directory resolution.
-
----
-
-### 8.12 No-target-detected UX — user runs `--init` in a wrong directory
-
-**What goes wrong:**
-User runs `--init --target cursor` in a directory with no `.cursor/`. The tool either:
-(a) silently creates `.cursor/rules/ui-hierarchy-mcp.mdc` in that directory — not
-what the user wanted (they're in a temp folder, not their project root), or
-(b) refuses with a cryptic `ENOENT` message.
-
-**Why it happens:**
-No pre-flight check for "does this look like a project directory?"
-
-**Prevention:**
-
-1. Before writing any file, check for project indicators: `package.json`, `.git/`,
-   `next.config.*`, `tsconfig.json`. If none found:
-   ```
-   [ui-hierarchy-mcp] Warning: no project files detected in /current/dir.
-     Did you mean to run this from your project root?
-     Pass --yes to write anyway.
-   ```
-2. For `--target cursor`: check for `.cursor/` OR `package.json`. If only `package.json`
-   exists (new Cursor user), create `.cursor/rules/` and print:
-   ```
-   [ui-hierarchy-mcp] Created .cursor/rules/ and wrote ui-hierarchy-mcp.mdc
-   ```
-3. For `--target claude`: `CLAUDE.md` is always acceptable to create if missing — this is
-   the least opinionated target.
-
-**Warning signs:** `--init` creates rule files in the user's home directory or Desktop.
-
-**Phase to address:** Phase 1 of v1.1 milestone — pre-flight validation before any writes.
-
----
-
-## Category 9 — v1.0 Polish Item Pitfalls
-
-### 9.1 Warnings dropped from markdown renderer — JSON callers silently break if moved [CRITICAL]
-
-**What goes wrong:**
-Currently `renderMarkdown(tree, _envelope)` ignores `_envelope.warnings`. The fix is
-to append warnings to the markdown output (e.g., as a `## Warnings` section at the end
-or as inline `⚠` comments).
-
-The risk: if the fix is implemented carelessly as a format change to the JSON renderer
-or to the Envelope shape, existing callers that parse `envelope.warnings` as a JSON
-array will break. Specifically:
-
-- Consumers that call with `format: "json"` and read `envelope.warnings` are relying
-  on warnings being in the structured envelope, not embedded in the markdown string.
-- If warnings are accidentally appended to the `text` field of a JSON response, a
-  consumer parsing `JSON.parse(response.text)` will get a parse error.
-
-**Why it happens:**
-The markdown and JSON paths share `withErrorBoundary` and `buildEnvelope`. A developer
-fixing the markdown path might accidentally change the shared envelope builder and
-affect the JSON path.
-
-**Prevention:**
-
-1. The fix is purely additive to the markdown renderer: change `renderMarkdown` from
-   ignoring `_envelope` to reading `envelope.warnings` and appending them after the
-   tree. The JSON path is untouched.
-2. Add an explicit test: `format: "json"` response must be valid JSON and
-   `JSON.parse(text).warnings` must be an array. This test must be in the CI suite
-   BEFORE the markdown fix lands, so it cannot be broken accidentally.
-3. Verify: the `renderMarkdown` signature already accepts `Envelope` as the second
-   parameter (confirmed in `src/renderers/markdown.ts:107`). The fix is adding
-   `if (envelope.warnings.length > 0) { lines.push('', '---', '**Warnings:**', ...warnings) }`.
-
-**Warning signs:** `format: "json"` responses suddenly contain non-JSON text. The JSON
-integration test suite that currently exists (confirmed: `test/renderers/json.test.ts`)
-goes red.
-
-**Phase to address:** Phase 2 of v1.1 milestone (after `--init` is done) — low complexity but must be tested first.
-
----
-
-### 9.2 Markdown integration tests: path separator in snapshots causes Windows CI failures
-
-**What goes wrong:**
-The existing markdown snapshot tests use `toMatchFileSnapshot` (confirmed in
-`test/renderers/markdown.test.ts`). Snapshot files contain paths like
-`app/page.tsx:1`. On Windows, if any path-normalization step is missing, the rendered
-output contains backslashes (`app\page.tsx:1`), causing snapshot mismatches only on
-Windows CI runners.
-
-The existing suite already has `expect(out).not.toContain('\\')` as a guard, and
-`toForwardSlash` is applied throughout `src/core/paths.ts`. The new integration tests
-for markdown output (exercising the full Analyzer → renderMarkdown pipeline, not just
-fixture-based IR rendering) must enforce this invariant end-to-end.
-
-**Why it happens:**
-`path.join` and `path.relative` on Windows emit backslashes. The `toForwardSlash`
-utility exists but must be applied at every emission point. New code paths added for
-v1.1 (if any touch file paths) may forget the normalization.
-
-**Prevention:**
-
-1. All integration tests must include `expect(output).not.toContain('\\')` as a
-   mandatory assertion before any snapshot check.
-2. Snapshot files committed to the repo must use forward slashes. If a developer
-   runs `vitest --update` on Windows and accidentally commits backslash-laden snapshots,
-   the next POSIX CI run will fail. Add a CI step or git hook that rejects any
-   committed snapshot containing backslashes.
-3. The new markdown integration tests (Phase 2 of v1.1) must run against the real
-   Next.js fixture projects (already in `test/fixtures/`), not synthetic IR — this
-   exercises the full path normalization chain.
-
-**Warning signs:** CI on GitHub Actions (Linux) passes; local Windows dev run fails
-on snapshot comparison. Or vice versa — backslash snapshots committed from Windows
-make Linux CI fail.
-
-**Phase to address:** Phase 2 of v1.1 milestone — add `not.toContain('\\')` assertion
-to every new markdown integration test as a non-negotiable pattern.
-
----
-
-### 9.3 True `line` for resolved component nodes — off-by-one and indexing confusion
-
-**What goes wrong:**
-Currently `src/core/Analyzer.ts:304` sets `line: 1` for all resolved component nodes
-(confirmed in code). The fix requires finding the line where the component is **defined**
-(the `FunctionDeclaration` / `ArrowFunctionExpression` / `ClassDeclaration` that
-constitutes the component's default export) in the resolved file.
-
-Two specific failure modes:
-
-**9.3a — Babel lines are 1-indexed; the placeholder is also 1 (coincidence):**
-`line: 1` happens to be Babel's first line. The fix replaces it with the actual
-declaration line, which Babel also reports 1-indexed. This is correct and consistent.
-However, if a consumer was computing something like `declarationLine - 1` to convert
-to 0-indexed (incorrectly assuming 1-indexed output), the fix will shift their
-computation. The output contract (`file:line` in the markdown renderer) is already
-verified to be 1-indexed (snapshot `@ app/page.tsx:1` is the first line), so no
-consumer should be doing 0-indexed conversion — but this must be confirmed via a test.
-
-**9.3b — The resolved file may export the component on line N, but the interesting
-line is the JSX return inside it:**
-There's a design choice: should `line` point to the `function ComponentName()` declaration,
-or to the `return (<JSX>)` statement? The v1.0 contract is "the JSX site that carries
-the prop" for attribute matches, and "the component call site" for component nodes.
-For resolved component nodes specifically, the most useful value is the `export default`
-or `function` declaration line — this is what the agent needs to navigate to the
-component definition. Document this explicitly in the IR spec comment.
-
-**Prevention:**
-
-1. In the resolver post-processing step (currently at `src/core/Analyzer.ts:288-312`),
-   after resolving to `result.absolutePath`, parse the resolved file and find the
-   declaration node: walk AST for `ExportDefaultDeclaration` whose declaration is a
-   `FunctionDeclaration`, `ArrowFunctionExpression`, or the default-export binding.
-   Use `node.loc.start.line` (Babel, 1-indexed).
-2. Add a test asserting `line > 1` for a component defined on line 3+ in a fixture.
-   This catches both the "still returning placeholder 1" regression and the off-by-one
-   scenario.
-3. Document in `ir/schema.ts` or a JSDoc comment: "`line` is 1-indexed (Babel convention).
-   For resolved component nodes, points to the function/class declaration line. For
-   call-site nodes, points to the JSX opening tag line."
-
-**Warning signs:** `line: 1` appears on component nodes that are clearly defined below
-line 1 in their source file. Consumers that use `line` for "go to definition" navigation
-always land at line 1 (file top), which still works but is unhelpful.
-
-**Phase to address:** Phase 2 of v1.1 milestone — isolated change in Analyzer.ts, should
-not affect other output surfaces. Pair with a regression test for `line: 1` placeholder.
-
----
-
-## "Looks Done But Isn't" Checklist (v1.1 additions)
-
-- [ ] `--init` run twice on a CRLF file produces identical output (byte-for-byte)
-- [ ] `--init` interrupted mid-write (SIGKILL) leaves original file intact
-- [ ] `--init` on a read-only file prints a clear error and exits non-zero
-- [ ] `--init` in a monorepo subdir prints a warning about non-root placement
-- [ ] `.cursor/rules/ui-hierarchy-mcp.mdc` has valid YAML frontmatter with `alwaysApply`
-- [ ] `--init` with no args (CLAUDE.md target) does NOT print to stdout when the binary
-      is launched by an MCP client (stdin/stdout bound to JSON-RPC)
-- [ ] Re-running `--init` after a version bump auto-upgrades un-edited blocks silently
-- [ ] Re-running `--init` after a version bump warns and skips hand-edited blocks
-- [ ] `format: "json"` responses are still valid JSON after markdown-warning fix
-- [ ] Markdown integration test output contains no backslashes on Windows
-- [ ] Resolved component nodes have `line > 1` when the component is defined below line 1
-- [ ] Markdown renderer appends `envelope.warnings` without breaking JSON path
-- [ ] `--init --dry-run` prints what would be written without touching any file
-
----
-
-## Phase-to-Pitfall Mapping (v1.1)
-
-| v1.1 Phase                                        | Pitfalls addressed                                                                                                                                                                                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phase 1 — `--init` file writer infrastructure** | 8.1 (CRLF), 8.2 (greedy regex), 8.3 (BOM), 8.4 (trailing newline), 8.5 (atomic write), 8.6 (permissions), 8.7 (hand-edit warning), 8.8 (versioning), 8.9 (MCP vs CLI mode), 8.10 (cursor dir + frontmatter), 8.11 (monorepo root), 8.12 (no-project UX) |
-| **Phase 2 — v1.0 polish**                         | 9.1 (warning surface), 9.2 (markdown integration tests), 9.3 (true line)                                                                                                                                                                                |
-
-**Phase 1 owns 12 pitfalls** — the file mutation surface is the riskiest part of v1.1.
-Ship Phase 1 with a `--dry-run` flag that exercises the full path without writing, so
-the end-to-end idempotency tests can run in CI without mutating any files.
-
----
-
-## v1.1 Technical Debt Patterns
-
-| Shortcut                                           | Cost                                           | When acceptable                                                                      |
-| -------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
-| No `--dry-run` flag                                | Can't safely test in CI without file mutations | NOT acceptable — build `--dry-run` in Phase 1                                        |
-| Version hashing without stored canonical templates | Can't detect hand-edits vs old version         | Acceptable in v1.1 if only current template is stored; store v1.0 hash as a constant |
-| `AGENTS.md` at cwd without git-root detection      | Silently wrong in monorepos                    | NOT acceptable — always warn if cwd ≠ git root                                       |
-| Skipping `.github/` creation for copilot target    | ENOENT on first run                            | NOT acceptable — always `mkdir -p`                                                   |
-| Markdown warning surface as trailing text          | Subtle but acceptable for markdown format      | Acceptable — annotate the design decision in code                                    |
-
----
-
-## Confidence Assessment (v1.1 additions)
-
-| Area                              | Confidence | Basis                                                                                     |
-| --------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
-| CRLF/LF/BOM handling              | HIGH       | Ansible blockinfile issue #85283; Node.js fs BOM docs; community reports                  |
-| Atomic write / EXDEV              | HIGH       | npm/write-file-atomic; Node.js issue #19077; Claude Code EXDEV issues #25476, #42119      |
-| Marker block design               | HIGH       | Ansible blockinfile pattern; git-changelog marker convention                              |
-| AGENTS.md placement               | HIGH       | Official Codex docs (developers.openai.com/codex/guides/agents-md)                        |
-| `.cursor/rules/*.mdc` format      | HIGH       | Cursor official docs (docs.cursor.com/context/rules); community forum patterns            |
-| `.github/copilot-instructions.md` | HIGH       | GitHub official docs (docs.github.com/copilot)                                            |
-| Block versioning / upgrade UX     | MEDIUM     | No official standard; pattern derived from changelog tools + semantic versioning norms    |
-| MCP vs CLI mode guard             | HIGH       | Direct analysis of existing `src/cli.ts` + pitfall 1.1 established in v1.0 research       |
-| Markdown warnings fix             | HIGH       | Direct code analysis — `renderMarkdown` signature confirmed, JSON path confirmed separate |
-| True `line` implementation        | HIGH       | Babel `loc.start.line` 1-indexed confirmed; Analyzer.ts line 304 confirmed as placeholder |
-
----
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Re-implement `classifySegment` inside Expo adapter instead of lifting | Skip an interface widening | Two copies of `[param]`/`[...rest]`/`(group)` parsing — drift between adapters | Never. Lift to `src/core/routing/segments.ts` or accept duplication with `// SHARED` markers + sync test. |
+| Detect Expo Router by `package.json` only (no `app/_layout.tsx` check) | One-liner detect | False positives on monorepos and dep-but-unused projects | Never. Mirror Next's two-signal pattern. |
+| Skip cross-file `StyleSheet.create` resolution (in-file only) | Faster to ship; ~70% real-world stylesheets are in-file | `find_by_style` + inline-style fidelity collapse for projects organizing styles externally (most non-trivial apps) | Acceptable for v1.2 *if* we emit `{ raw }` + warning for cross-file cases and document the limit. Defer one-hop import resolution to v1.3 only with published support matrix. |
+| Skip `<Tabs>`/`<Stack>` JSX introspection — only enumerate filesystem | Half the work for tabs/stacks | IR doesn't reflect what user can navigate to via tabs; agent has to read source | Acceptable for v1.2 if a warning surfaces "layout uses `<Tabs>` — screen list not enumerated". Required for v1.3. |
+| Treat namespace imports (`import * as RN`) as opaque (existing v1 carve-out) | Inherit v1 carve-out | Subset of projects (uncommon) get worse component resolution | Acceptable — explicit carve-out documented in `Analyzer.ts:155`. Same justification for v1.2. |
+| `+not-found.tsx` / `+html.tsx` excluded from URL routing | Avoid edge case in route walker | These pages don't show up in `get_full_hierarchy` results | Acceptable for v1.2; `+not-found` should be reachable via `focus_on` even if not via URL. |
+| Reuse `LAYOUT_PREFIXES` unchanged | Zero code change | Some web-only Tailwind classes (e.g. `block`, `space-y-*`) treated as layout-affecting on RN | Acceptable — precision loss only, never a correctness bug. Revisit on user feedback. |
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| `FrameworkAdapter.detect()` | Read `package.json` synchronously and throw if missing | `fs.access` with `try/catch`, return `false` on any error (D-12 — see `next/detect.ts`) |
+| Adapter selection | Pick first adapter whose `detect()` returns `true` | Run all in parallel; require exactly one `true`; fail with clear error otherwise. Provide `--framework` override. |
+| `discoverEntries` ordering | Return whatever order `tinyglobby` gives | Sort lex by explicit codepoint comparator (`next/discover.ts:50`) — required for deterministic snapshots |
+| `extractComponents` parse errors | Throw on bad source | Return synthetic `ComponentDefinition` with `kind:"error"` renderFlow (D-12 — `NextJsAdapter.ts:73-95`) |
+| Cross-file StyleSheet lookup | Re-parse the resolved file fresh each time | Use `ctx.astCache` from `ParseContext` — already wired in v1.0 |
+| `<Slot/>` injection | Add separate `injectSlotElements` function | Generalize `injectChildrenSlots` (Analyzer.ts:552) — take a predicate `(name, importSource) => boolean` so Next.js still uses `{children}` and Expo uses `<Slot/>` from `expo-router` |
+| `traverse` ESM interop | `import traverse from "@babel/traverse"` directly | Use existing `babel-shim.ts` (the `(traverse as any).default ?? traverse` pattern is locked behind a regression test) |
+| Path normalization | `path.join` and let Windows backslashes leak | Every `file:` field passes through `toForwardSlash` (D-07/D-08 — Analyzer.ts:25). v1.1 Windows gate flags regressions. |
+| Fixture `node_modules` | Install real `react-native` (huge) | Stub via `index.d.ts` or minimal `index.ts` exporting the names we care about |
+| RN primitive detection | Check tag name only (`name === "View"`) | Check tag name AND resolved import source (`source === "react-native"`) |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Re-parsing imported style files per element | Slow on components with many `<View style={styles.x}/>` lookups | Reuse `ctx.astCache` and a per-call `Map<absPath, Map<exportName, StyleSheetEntry>>` | Files with 50+ JSX elements all using same `styles` import |
+| Re-walking full AST per style-key lookup | Same as above | Build StyleSheet map once when file first seen (lazy memoize on `ctx`) | Same scale |
+| `tinyglobby` enumeration in `mapRouteToEntry` per route | Repeated full glob on every `get_full_hierarchy` call within a single Analyzer | Already partially mitigated by `routeTreeCache` (Analyzer.ts:765); ensure new adapter participates | When user calls multiple `get_full_hierarchy` in one session |
+| Platform-suffix resolver retries (Pitfall 8) | Slow resolver on RN projects | Cache resolution per `(fromFile, specifier)` in `ctx.resolverCache` (already exists); include platform-suffix attempt result | Large RN projects with many cross-platform files |
+
+## Security Mistakes
+
+Beyond the 18 threats already modeled in v1.0:
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Execute `StyleSheet.create` arguments to "resolve" computed keys | Arbitrary code execution from user code | Static analysis only — never `eval`, `import()`, `new Function`. Babel parse + walk only (same rule v1.0 follows). |
+| Follow imports outside the project root | Read files outside user's project (`../../../../etc/passwd`) | Constrain `resolveModule` results to absolute paths under `ctx.resolvedRoot` (existing invariant — keep it for cross-file walks too) |
+| Trust `package.json` `name` field for framework detection | Spoofable; could be set to anything | Detect by dep presence + structural signal (Next's two-signal pattern) |
+| Glob into `node_modules` during entry discovery | Pulls in vendored Expo Router examples | `tinyglobby` `ignore: ["**/node_modules/**"]` (already in `next/discover.ts:44`) — copy to Expo adapter; also exclude `.expo/` |
+| Stub `expo-router` exports in a fixture using a relative path that escapes the fixture | Fixture test bleeds outside its directory | Lock fixtures to relative paths inside their own dir; integration runner enforces cwd |
+
+## UX Pitfalls
+
+| Pitfall | Agent Impact | Better Approach |
+|---------|--------------|-----------------|
+| `<View>`/`<Text>` shown as components with no resolvable file | Agent sees "navigate to `View`" but can't, wastes tool calls | Mark RN primitives with `kind:"element"` or `layoutHint:"rn-primitive"`; renderer skips navigation hint |
+| `find_by_style("flex-1")` returns hundreds of matches | Unactionable result | Already handled by v1 envelope shape; document expected match counts in `--init` guide |
+| `get_full_hierarchy("/")` returns empty tree because `_layout.tsx` was rejected | Agent silently misled | Surface adapter-detection result + entry count as warnings on every tool call |
+| Expo `(tabs)/` layout returns layout chain but no per-tab structure | Agent doesn't know what tabs exist | Even a warning `"layout uses <Tabs>; screens detected: home, profile"` is better than nothing |
+| `find_by_text` on `<Text>Hello</Text>` works, but `<Text>{t("greeting")}</Text>` returns nothing | Common in i18n-wired apps | Document static-text-only limitation in `--init` guide; v1.2 punts on i18n |
+| Cross-file `StyleSheet.create` styles report `{raw}` instead of expanded keys | Agent can't search by property key | Warning lists which file holds the unparsed StyleSheet so agent can open it |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **ExpoRouterAdapter `detect`**: Often missing the structural signal (only checks `package.json`) — verify it also requires `app/_layout.tsx` OR at least one route file
+- [ ] **`discoverEntries`**: Often missing platform-suffix dedup — verify two-platform `index.{ios,android}.tsx` doesn't produce two `/` routes
+- [ ] **`mapRouteToEntry`**: Often missing `index.tsx` → page mapping (different from Next's `page.tsx`) — verify with fixture
+- [ ] **RN primitive detection**: Often only checks tag name, not import source — verify user-defined `Text` is NOT misclassified
+- [ ] **`<Slot/>` injection**: Often missing — verify `_layout.tsx` snapshot shows a `kind:"slot"` node where `<Slot/>` lives in source
+- [ ] **Style array merge**: Often forgets conditional branches — verify `find_by_style` matches keys from falsy-conditional entries
+- [ ] **NativeWind platform variants**: Often missing in variant-strip regex — verify `ios:flex-1` is recognized as layout class
+- [ ] **`+not-found.tsx`**: Often parses as regular `/+not-found` route — verify reachable via `focus_on` but not URL-mapped
+- [ ] **`<Tabs>` introspection**: Often skipped — verify at least a warning surfaces "screens: a, b, c"
+- [ ] **Cross-file `StyleSheet.create`**: Often silently returns empty — verify `{raw}` + warning is emitted
+- [ ] **Fixture `node_modules` stubs**: Often missing — verify resolver returns `kind:"external" source:"react-native"` (not unresolved) for primitives
+- [ ] **Windows path discipline**: v1.1 gate covers most cases; verify a fixture with backslashes-in-source-paths (Windows-authored) still passes
+- [ ] **Adapter auto-detect monorepo**: Often picks one without warning — verify monorepo with both produces explicit error
+- [ ] **`runtime: "client"` vs RN**: Often left set to `"server"` by default — verify the IR field is either absent or set to a sensible RN value
+- [ ] **v1.0 NextJsAdapter snapshots**: Often regress when Analyzer is generalized — verify the locking test explicitly opts in to new method shapes
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Interface widening shipped wrong (Pitfall 1) | HIGH | Revert via interface-locking test; the FrameworkAdapter method-count assertion makes accidental changes loud. Worst case: ship behind `--framework` flag and fix abstraction in v1.3. |
+| Auto-detect picks wrong adapter (Pitfall 2) | LOW | `--framework expo\|next` CLI override; document in `--init` guide |
+| Cross-file StyleSheet broken (Pitfall 3) | MEDIUM | Emit `{raw}` + warning fallback; ship in-file-only support and document |
+| Array-style merge wrong (Pitfall 4) | MEDIUM | Conservative: collapse whole array to `{raw}` per element; precision loss but correctness preserved |
+| NativeWind variants mis-stripped (Pitfall 5) | LOW | One-line regex fix; add test |
+| `+not-found.tsx` mis-routed (Pitfall 6) | LOW | Add to exclusion list in route-map |
+| RN primitive misclassified (Pitfall 7) | LOW | Resolver-based classification; fix at one site (resolver pass in Analyzer) |
+| Platform-suffix file resolution broken (Pitfall 8) | MEDIUM | Add suffix-aware retry in `resolveRelative`; cache result |
+| Fixture inadequacy (Pitfall 9) | HIGH | Bad fixtures hide bugs that ship — recovery is "v1.2.1 with new fixtures and re-verification." Cheap up front; expensive after. |
+
+## Pitfall-to-Phase Mapping
+
+Suggested phase plan derived from these pitfalls. Roadmapper should treat as a starting point.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| 1 — Interface leaks Next.js assumptions | Phase 1 — Interface widening | FrameworkAdapter locking test updated; NextJsAdapter still passes v1.0 snapshots; Expo adapter shell compiles against new interface |
+| 2 — Auto-detect false positives | Phase 2 — Detect + selection | Monorepo fixture (`apps/web` Next + `apps/mobile` Expo); `--framework` override exercised |
+| 3 — StyleSheet.create resolution | Phase 4 — RN style signals | Fixture per unsupported case (computed key, factory, cross-file, spread) snapshot-asserts `{raw}` + warning shape |
+| 4 — Style array merge | Phase 4 — RN style signals | Unit test of `flattenStyleArray` against ≥8 input shapes; integration `find_by_style` on falsy-conditional fixture |
+| 5 — NativeWind divergence | Phase 4 — RN style signals | Fixture exercises platform variants + `cn(...)` helper; snapshot `find_by_style("ios:flex-1")` |
+| 6 — Expo Router routing edge cases | Phase 3 — Expo routing | Per-case fixture: groups, tabs, dynamic, `+not-found`, deep nesting |
+| 7 — RN primitive disambiguation | Phase 5 — RN primitives | Fixture pairs: `<Text>` from `react-native` vs from `@/components/Text`, both snapshot-tested |
+| 8 — Platform-suffix files | Phase 3 (enumerate) + Phase 6 (resolve) | Fixture with `Button.{ios,android}.tsx`; `discoverEntries` dedups; resolver finds right variant |
+| 9 — Fixture inadequacy | Phase 0 — Fixture design | Two fixtures (`expo-basic`, `expo-tabs-and-dynamic`) checked in BEFORE Phase 1 code; stub package shape documented |
 
 ## Sources
 
-**v1.0 sources (archived)**
+- **Existing codebase (HIGH confidence)** — direct reads:
+  - `e:/ui-to-hierarch/src/adapters/FrameworkAdapter.ts` (5-method interface, island rule)
+  - `e:/ui-to-hierarch/src/adapters/next/NextJsAdapter.ts` (the leaks documented in Pitfall 1)
+  - `e:/ui-to-hierarch/src/adapters/next/detect.ts` (two-signal detection pattern to mirror)
+  - `e:/ui-to-hierarch/src/adapters/next/discover.ts` (tinyglobby + sort discipline)
+  - `e:/ui-to-hierarch/src/adapters/next/route-map.ts` (segment tree; Expo Router won't reuse most of this)
+  - `e:/ui-to-hierarch/src/core/Analyzer.ts` (the Next.js-shaped orchestrator — surfaces leaks at lines 663-677, 891-932, 1194-1233, 396-429, 495-507)
+  - `e:/ui-to-hierarch/src/core/render-flow/component-detect.ts` (component discovery; capitalization-based)
+  - `e:/ui-to-hierarch/src/core/extractors/index.ts`, `inline-style.ts`, `tailwind/index.ts`, `tailwind/layout-prefixes.ts` (style extraction patterns to extend)
+  - `e:/ui-to-hierarch/.planning/PROJECT.md` (v1.2 active requirements)
+  - `e:/ui-to-hierarch/.planning/MILESTONES.md` (v1.0/v1.1 shipped scope)
+- **Expo Router docs (MEDIUM confidence — current as of 2026-05)** — https://docs.expo.dev/router/ — verified group/dynamic/catch-all conventions, `_layout.tsx`, `<Slot/>`, `<Tabs>`/`<Stack>`/`<Drawer>`, `+not-found.tsx`/`+html.tsx`/`+native-intent.tsx`, typed routes.
+- **NativeWind v4 docs (MEDIUM confidence)** — https://www.nativewind.dev/ — platform variants `ios:`/`android:`/`web:`/`native:`, `className` on RN primitives.
+- **React Native docs (HIGH confidence)** — https://reactnative.dev/docs/stylesheet — `StyleSheet.create`, `StyleSheet.flatten`, array form of `style` prop.
+- **Metro bundler platform extensions (HIGH confidence)** — https://reactnative.dev/docs/platform-specific-code — `.ios.tsx`, `.android.tsx`, `.native.tsx`, `.web.tsx` resolution order.
+- **Prototype script (HIGH confidence)** — `e:/ui-to-hierarch/generate-component-hierarchy.ts` (RN-targeting reference cited in CLAUDE.md; same Babel pipeline shape).
 
-- MCP spec and debugging guides (modelcontextprotocol.io)
-- Next.js official docs (parallel-routes, intercepting-routes, use-client, generateMetadata)
-- Babel `@babel/traverse` + GitHub issues (#14375, #7554, #10022)
-- TypeScript TSConfig Reference; pnpm workspaces; React forwardRef/memo docs
-
-**v1.1 sources**
-
-- [Ansible blockinfile CRLF idempotency bug — Issue #85283](https://github.com/ansible/ansible/issues/85283) — HIGH: canonical evidence that CRLF breaks marker-block detection
-- [Ansible blockinfile keeps adding block — Issue #45848](https://github.com/ansible/ansible/issues/45848) — HIGH: greedy-regex double-block failure mode documented
-- [Node.js fs.rename EXDEV cross-device — Issue #19077](https://github.com/nodejs/node/issues/19077) — HIGH: Windows cross-drive rename limitation
-- [Claude Code EXDEV on Windows MSIX — Issue #25476](https://github.com/anthropics/claude-code/issues/25476) — HIGH: MSIX sandbox = different filesystem; EXDEV even on same drive letter
-- [Claude Code EXDEV dual-drive Windows 11 — Issue #42119](https://github.com/anthropics/claude-code/issues/42119) — HIGH: confirms copyFile+unlink fallback is the correct pattern
-- [npm/write-file-atomic README](https://github.com/npm/write-file-atomic/blob/main/README.md) — HIGH: atomic write pattern with temp-file-then-rename
-- [Node.js BOM handling — Issue #1918](https://github.com/nodejs/node-v0.x-archive/issues/1918) — HIGH: Node.js does NOT strip BOM on readFile
-- [OpenAI Codex AGENTS.md guide](https://developers.openai.com/codex/guides/agents-md) — HIGH: repo-root placement, subdirectory precedence, override behavior
-- [Cursor rules official docs](https://docs.cursor.com/context/rules) — HIGH: `.cursor/rules/*.mdc`, YAML frontmatter, `alwaysApply` field
-- [GitHub Copilot custom instructions docs](https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot) — HIGH: `.github/copilot-instructions.md` canonical path
-- `e:\ui-to-hierarch\src\core\Analyzer.ts` — HIGH: `line: 1` placeholder at line 304 confirmed
-- `e:\ui-to-hierarch\src\renderers\markdown.ts` — HIGH: `_envelope` ignored in `renderMarkdown` confirmed
-- `e:\ui-to-hierarch\src\cli.ts` — HIGH: single entry point for both MCP server and future `--init`; mode-gate analysis
-- `e:\ui-to-hierarch\test\renderers\markdown.test.ts` — HIGH: existing snapshot test patterns and path guard assertions confirmed
+---
+*Pitfalls research for: Adding ExpoRouterAdapter (React Native + Expo Router) parallel to NextJsAdapter in ui-to-hierarchyMCP*
+*Researched: 2026-05-12*

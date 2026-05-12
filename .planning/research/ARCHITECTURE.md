@@ -1,633 +1,443 @@
-# Architecture Patterns — v1.1 Integration
+# Architecture Research — v1.2 ExpoRouterAdapter Integration
 
-**Domain:** MCP server CLI — agent onboarding + output surface polish
-**Researched:** 2026-05-11
-**Scope:** v1.1 features integration into existing `ui-hierarchy-mcp` architecture
+**Domain:** MCP server — second `FrameworkAdapter` plugged alongside `NextJsAdapter`
+**Researched:** 2026-05-12
+**Confidence:** HIGH (grounded in current repo files, not external claims)
 
 ---
 
-## Existing Architecture Map (v1.0 Baseline)
+## TL;DR
+
+`ExpoRouterAdapter` is a sibling `adapters/expo/` module that implements the **same locked 5-method `FrameworkAdapter` contract** consumed by `Analyzer`. The IR schema, renderers, and MCP tools do **not** change. The only `core/` change is a small, generic `core/styles/rn/` module for `StyleSheet.create` + style-array merge (NativeWind reuses the existing Tailwind extractor). Adapter selection is a new `src/adapters/select.ts` helper called from the 4 MCP tool handlers, replacing the hard-coded `NextJsAdapter` import. The `route` arg, currently regex-validated for Next.js segment syntax, must relax to also accept Expo Router groups/dynamic patterns (regex change in `tools/get-full-hierarchy.ts`).
+
+**Net delta:** 1 new adapter (~6 files), 1 new style module (~3 files), 1 new selector (1 file), 4 tool-handler 3-line edits, 1 regex relaxation. **Zero** changes to `src/ir/`, `src/renderers/`, `src/core/Analyzer.ts`, `src/core/parser/`, `src/core/render-flow/`, `src/core/resolver/`.
+
+---
+
+## Existing Architecture Map (v1.1 baseline)
 
 ```
 src/
-  cli.ts                        <- bin entry (3 lines: import + startServer())
+  cli.ts                          # bin entry — startServer() | runInit()
   mcp/
-    server.ts                   <- createServer() + startServer()
-    log.ts
-    errors.ts
+    server.ts                     # createServer() registers tools[]
     tools/
-      index.ts                  <- ToolModule registry (tools array)
-      get-full-hierarchy.ts
-      focus-on.ts
-      find-by-text.ts
-      find-by-style.ts
-  core/
-    Analyzer.ts                 <- per-call orchestrator (ARCH-02)
-    babel-shim.ts
-    paths.ts
-    parser/
-    resolver/
-      index.ts                  <- resolveModule() entry; no-throw per D-12
-      barrel.ts
-      relative.ts
-      tsconfig.ts
-      node-modules.ts
-    render-flow/
-    extractors/
+      index.ts                    # tools = [getFullHierarchy, focusOn, findByText, findByStyle]
+      get-full-hierarchy.ts       # hardcodes: new Analyzer({ root, adapter: NextJsAdapter })
+      focus-on.ts                 # idem
+      find-by-text.ts             # idem
+      find-by-style.ts            # idem
+      common.ts                   # projectRootSchema
+  core/                           # FRAMEWORK-AGNOSTIC island consumer
+    Analyzer.ts                   # consumes FrameworkAdapter interface only
+    resolve-root.ts               # arg > env > cwd (ARCH-03)
+    parser/                       # Babel parse primitive (shared)
+    resolver/                     # tsconfig paths + barrel chase (shared)
+    render-flow/                  # JSX walker (shared)
+    extractors/                   # Tailwind, inline-style, CSS Modules, styled-components
+    paths.ts, babel-shim.ts
   ir/
-    schema.ts                   <- TreeNode 9-kind union
-    envelope.ts                 <- Envelope { schemaVersion, warnings[], tree }
-    index.ts
-  adapters/
-    FrameworkAdapter.ts         <- 5-method interface
-    types.ts                    <- ResolveResult, RenderNode, ComponentDefinition, ...
-    next/
-      NextJsAdapter.ts
-      detect.ts
-      discover.ts
-      route-map.ts
-      segments.ts
+    schema.ts                     # TreeNode 9-kind discriminated union + zod
   renderers/
-    markdown.ts                 <- renderMarkdown(tree, _envelope): string
-    json.ts                     <- renderJson(tree, envelope): Envelope
-    index.ts
+    markdown.ts, json.ts, envelope-builder.ts
+  adapters/                       # ISLAND — nothing in core/ir/renderers may import this
+    types.ts                      # ComponentDefinition (13 fields), ParseContext, RouteMatch, ...
+    FrameworkAdapter.ts           # locked 5-method interface
+    next/
+      NextJsAdapter.ts            # the only impl in v1.1
+      detect.ts, discover.ts, segments.ts, route-map.ts
 ```
 
-**Key invariant (ARCH-01 / D-11):** `src/core/`, `src/ir/`, `src/renderers/` have zero runtime imports from `src/adapters/`. Enforced by Biome `noRestrictedImports` + `test/architecture/island.test.ts`. New code in `src/init/` must respect this — init has no reason to touch `adapters/` anyway.
+### The 5-method `FrameworkAdapter` contract (from `src/adapters/FrameworkAdapter.ts`)
+
+| Method                | Signature                                                                                | What Analyzer calls it for                              |
+| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `detect`              | `(absRoot) => Promise<boolean> \| boolean`                                               | (currently unused by Analyzer — selector consumes this) |
+| `discoverEntries`     | `(absRoot) => Promise<string[]> \| string[]`                                             | `Analyzer.buildUnionIR` to enumerate routes             |
+| `resolveModule`       | `(ctx, fromFile, specifier, importedName) => ResolveResult`                              | `resolveComponentCallsites` in `Analyzer`               |
+| `extractComponents`   | `(ctx, entryFiles, opts?) => ComponentDefinition[]`                                      | `Analyzer.buildTreeForEntry` per file                   |
+| `mapRouteToEntry`     | `(absRoot, route) => Promise<RouteMatch> \| RouteMatch`                                  | `Analyzer.getOrBuildRouteTree`                          |
+
+The contract is enforced by `test/adapters/FrameworkAdapter.test.ts` (5-key set). Adding a 6th method is a milestone-level change. **v1.2 does not change the interface.**
 
 ---
 
-## Q1: CLI Subcommand Dispatch
+## v1.2 Target Architecture
 
-### Current state
-
-`src/cli.ts` is 3 lines:
-
-```typescript
-import { log } from "./mcp/log.js";
-import { startServer } from "./mcp/server.js";
-startServer().catch(...);
+```
+src/
+  cli.ts                          # UNCHANGED
+  mcp/
+    server.ts                     # UNCHANGED
+    tools/
+      *.ts                        # MODIFIED — replace hardcoded NextJsAdapter import
+                                  #   with `await selectAdapter(root)`
+      get-full-hierarchy.ts       # MODIFIED — relax `route` regex to accept Expo
+                                  #   Router groups + dynamic segments (largely the
+                                  #   same surface as Next; main delta is groups `(name)`
+                                  #   and `[...rest]` already present, but the regex
+                                  #   was written for Next semantics — re-audit)
+  core/
+    Analyzer.ts                   # UNCHANGED (consumes interface, not impl)
+    parser/                       # UNCHANGED — Babel parse is framework-agnostic
+    resolver/                     # UNCHANGED — tsconfig paths used by Expo too
+    render-flow/                  # UNCHANGED
+    extractors/                   # UNCHANGED
+                                  #   ↳ Tailwind extractor REUSED for NativeWind
+                                  #     className (NativeWind = Tailwind for RN;
+                                  #     same `className="..."` JSX surface)
+    styles/                       # NEW — generic, framework-agnostic
+      rn/
+        index.ts                  # public façade
+        stylesheet-create.ts      # parse `StyleSheet.create({ ... })` → Map<key, props>
+        style-prop.ts             # resolve `style={styles.x}`, `style={[a,b,c && d]}`
+  ir/
+    schema.ts                     # UNCHANGED — no new TreeNode kinds needed
+  renderers/                      # UNCHANGED
+  adapters/                       # ISLAND
+    types.ts                      # UNCHANGED — `ComponentDefinition` 13-field shape
+                                  #   already accommodates RN (classNames=NativeWind,
+                                  #   inlineStyles=resolved RN style, file-level
+                                  #   `runtime` is N/A — set to "client" constant for RN)
+    FrameworkAdapter.ts           # UNCHANGED
+    select.ts                     # NEW — auto-detect from target project's package.json
+    next/                         # UNCHANGED
+    expo/                         # NEW — sibling of next/
+      ExpoRouterAdapter.ts        # impl all 5 methods
+      detect.ts                   # has `expo-router` in deps + has `app/` (or `src/app/`)
+      discover.ts                 # glob `app/**/{_layout,index,[*],...}.{tsx,jsx}`
+      route-map.ts                # Expo Router segment semantics (mirror next/route-map)
+      segments.ts                 # parse `[param]`, `[...rest]`, `[[...opt]]`, `(group)`
+      rn-primitives.ts            # name set: View, Text, ScrollView, FlatList, Image,
+                                  #   Pressable, Touchable*, SectionList, ...
+                                  #   Used by extractComponents to treat these as
+                                  #   `kind:"element"` (lowercase-style), not `kind:"component"`
 ```
 
-There is no CLI framework (`commander`, `yargs`, `meow`, etc.). The bin entry is a direct boot.
+### What is genuinely new vs modified vs untouched
 
-### Recommended pattern: hand-rolled argv switch in cli.ts
+| Component                         | Status         | File path                                          | Why                                                                                                                                                                                                            |
+| --------------------------------- | -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ExpoRouterAdapter`               | **NEW**        | `src/adapters/expo/ExpoRouterAdapter.ts`           | Implements 5 methods. Mirrors `NextJsAdapter`'s structure: delegating shim to sibling `detect/discover/route-map`; reuses `core/parser`, `core/resolver`, `core/render-flow`, `core/extractors` for everything except RN styles. |
+| `expo/detect.ts`                  | **NEW**        | `src/adapters/expo/detect.ts`                      | Read target `package.json`: `dependencies.expo-router \|\| devDependencies.expo-router` AND presence of `app/` or `src/app/`. No-throw on read errors (return false).                                            |
+| `expo/discover.ts`                | **NEW**        | `src/adapters/expo/discover.ts`                    | Glob `app/**/{_layout,index,*}.{tsx,jsx,ts,js}` under `app/` (or `src/app/`). Use `tinyglobby` (already a dep). Ignore `**/_*/**` (note: Expo Router `_layout` is special — handle by name, not by underscore-prefix ignore).         |
+| `expo/route-map.ts`               | **NEW**        | `src/adapters/expo/route-map.ts`                   | Build layout chain (`_layout.tsx` per directory, root-down) + leaf (`index.tsx` or `[param].tsx`). Match params + groups. Mirrors `next/route-map.ts` but **simpler**: no parallel slots, no intercepting routes, no `template/loading/error/not-found` siblings. |
+| `expo/segments.ts`                | **NEW**        | `src/adapters/expo/segments.ts`                    | Segment matcher: `[name]` / `[...rest]` / `[[...opt]]` / `(group)` (transparent). Largely a port of `next/segments.ts`.                                                                                       |
+| `expo/rn-primitives.ts`           | **NEW**        | `src/adapters/expo/rn-primitives.ts`               | `export const RN_PRIMITIVES = new Set([...])`. Consumed during `extractComponents` to flag intrinsic-like elements. **Decision:** primitive names are still PascalCase JSX tags, so the existing `isComponent` boolean in `RenderNode` would mark them as components. The adapter post-processes: if `tag ∈ RN_PRIMITIVES`, force `isComponent: false` so Analyzer emits `kind:"element"` (parity with `<div>` for Next.js). |
+| `core/styles/rn/stylesheet-create.ts` | **NEW**    | `src/core/styles/rn/stylesheet-create.ts`          | Generic — lives in `core/`, not in adapter. Detects `const styles = StyleSheet.create({ card: {...} })` (and `RN.StyleSheet.create`) and returns `Map<bindingName, Map<key, Record<prop, value>>>`. No adapter-specific knowledge. |
+| `core/styles/rn/style-prop.ts`    | **NEW**        | `src/core/styles/rn/style-prop.ts`                 | Given a JSXElement and the StyleSheet map, resolve `style={styles.card}`, `style={[a,b]}`, `style={[a, cond && b]}` into a merged `Record<string, string \| { raw }>` matching `ComponentDefinition.inlineStyles`'s existing shape. |
+| `core/styles/rn/index.ts`         | **NEW**        | `src/core/styles/rn/index.ts`                      | Façade: `extractRnStyles(ast, jsxElements, source, file) → ComponentStyleSignals` (same return shape as `core/extractors/index.ts`'s `collectStyleSignals`).                                                   |
+| `core/extractors/tailwind/`       | **REUSED**     | (no change)                                        | NativeWind is `className="px-4 bg-red-500"` on RN elements — syntactically identical to web Tailwind. Existing extractor handles it without modification.                                                     |
+| `adapters/select.ts`              | **NEW**        | `src/adapters/select.ts`                           | `selectAdapter(root): Promise<FrameworkAdapter>`. Reads target `package.json`. Both `next` and `expo-router` present → error `"Conflicting frameworks"`. Neither → error `"No supported framework detected"`. Strict error returned as `{ok:false, message}` so tool handlers turn it into MCP `isError:true`. |
+| `mcp/tools/get-full-hierarchy.ts` | **MODIFIED**   | `src/mcp/tools/get-full-hierarchy.ts`              | (a) Replace `NextJsAdapter` import with `selectAdapter(root)`. (b) Relax `route` regex to drop Next-only special segments (parallel `@slot` already not in current regex; OK). Audit the existing regex against Expo Router segment grammar. |
+| `mcp/tools/focus-on.ts`           | **MODIFIED**   | `src/mcp/tools/focus-on.ts`                        | Replace `NextJsAdapter` import with `selectAdapter`. No schema change.                                                                                                                                        |
+| `mcp/tools/find-by-text.ts`       | **MODIFIED**   | `src/mcp/tools/find-by-text.ts`                    | Idem.                                                                                                                                                                                                          |
+| `mcp/tools/find-by-style.ts`      | **MODIFIED**   | `src/mcp/tools/find-by-style.ts`                   | Idem. (No semantic change — `findByStyle` already matches against `styleKeys` which Analyzer scrapes from the `style={{...}}` expression. RN's `style={styles.card}` will resolve via `core/styles/rn`, but the **wire format consumed by `Analyzer.findByStyle` reads from the per-element style sidecar Map** populated by `scrapeStyleAttributes`. This means the RN style resolver's output must surface into that sidecar — see "Wiring point" below.) |
+| `init/template.ts`                | **MODIFIED**   | `src/init/template.ts`                             | Add one paragraph mentioning Expo Router support. Bump `INIT_MARKER_VERSION` (the build-time constant) so re-runs detect a new template version.                                                              |
+| `src/cli.ts`                      | **UNCHANGED**  | —                                                  | Adapter selection happens per tool-call, not at CLI startup. CLI cannot know `projectRoot` until the tool's args arrive (resolveRoot reads `args.projectRoot` first).                                          |
+| `src/mcp/server.ts`               | **UNCHANGED**  | —                                                  | Tool registry is framework-agnostic.                                                                                                                                                                           |
+| `src/core/Analyzer.ts`            | **UNCHANGED**  | —                                                  | Only consumes the `FrameworkAdapter` interface. `routeTreeCache` keying by route string, slot-substitution by `kind:"slot",name:"children"`, and `attachParallelSlot` all continue to work for Expo (which simply never emits parallel slots — `RouteMatch.slots` stays `{}`). |
+| `src/ir/schema.ts`                | **UNCHANGED**  | —                                                  | See "IR schema impact" below — no new kinds required.                                                                                                                                                          |
+| `src/renderers/*`                 | **UNCHANGED**  | —                                                  | Consume IR only.                                                                                                                                                                                               |
+| `src/core/parser/`                | **UNCHANGED**  | —                                                  | Babel plugin set `["jsx", "typescript"]` parses RN TSX fine.                                                                                                                                                   |
+| `src/core/resolver/`              | **UNCHANGED**  | —                                                  | tsconfig paths + barrel chase apply to RN repos identically.                                                                                                                                                   |
+| `src/core/render-flow/`           | **UNCHANGED**  | —                                                  | JSX → `RenderNode` walking is framework-agnostic; the only knowledge that leaked into Next-specific logic was `runtime` (use-client/use-server), and that lives in `NextJsAdapter.buildComponentDefinition`. |
 
-No framework needed. `--init` is a single subcommand with one optional flag (`--target`). A framework would add a runtime dep and increase install footprint for one `if` branch.
+---
+
+## Adapter selection — exact integration
+
+### Where it lives
+
+`src/adapters/select.ts` (new). It is **the only file outside `next/` and `expo/`** that knows about adapter implementations.
 
 ```typescript
-// src/cli.ts (v1.1 shape)
-import { log } from "./mcp/log.js";
-import { startServer } from "./mcp/server.js";
+// src/adapters/select.ts (sketch)
+import type { FrameworkAdapter } from "./FrameworkAdapter.js";
+import { NextJsAdapter } from "./next/NextJsAdapter.js";
+import { ExpoRouterAdapter } from "./expo/ExpoRouterAdapter.js";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-const args = process.argv.slice(2);
-const isInit = args.includes("--init");
+export type SelectResult =
+  | { ok: true; adapter: FrameworkAdapter; framework: "next" | "expo-router" }
+  | { ok: false; code: "conflict" | "none" | "read-error"; message: string };
 
-if (isInit) {
-  // lazy import keeps MCP server code out of init path
-  const { runInit } = await import("./init/index.js");
-  const targetIdx = args.indexOf("--target");
-  const targetArg = targetIdx !== -1 ? args[targetIdx + 1] : undefined;
-  const targets = targetArg ? targetArg.split(",") : ["claude"];
-  await runInit({ targets }).catch((err: unknown) => {
-    process.stderr.write(
-      JSON.stringify({ level: "error", msg: String(err) }) + "\n",
-    );
-    process.exit(1);
-  });
-} else {
-  startServer().catch((err: unknown) => {
-    log.error("server error", {
-      message: err instanceof Error ? err.message : String(err),
-    });
-    process.exit(1);
-  });
+export async function selectAdapter(absRoot: string): Promise<SelectResult> {
+  let pkg: { dependencies?: Record<string,string>; devDependencies?: Record<string,string> };
+  try {
+    pkg = JSON.parse(await readFile(join(absRoot, "package.json"), "utf8"));
+  } catch (err) {
+    return { ok: false, code: "read-error", message: `cannot read package.json at ${absRoot}` };
+  }
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const hasNext = !!deps?.["next"];
+  const hasExpo = !!deps?.["expo-router"];
+  if (hasNext && hasExpo) return { ok: false, code: "conflict", message: "both next and expo-router present" };
+  if (hasNext) return { ok: true, adapter: NextJsAdapter, framework: "next" };
+  if (hasExpo) return { ok: true, adapter: ExpoRouterAdapter, framework: "expo-router" };
+  return { ok: false, code: "none", message: "neither next nor expo-router found in package.json" };
 }
 ```
 
-**Why dynamic `import()`:** Avoids loading Babel, MCP SDK, and zod into the init path. Init only needs `node:fs/promises` and `node:path`. The lazy import also avoids the `__TOOL_VERSION__` define requirement in non-build contexts (tsx dev run) — `startServer` is the only path that needs it.
+### Where it's called
 
-**Dispatch contract:**
-
-- Bare `node dist/cli.js` -> MCP server (existing behavior, zero change to `startServer`)
-- `node dist/cli.js --init` -> init handler, exits 0 on success
-- `node dist/cli.js --init --target claude,cursor` -> init with targets list
-- Unknown flags pass through to server path (existing MCP clients are unaffected)
-
-**Build impact:** `tsup.config.ts` entry remains `["src/cli.ts"]` — no change needed. `src/init/` is reachable from `cli.ts` so tsup bundles it automatically. No new entry points.
-
----
-
-## Q2: Init Module Layout
-
-### Recommended: `src/init/` island
-
-```
-src/init/
-  index.ts          <- exports runInit({ targets }): Promise<void>
-  targets.ts        <- TARGET_MAP: record of target-id -> { paths, heading, frontmatter? }
-  mutator.ts        <- readSplice(filePath, content, markers): Promise<void>
-  template.ts       <- GUIDE_CONTENT: string constant (the injected markdown)
-```
-
-**Rationale for `src/init/` over `src/cli/init.ts`:**
-
-- `src/init/` enforces the same island discipline pattern used by `src/core/`, `src/ir/`, `src/renderers/`. One directory = one concern.
-- `src/cli/init.ts` implies init is a CLI concern — it's not. Init is a standalone write operation. A future HTTP transport or script invoker could call `runInit` directly.
-- The directory boundary makes it easy to assert the island doesn't import MCP/Babel internals.
-
-**Dependency rules for `src/init/`:**
-
-- MAY import: `node:fs/promises`, `node:path`, `node:os`
-- MUST NOT import: `src/mcp/`, `src/core/`, `src/ir/`, `src/adapters/`, `src/renderers/`
-- Zero external runtime deps (no `@modelcontextprotocol/sdk`, no `zod`, no Babel)
-
-**`runInit` signature:**
+Each of the 4 tool handlers, **after `resolveRoot` and before `new Analyzer(...)`**:
 
 ```typescript
-export async function runInit(opts: {
-  targets: string[]; // validated against TARGET_MAP keys
-  cwd?: string; // defaults to process.cwd()
-}): Promise<void>;
-```
-
-`runInit` validates targets, resolves output paths relative to `cwd`, calls `readSplice` for each, and writes to stderr (not stdout — stdout is reserved for MCP JSON-RPC in server mode, but when init runs, server never starts, so this is moot; stderr is still correct for human-readable output).
-
----
-
-## Q3: Template Asset — Constant vs File
-
-### Recommended: TypeScript string constant in `src/init/template.ts`
-
-Do NOT use a runtime `fs.readFile` for the template. Reasons:
-
-1. **tsup bundles `src/init/` into `dist/cli.js`** — a single JS file. There is no `dist/` subdirectory for assets. An `fs.readFile` would need a path relative to `import.meta.url`, which is fragile across dev (`tsx src/cli.ts`), built (`node dist/cli.js`), and global install (`npx`).
-
-2. **The template is small** (a few hundred bytes of markdown). No size reason to externalize.
-
-3. **`import.meta.url`-relative file access in tsup bundles** requires `import.meta.url` to resolve to the actual `.js` file's directory — which works in Node ESM but would require `__dirname` shims and `tsup`'s `metafile` option. This adds complexity for zero benefit.
-
-4. **String constant is zero-dep, zero-config, survives any tsup externalization** strategy. It is also testable as a plain string import.
-
-```typescript
-// src/init/template.ts
-export const GUIDE_CONTENT = `
-## ui-hierarchy-mcp — Usage Guide
-
-<!-- ui-hierarchy-mcp:start -->
-...
-<!-- ui-hierarchy-mcp:end -->
-`;
-```
-
-**If the template grows large** (>2KB), it can still be inlined as a template literal. No structural change needed.
-
----
-
-## Q4: Target File Writers — Interface Design
-
-### Recommended: single generic `readSplice` + per-target config map
-
-Do NOT write per-target writer functions. The per-target differences are data, not logic:
-
-```typescript
-// src/init/targets.ts
-export interface TargetConfig {
-  id: string;
-  label: string;
-  /** Relative to cwd. For .cursor/rules the file name can be fixed. */
-  relativePath: string;
-  /** Heading to prepend when creating a new section. Null = no heading. */
-  sectionHeading: string | null;
-  /** If true, prepend YAML frontmatter block on new file creation. */
-  frontmatter: string | null;
+// src/mcp/tools/get-full-hierarchy.ts (after edit)
+const root = resolveRoot(args.projectRoot);
+const sel = await selectAdapter(root);
+if (!sel.ok) {
+  return { content: [{ type: "text", text: sel.message }], isError: true };
 }
+const analyzer = new Analyzer({ root, adapter: sel.adapter });
+```
 
-export const TARGET_MAP: Record<string, TargetConfig> = {
-  claude: {
-    id: "claude",
-    label: "CLAUDE.md",
-    relativePath: "CLAUDE.md",
-    sectionHeading: "## ui-hierarchy-mcp",
-    frontmatter: null,
-  },
-  codex: {
-    id: "codex",
-    label: "AGENTS.md",
-    relativePath: "AGENTS.md",
-    sectionHeading: "## ui-hierarchy-mcp",
-    frontmatter: null,
-  },
-  cursor: {
-    id: "cursor",
-    label: ".cursor/rules/ui-hierarchy.mdc",
-    relativePath: ".cursor/rules/ui-hierarchy.mdc",
-    sectionHeading: null,
-    frontmatter:
-      "---\ndescription: ui-hierarchy-mcp usage\nglobs:\nalwaysApply: true\n---\n",
-  },
-  copilot: {
-    id: "copilot",
-    label: ".github/copilot-instructions.md",
-    relativePath: ".github/copilot-instructions.md",
-    sectionHeading: "## ui-hierarchy-mcp",
-    frontmatter: null,
-  },
+### Why per-call, not at CLI startup
+
+`projectRoot` resolves per tool call (arg > env > cwd). A user with `UI_TO_HIERARCH_ROOT` unset can call `get_full_hierarchy({ projectRoot: "/Users/x/repo-next" })` and `get_full_hierarchy({ projectRoot: "/Users/x/repo-expo" })` against the same server instance. Choosing the adapter at startup would lock the server to one framework. Per-call adds one `fs.readFile` per invocation (a few ms) — negligible vs. parsing.
+
+### Adapter cache (optional micro-optimization)
+
+`selectAdapter` could memoize `root → SelectResult` in module scope **without** violating ARCH-02 (ARCH-02 forbids cross-call **parse** state; static framework detection is metadata, not parsed user code, and stale results would self-heal on the next `package.json` change anyway). **Recommendation:** skip the cache in v1.2 for simplicity. Add it only if profiling shows it matters.
+
+---
+
+## Style-signal extraction — where each piece lives
+
+### Decision: split by framework-coupling, not by language
+
+| Signal                          | Lives in                                | Reasoning                                                                                                                                                                                                                                              |
+| ------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| NativeWind `className`          | **`core/extractors/tailwind/` (reuse)** | NativeWind is literally Tailwind for RN — same `className="..."` JSX surface, same `cn()`/`clsx()` call sites, same token grammar. No new code, no fork.                                                                                              |
+| `StyleSheet.create({...})`      | **`core/styles/rn/` (new, generic)**    | The pattern `const X = StyleSheet.create({...})` is identifier-based detection (callee `StyleSheet.create`). It's syntactic, not adapter-policy. Lives in `core/` for the same reason `extractors/styled.ts` lives in `core/` (also identifier-based). |
+| Inline `style={{...}}`          | **`core/extractors/inline-style.ts` (reuse)** | Already handles literals + raw expression slices into `Record<string, string \| {raw}>`. The shape matches what RN needs.                                                                                                                              |
+| Style-array `style={[a, b]}`    | **`core/styles/rn/style-prop.ts` (new)** | Array merge is **specific to RN** (web React uses className for composition, not style arrays). But the resolver only needs the StyleSheet map + the JSX element — it's still pure syntax. Generic enough to live in `core/styles/rn/`.               |
+
+### Why not put StyleSheet logic inside `ExpoRouterAdapter`?
+
+Two reasons:
+1. **Symmetry with `core/extractors/styled.ts`**: `extractStyledTemplates` is an identifier-driven extractor (callee `styled`) that lives in `core/` and is called by `collectStyleSignals`. `StyleSheet.create` is the same shape of problem. Keeping both in `core/styles/` or `core/extractors/` makes the codebase coherent.
+2. **A future React Native CLI adapter (no Expo Router)** would want the same `StyleSheet.create` parsing. Putting it in `expo/` would force duplication when v1.3 ships.
+
+### Wiring point inside the RN adapter
+
+`ExpoRouterAdapter.extractComponents` mirrors `NextJsAdapter.extractComponents` but dispatches to `core/styles/rn`:
+
+```typescript
+// src/adapters/expo/ExpoRouterAdapter.ts (sketch of extractComponents)
+import { collectStyleSignals } from "../../core/extractors/index.js";
+import { extractRnStyles } from "../../core/styles/rn/index.js";
+import { RN_PRIMITIVES } from "./rn-primitives.js";
+// ...
+const webSignals = collectStyleSignals(ast, jsxElements, source, file, opts);
+const rnSignals = extractRnStyles(ast, jsxElements, source, file);
+// Merge: NativeWind classNames come from webSignals; RN inline+stylesheet come from rnSignals
+const merged = {
+  classNames: webSignals.classNames,           // NativeWind
+  inlineStyles: { ...webSignals.inlineStyles, ...rnSignals.inlineStyles },
+  cssModuleRefs: [],                            // N/A for RN
+  styledTemplates: webSignals.styledTemplates,  // styled-components/native exists; keep
 };
 ```
 
-```typescript
-// src/init/mutator.ts
-const START = "<!-- ui-hierarchy-mcp:start -->";
-const END = "<!-- ui-hierarchy-mcp:end -->";
+### Style signal → Analyzer style sidecar
 
-export async function readSplice(
-  filePath: string,
-  newContent: string,
-  heading: string | null,
-  frontmatter: string | null,
-): Promise<"created" | "updated" | "noop">;
-```
+`Analyzer.scrapeStyleAttributes` (lines 61–99 of `Analyzer.ts`) currently reads only literal `className` strings and parses `style={{...}}` expressions in-line at the JSX site. **It does not consume `ComponentDefinition.inlineStyles`.** For `find_by_style` to match an RN element's `style={styles.card}` against a class/prop query like `"padding"`, **the resolved style keys must reach the per-element sidecar**.
 
-**Algorithm in `readSplice`:**
+**Recommended path:** the adapter resolves `style={styles.card}` into a literal/expression value **at the `RenderNode.attributes` level** (`JsxAttribute.value`) before Analyzer scrapes. Concretely:
 
-1. Try `fs.readFile(filePath)`. If ENOENT, create parent dirs, write fresh file (prepend `frontmatter` if set, then marker block).
-2. If file exists, scan for `START` + `END` markers.
-3. If markers found: splice the content between them (idempotent — same content = "noop", different content = "updated").
-4. If markers NOT found: append the block (with `heading` if set) to the existing file.
+- In `ExpoRouterAdapter.extractComponents`, after `walkRenderFlow` builds the `RenderNode` tree, post-process each `kind:"jsx"` node: if it has `style` attribute referencing a known `StyleSheet.create` key, rewrite the attribute value from `{ kind:"expression", source:"styles.card" }` to a synthetic expression containing the merged inline object, e.g. `{ kind:"expression", source:'{padding: 8, margin: 4}' }`. Analyzer's existing `parseExpression(...)` + `ObjectExpression` walker then extracts `["padding","margin"]` into the sidecar **with zero Analyzer change**.
 
-**Why this handles both `.cursor/rules/*.mdc` and plain markdown:** The frontmatter distinction is purely at creation time. For existing files both formats use the same marker-splice algorithm. The `heading` field handles whether a section header is injected before the markers.
+**This is the single non-obvious wiring decision.** Document it in the adapter's header comment.
 
-**Directory creation:** `fs.mkdir(dir, { recursive: true })` before write — covers `.cursor/rules/` which may not exist.
+### Alternative considered
+
+Add a new optional field `resolvedStyleKeys?: string[]` on `RenderNode { kind: "jsx" }` and teach Analyzer to read it. **Rejected** because it forces a parser-types contract change for one framework, breaking the "adapter is data-shape-equivalent" symmetry.
 
 ---
 
-## Q5: Markdown Warnings Surfacing
+## IR schema impact — none
 
-### Current state
+Existing 9 kinds (`component`, `element`, `text`, `branch`, `list`, `slot`, `error`, `fragment`, `spread`) cover every RN tree shape we encountered:
 
-`renderMarkdown(tree, _envelope): string` — the `_envelope` parameter is named with `_` prefix, explicitly ignoring it. Warnings are dropped silently.
+| RN construct                                | IR mapping                                                                                            |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `<View><Text>Hi</Text></View>`              | `element(View) → element(Text) → text("Hi")` (after RN_PRIMITIVES post-process flips `isComponent`)   |
+| `<MyCard />` (user component)               | `kind:"component"` — same as Next                                                                     |
+| `{cond && <Foo/>}` / ternary                | `kind:"branch"` — same                                                                                 |
+| `items.map(x => <Row/>)`                    | `kind:"list"` — same                                                                                   |
+| `<FlatList renderItem={...}/>`              | `kind:"element"` (FlatList is in RN_PRIMITIVES); `renderItem` callback is not unpacked in v1 (parity with current Next behavior for similar render-prop patterns). |
+| `_layout.tsx` wrapping `<Stack/>` + children | `kind:"component"(Layout) → kind:"element"(Stack) → kind:"slot",name:"children"` — Analyzer's existing `injectChildrenSlots` works unchanged |
+| Expo Router `<Tabs/>` / `<Stack/>`          | `kind:"element"` (added to RN_PRIMITIVES under "expo-router primitives" sub-set)                       |
 
-`renderJson(tree, envelope): Envelope` — passes the whole envelope through including `envelope.warnings[]`.
+### `layoutHint` field
 
-### Recommended change
+Currently optional `layoutHint?: string` is used only for `"client"` (set when `runtime === "client"`). For RN it's always client-side. **Decision:** leave `layoutHint` unset for RN nodes. Don't repurpose it for "screen vs modal vs tab" — that's a future v1.3 feature requiring an actual contract change. v1.2 is style-signal extraction + routing only.
 
-Modify `renderMarkdown` signature to actually consume `envelope.warnings`:
+### `attributes` field
 
-```typescript
-// src/renderers/markdown.ts — modified export
-export function renderMarkdown(tree: TreeNode, envelope: Envelope): string {
-  const lines: string[] = [];
-  // Warnings block (if any) — rendered before the tree
-  if (envelope.warnings.length > 0) {
-    lines.push("<!-- warnings:");
-    for (const w of envelope.warnings) lines.push(`  - ${w}`);
-    lines.push("-->");
-    lines.push("");
-  }
-  walk(tree, "", true, true, lines);
-  return lines.join("\n");
-}
-```
-
-**Placement: above the tree, as an HTML comment block.** Rationale:
-
-- Agents reading markdown see warnings before the tree, not after — context before data.
-- HTML comment syntax is invisible to most markdown renderers but readable by LLMs in raw form.
-- Alternative (footer): warnings after a long tree get truncated by token windows.
-- Alternative (`>` blockquote): visually noisier, harder to strip programmatically.
-
-**Affect on JSON output:** None. `renderJson` already includes `envelope.warnings` in the returned envelope. No change to `src/renderers/json.ts`.
-
-**Affect on existing tests:**
-
-- `test/renderers/markdown.test.ts` uses fixtures from `test/fixtures/ir/` — all four fixtures have `warnings: []`. Existing snapshots are not invalidated by this change.
-- The `_envelope` rename to `envelope` is the only call-site signature change. The four MCP tool handlers call `renderMarkdown(tree, envelope)` — the argument was already passed, just ignored. No call-site changes needed.
-- New test needed: a fixture with `warnings: ["some warning"]` to assert the HTML comment block appears in output and precedes the tree root line.
-
-**Blast radius: minimal.** One function body change in `src/renderers/markdown.ts`. No type changes. No IR changes.
+Already `Array<{ name: string; value: string }>` (literal strings only). NativeWind `className`, RN string props (`accessibilityLabel`, `testID`), and resolved single-key style strings all fit. No change.
 
 ---
 
-## Q6: True `line` for Resolved Component Nodes
+## Data flow (per tool call) — annotated
 
-### Root cause
+```
+MCP client (Claude Code, Cursor, ...)
+        │
+        │ JSON-RPC over stdio
+        ▼
+src/mcp/server.ts (McpServer.registerTool)
+        │
+        ▼
+src/mcp/tools/<tool>.ts handler
+        │
+        │ 1. resolveRoot(args.projectRoot)         ← ARCH-03 unchanged
+        │ 2. selectAdapter(root)                   ← NEW
+        │       ├─ next deps → NextJsAdapter
+        │       ├─ expo-router deps → ExpoRouterAdapter
+        │       ├─ both → error envelope
+        │       └─ neither → error envelope
+        │ 3. new Analyzer({ root, adapter })       ← unchanged
+        │
+        ▼
+src/core/Analyzer.ts (unchanged)
+        │
+        │ adapter.discoverEntries(root)
+        │ adapter.mapRouteToEntry(root, route)
+        │ adapter.extractComponents(ctx, [file])
+        │   ↳ NextJsAdapter           OR        ExpoRouterAdapter
+        │       │                                  │
+        │       │ core/parser/parseFile           │ core/parser/parseFile
+        │       │ core/render-flow/walkRenderFlow │ core/render-flow/walkRenderFlow
+        │       │ core/extractors/collectStyle.. │ core/extractors/collectStyle.. (Tailwind/NativeWind)
+        │       │                                  │ core/styles/rn/extractRnStyles
+        │       │                                  │ rn-primitives.ts post-process (isComponent flip)
+        │       │                                  │ style-prop.ts (rewrite RenderNode style attr → expanded)
+        │       ▼                                  ▼
+        │     ComponentDefinition[] ←─── identical shape, 13 fields ───┘
+        │
+        │ adapter.resolveModule(...) for component callsites
+        │
+        ▼
+TreeNode tree → renderers/markdown.ts | json.ts (unchanged)
+        │
+        ▼
+MCP response { content: [{ type:"text", text }] }
+```
 
-In `src/core/Analyzer.ts`, function `resolveComponentCallsites()` around line 299:
+---
+
+## Recommended build order
+
+Strict dependency ordering — each step is shippable independently with the previous step landed.
+
+1. **`adapters/expo/rn-primitives.ts`** — pure constant set. Zero deps. Smallest possible "RN exists" beachhead.
+2. **`adapters/expo/segments.ts` + `expo/discover.ts` + `expo/detect.ts`** — file-system / package.json probes, no parser involvement. Can be tested with fixture directories alone.
+3. **`core/styles/rn/`** — generic StyleSheet parsing. Independent of any adapter; testable in isolation with a Babel AST fixture.
+4. **`adapters/expo/route-map.ts`** — depends on `segments.ts` and `discover.ts`. No Analyzer dep.
+5. **`adapters/expo/ExpoRouterAdapter.ts`** — wires steps 1–4 into the 5-method shape. Calls `core/parser`, `core/extractors`, `core/styles/rn`, `core/resolver`, `core/render-flow`. At this point you can unit-test `ExpoRouterAdapter` against a fixture Expo Router project **without touching the MCP layer**.
+6. **`adapters/select.ts`** — depends on both `NextJsAdapter` (existing) and `ExpoRouterAdapter` (step 5).
+7. **MCP tool handler edits** — 4 files, identical 3-line edit (resolveRoot → selectAdapter → Analyzer). Depends on step 6. Also bump the route regex in `get-full-hierarchy.ts`.
+8. **Fixtures + integration tests** — 2 Expo Router fixtures (basic + tabs/dynamic params). Adds to existing `test/integration/mcp-e2e.test.ts`. Depends on step 7.
+9. **`init/template.ts` update + INIT_MARKER_VERSION bump** — one-paragraph addition. Independent of steps 5–8; can ship in parallel.
+
+### Critical-path note
+
+Steps 1–5 do not break any v1.1 behavior — they only add files. Step 6 is the first commit that introduces a new import edge into the build. Step 7 is the first commit that changes existing tool handlers — that is where regression risk concentrates. Run the **full** existing test suite (353 cases) between step 7 and step 8 to catch any unintended Next.js regression before integration tests land.
+
+---
+
+## Cross-cutting concerns
+
+### Error envelope from `selectAdapter`
+
+Tool handlers currently return `{ content: [{ type:"text", text }] }` on success and lean on `withErrorBoundary` for throws. Adapter selection failures are **expected**, not exceptional. Recommendation:
 
 ```typescript
-if (result.ok && result.kind === "local") {
+if (!sel.ok) {
   return {
-    ...tree,
-    children: newChildren,
-    file: toForwardSlash(result.absolutePath),
-    line: 1, // <- placeholder: ResolveResult carries no line info
+    content: [{ type: "text" as const, text: sel.message }],
+    isError: true,  // MCP convention from MCP-03
   };
 }
 ```
 
-`ResolveResult` is defined in `src/adapters/types.ts` line 259:
+This matches the v1.0 MCP-03 convention. Document in `mcp/errors.ts` if a new helper is wanted (`adapterSelectionError(sel)`), but a 3-line inline branch is fine.
 
-```typescript
-export type ResolveResult =
-  | { ok: true; kind: "local"; absolutePath: string }
-  | { ok: true; kind: "external"; packageName: string }
-  | ...
-```
+### Route regex relaxation
 
-The `local` variant has only `absolutePath` — no `line` or `column`.
+`src/mcp/tools/get-full-hierarchy.ts` lines 20–22 hard-code a route regex tailored to Next App Router. Expo Router's segment grammar is a **strict subset** of what the current regex permits (no parallel `@slot` or intercepting `(.)/(..)/(...)`), so the regex **already accepts every valid Expo Router route**. **Verify** by adding Expo route fixtures to the existing regex unit test. Likely zero change required. If false positives matter (e.g. user passes `/(group)/items` which is valid for Expo but invalid as a routing URL — groups are transparent in both frameworks), document the canonical input form: routes are URLs, not file paths; groups are stripped before route matching by `mapRouteToEntry`.
 
-### Recommended fix: add `line` to `ResolveResult` local variant
+### Test architecture invariant
 
-```typescript
-// src/adapters/types.ts — modified
-export type ResolveResult =
-  | { ok: true; kind: "local"; absolutePath: string; line: number } // add line
-  | { ok: true; kind: "external"; packageName: string }
-  | { ok: false; kind: "cycle"; chain: string[] }
-  | { ok: false; kind: "not-found"; specifier: string; tried: string[] }
-  | { ok: false; kind: "ambiguous"; specifier: string; candidates: string[] };
-```
+The existing `test/architecture/island.test.ts` asserts nothing under `src/core/`, `src/ir/`, `src/renderers/` imports from `src/adapters/`. **`src/core/styles/rn/` must not import from `src/adapters/`**. The island gate will fail loudly if violated — good guardrail.
 
-The `line` is the line of the **export declaration** in the resolved file, not the import site. This is the most useful value: it points the agent directly to where the component is defined.
+### Stdout/stderr discipline
 
-### How to populate `line` in the resolver
+Adapter selection failures **must not** call `console.*` — biome `noConsole: error` applies to `src/mcp/**`. Either throw (caught by `withErrorBoundary`) or return `isError: true`. The latter is preferred for expected outcomes.
 
-The resolver (`src/core/resolver/index.ts`) already parses the resolved file to chase barrels (`parseFile(ctx, fileResult.absolutePath)`). After confirming `foundLocal = true`, it has the parsed AST. A second targeted traverse finds the declaration line:
+### CRLF/path discipline
 
-```typescript
-// In doResolve(), after foundLocal = true is confirmed:
-let declarationLine = 1; // fallback
-traverse(parsed.ast, {
-  FunctionDeclaration(p) {
-    if (p.node.id?.name === importedName)
-      declarationLine = p.node.loc?.start.line ?? 1;
-  },
-  VariableDeclarator(p) {
-    if (t.isIdentifier(p.node.id) && p.node.id.name === importedName)
-      declarationLine = p.node.loc?.start.line ?? 1;
-  },
-  ClassDeclaration(p) {
-    if (p.node.id?.name === importedName)
-      declarationLine = p.node.loc?.start.line ?? 1;
-  },
-  ExportDefaultDeclaration(p) {
-    if (importedName === "default")
-      declarationLine = p.node.loc?.start.line ?? 1;
-  },
-});
-return {
-  ok: true,
-  kind: "local",
-  absolutePath: fileResult.absolutePath,
-  line: declarationLine,
-};
-```
+Expo fixtures must use forward-slash paths in expected output. The existing `toForwardSlash` discipline at every TreeNode build site continues to apply. Windows path gate (regex `/^[^\\]*$/` per node) catches violations in test.
 
-**Babel AST guarantees `loc`** when `@babel/parser` is invoked without `{ loc: false }`. The existing `parseFile` does not disable `loc`, so `node.loc.start.line` is always populated.
+### `next.config.*` vs Expo detection precedence
 
-**Barrel chase path:** `chaseBarrel` in `src/core/resolver/barrel.ts` returns a `ResolveResult`. It must also add `line` when it resolves to a local file. The barrel chase ends when `foundLocal` is true in the target file — same pattern applies.
-
-### Blast radius: all call sites of `ResolveResult { ok: true; kind: "local" }`
-
-Every location that reads `result.absolutePath` from a successful local resolution:
-
-| File                                        | Location                                                                                                | Change required                                                                                                            |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `src/core/Analyzer.ts`                      | `resolveComponentCallsites()` line ~300                                                                 | Change `line: 1` to `line: result.line`                                                                                    |
-| `src/core/resolver/index.ts`                | `resolveSpecifierToFile()` — two return sites emitting `{ ok: true, kind: "local", absolutePath: fwd }` | Add `line: 1` structural placeholder — these are intermediate results not consumed by `resolveComponentCallsites` directly |
-| `src/core/resolver/barrel.ts`               | `chaseBarrel()` — return sites                                                                          | Add `line` from declaration traverse                                                                                       |
-| `src/adapters/next/NextJsAdapter.ts`        | `resolveModule()` delegates to `coreResolveModule` — no direct construction                             | No change at this layer                                                                                                    |
-| `test/core/resolver/barrel.test.ts`         | Assertions on `result` objects                                                                          | Add `line` to expected shapes or switch to `toMatchObject()`                                                               |
-| `test/core/resolver/relative.test.ts`       | Assertions on `result` objects                                                                          | Same — add `line` or use `toMatchObject()`                                                                                 |
-| `test/core/resolver/tsconfig-paths.test.ts` | Assertions on `result` objects                                                                          | Same                                                                                                                       |
-
-**Specifier-only results (`resolveSpecifierToFile`):** These are intermediate results used as inputs to barrel-chase and `doResolve`. They are never returned as the final `ResolveResult` to `resolveComponentCallsites` — only `doResolve`'s return value is. So `resolveSpecifierToFile` can keep `line: 1` as a structural placeholder without behavioral regression.
-
-**The critical path is:** `doResolve` return when `foundLocal` -> `chaseBarrel` returns -> `resolveComponentCallsites` receives and writes to `TreeNode.line`.
-
-**`column` field:** Not recommended for v1.1. The v1.0 wire protocol has no column on `TreeNode` (not in `src/ir/schema.ts`), and adding column to `ResolveResult` without surfacing it on `TreeNode` gains nothing. Defer to v1.2 if agents need column-level precision.
+A Next.js project may transitively include `expo-router` (extreme edge case; nobody does this on purpose). Recommendation: `selectAdapter` does **not** read `next.config.*` or `app.json` — package.json deps are authoritative. Conflict explicitly errors. Better to fail loudly than guess.
 
 ---
 
-## Q7: Markdown Integration Tests
+## Anti-patterns to avoid
 
-### Current state
+### Anti-pattern 1: Adapter-specific logic leaking into `Analyzer`
 
-`test/integration/mcp-e2e.test.ts` spawns `dist/cli.js` via `StdioClientTransport`. Every tool invocation passes `format: "json"` (hardcoded in all four `FixtureInvariants.argsFor()` methods). The test parses the response as JSON via `EnvelopeSchema.parse()` and asserts structural invariants.
+**What people do:** Add a `if (adapter.framework === "expo") { ... }` branch in `Analyzer.buildTreeForEntry` to handle RN.
+**Why wrong:** Breaks ARCH-01 — the 5-method interface is the only contract. Adding framework branches in `core/` couples it to specific frameworks and forces every future adapter to update Analyzer.
+**Do instead:** Anything framework-specific lives in the adapter's `extractComponents` (post-processing the `RenderNode` tree before returning) or in `mapRouteToEntry`.
 
-The unit-level markdown tests (`test/renderers/markdown.test.ts`) call `renderMarkdown` directly with IR fixtures — they do not exercise the full MCP request/response pipeline.
+### Anti-pattern 2: Adding a new `TreeNode` kind for RN primitives
 
-### Assessment: existing harness supports format: "markdown" with minimal changes
+**What people do:** Add `kind:"rn-element"` to distinguish from web `kind:"element"`.
+**Why wrong:** IR schema bump that breaks every renderer, snapshot, and downstream tool consumer. Doubles the surface for trivial discrimination.
+**Do instead:** Keep `kind:"element"`; the `tag` field (`View`, `Text`, `div`, `span`) is self-describing. If consumers ever need to filter "RN only", they can match on the RN_PRIMITIVES set.
 
-The integration test spawns the binary and calls tools via the MCP client. The response is a `{ content: [{ type: "text", text: string }] }` object. For `format: "json"`, `text` is a JSON string that gets parsed. For `format: "markdown"`, `text` is a markdown string.
+### Anti-pattern 3: Caching `selectAdapter` results across calls without invalidation
 
-A markdown integration test case does NOT need `EnvelopeSchema.parse()`. Instead:
+**What people do:** Module-scope `Map<root, FrameworkAdapter>` cache.
+**Why wrong:** If a user changes their `package.json` (added `expo-router`), the cache won't see it until the server restarts. Confusing for users iterating on a multi-framework monorepo.
+**Do instead:** Skip the cache in v1.2; profile first if there's a real perf complaint.
 
-- Assert `result.isError` is falsy
-- Assert `result.content[0].text` is a non-empty string
-- Assert structural markers: `@` (file:line separator), tree glyphs (`├──` / `└──`), the root component name
+### Anti-pattern 4: Putting `StyleSheet.create` parsing inside `ExpoRouterAdapter`
 
-### Recommended approach: add markdown assertions inside the existing `makeFixtureSuite` factory
-
-Rather than a new harness, extend `makeFixtureSuite` with an additional `it` block per fixture. This keeps all per-fixture integration state (client, transport, stderrChunks) in scope:
-
-```typescript
-// In mcp-e2e.test.ts, inside makeFixtureSuite — add after the existing tool loop:
-it("get_full_hierarchy: markdown format returns tree glyphs and file:line", async () => {
-  const result = await client.callTool({
-    name: "get_full_hierarchy",
-    arguments: {
-      ...invariants.argsFor("get_full_hierarchy", fixturePath),
-      format: "markdown",
-    },
-  });
-  expect(result.isError).toBeFalsy();
-  const text =
-    (
-      result as { content: Array<{ type: string; text?: string }> }
-    ).content.find((c) => c.type === "text")?.text ?? "";
-  expect(text).toContain(" @ ");
-  expect(text.length).toBeGreaterThan(10);
-  // At least one tree glyph present:
-  expect(text.match(/[├└]/)).toBeTruthy();
-}, 30_000);
-```
-
-**Why not snapshot the full markdown output in the integration suite:** The integration fixture projects' exact tree output will change whenever the parser changes. Snapshot-asserting the full markdown would make every parser improvement fail the integration test. Structural assertions (glyphs, `@` separator, non-empty) are more durable.
-
-**Snapshot tests for markdown format belong in `test/renderers/markdown.test.ts`** (already exist for IR fixtures). For the new warnings-surfacing behavior, add an IR fixture with `warnings: ["w1"]` and snapshot-assert it.
-
-**New fixture needed:** `test/fixtures/ir/with-warnings.ts` — one fixture that produces a non-empty `warnings` array to test the HTML comment block in markdown output.
+**What people do:** Inline it for "cohesion".
+**Why wrong:** A future plain-React-Native adapter (no Expo Router) would need a duplicate. The pattern is identifier-syntactic, not routing-coupled.
+**Do instead:** `core/styles/rn/` — generic.
 
 ---
 
-## Component Boundaries — New vs Modified
+## Integration points summary table
 
-### New components (v1.1)
-
-| Component         | Path                                | Purpose                                           |
-| ----------------- | ----------------------------------- | ------------------------------------------------- |
-| Init orchestrator | `src/init/index.ts`                 | `runInit()` — validates targets, iterates, writes |
-| Target config     | `src/init/targets.ts`               | `TARGET_MAP` data, `TargetConfig` interface       |
-| File mutator      | `src/init/mutator.ts`               | `readSplice()` idempotent marker-splice writer    |
-| Template          | `src/init/template.ts`              | `GUIDE_CONTENT` string constant                   |
-| Warnings fixture  | `test/fixtures/ir/with-warnings.ts` | IR fixture with non-empty warnings array          |
-
-### Modified components (v1.1)
-
-| Component                 | Path                               | Change                                    | Risk                                            |
-| ------------------------- | ---------------------------------- | ----------------------------------------- | ----------------------------------------------- |
-| CLI entry                 | `src/cli.ts`                       | Argv dispatch (if/else + dynamic import)  | Low — existing path unchanged                   |
-| ResolveResult type        | `src/adapters/types.ts`            | Add `line: number` to local variant       | Medium — TypeScript-enforced blast radius       |
-| doResolve                 | `src/core/resolver/index.ts`       | Populate `line` from declaration traverse | Medium — new traverse pass in existing function |
-| resolveSpecifierToFile    | `src/core/resolver/index.ts`       | Add `line: 1` to satisfy updated type     | Low — structural only                           |
-| chaseBarrel               | `src/core/resolver/barrel.ts`      | Add `line` to terminal resolution         | Medium — must audit barrel.ts return sites      |
-| resolveComponentCallsites | `src/core/Analyzer.ts`             | Change `line: 1` to `line: result.line`   | Low — one field change                          |
-| renderMarkdown            | `src/renderers/markdown.ts`        | Consume `envelope.warnings`               | Low — additive body change                      |
-| Integration test          | `test/integration/mcp-e2e.test.ts` | Add markdown format assertions            | Low — additive                                  |
-| Resolver unit tests       | `test/core/resolver/*.test.ts`     | Update local result assertions for `line` | Low — update toMatchObject calls                |
-
----
-
-## Data Flow Changes
-
-### Init flow (new)
-
-```
-process.argv
-  -> cli.ts (--init detected)
-  -> dynamic import("./init/index.js")
-  -> runInit({ targets, cwd })
-  -> targets.ts: TARGET_MAP lookup + validation
-  -> for each target: mutator.ts readSplice(resolvedPath, GUIDE_CONTENT, heading, frontmatter)
-    -> node:fs/promises: readFile -> splice -> writeFile
-  -> process.stderr: human-readable success/skip/error messages
-  -> process.exit(0)
-```
-
-No MCP SDK, no Babel, no zod touched.
-
-### True line flow (modified)
-
-```
-resolveComponentCallsites() [Analyzer.ts]
-  -> adapter.resolveModule() -> coreResolveModule()
-  -> doResolve() [resolver/index.ts]
-    -> resolveSpecifierToFile() -> { ok:true, kind:"local", absolutePath, line:1 }
-    -> parseFile(ctx, absolutePath) [already done for barrel check]
-    -> traverse AST for declaration line [NEW]
-    -> return { ok:true, kind:"local", absolutePath, line: N }  [NEW field]
-  OR:
-    -> chaseBarrel() [barrel.ts]
-    -> ... -> final file parse -> declaration line [NEW]
-    -> return { ok:true, kind:"local", absolutePath, line: N }
-  <- result.line consumed: TreeNode.line = result.line  [was hardcoded: 1]
-```
-
-### Markdown warnings flow (modified)
-
-```
-MCP tool handler
-  -> Analyzer.query()
-  -> envelope { warnings: [...] }
-  -> renderMarkdown(tree, envelope)  [was: _envelope ignored]
-  -> if envelope.warnings.length > 0: prepend HTML comment block
-  -> return markdown string with warnings above tree
-```
-
----
-
-## Recommended Build Order
-
-Dependencies between the four v1.1 items:
-
-```
-(D) --init subcommand    -- fully independent
-(A) true line fix        -> (B) markdown integration tests (lines now real)
-(C) warnings surface     -> (B) markdown integration tests (warnings assertions)
-```
-
-**Sequence:**
-
-**Step 1 — `--init` subcommand** (independent, zero regression risk)
-Create `src/init/` island. Extend `src/cli.ts` with argv dispatch. Write unit tests for `readSplice` (marker present/absent/idempotent) and `runInit` (target validation, file creation, directory creation for `.cursor/rules/`). Validates new cli.ts dispatch pattern without touching any existing MCP or parser code.
-
-**Step 2 — True `line` fix**
-Start at `src/adapters/types.ts` (type change) — TypeScript immediately surfaces all sites requiring `line`. Fix `resolveSpecifierToFile` (add `line: 1` placeholder), then `doResolve` (add declaration traverse), then `chaseBarrel` (propagate line). Finally update `resolveComponentCallsites` in `Analyzer.ts` to consume `result.line`. Run `pnpm typecheck` between each file change to verify blast radius is fully addressed. Update resolver unit tests last.
-
-**Step 3 — Markdown warnings surface**
-Rename `_envelope` to `envelope` in `renderMarkdown`. Add the warnings block render. Add `test/fixtures/ir/with-warnings.ts`. Update `test/renderers/markdown.test.ts` with a new snapshot case. No compiler errors expected.
-
-**Step 4 — Markdown integration tests**
-Extend `test/integration/mcp-e2e.test.ts` with markdown format assertions inside `makeFixtureSuite`. This is the only step that requires a fresh `pnpm build` before running. Benefits from both Step 2 (real lines in markdown output) and Step 3 (warnings visible in markdown).
-
-**Parallelism:** Steps 1, 2, and 3 are safe to develop in parallel by separate developers. Step 4 depends on both 2 and 3.
-
----
-
-## Anti-Patterns to Avoid
-
-### Writing to stdout in --init mode
-
-**What goes wrong:** `startServer()` reserves stdout for MCP JSON-RPC. Even though init exits before connecting a transport, init output on stdout confuses any wrapper that captures stdout generically.
-**Instead:** All init human-readable output goes to `process.stderr`. Success status: exit code 0. Failure: exit code 1 with error on stderr.
-
-### init importing from src/mcp/ or src/core/
-
-**What goes wrong:** Pulls in Babel, MCP SDK, and zod at init time. Increases cold-start latency for a write-file operation that needs none of these.
-**Instead:** `src/init/` has zero imports outside `node:` built-ins and its own files. Add an island assertion test similar to `test/architecture/island.test.ts` if the init module grows beyond 4 files.
-
-### Snapshot-asserting full markdown output in integration tests
-
-**What goes wrong:** Any parser change (new node kind, new layoutHint, fixture file edit) invalidates the snapshot — high maintenance overhead for integration-level tests.
-**Instead:** Structural assertions in integration tests (`toContain(" @ ")`, glyph regex, length > 0). Full snapshots only in `test/renderers/markdown.test.ts` against stable IR fixtures.
-
-### Eager `line` resolution in `resolveSpecifierToFile`
-
-**What goes wrong:** `resolveSpecifierToFile` is called as an intermediate step during barrel chase. Parsing the file for a declaration line at this stage is wasteful — the file may be a barrel that re-exports elsewhere.
-**Instead:** Only `doResolve` (when `foundLocal = true`) and the terminal step of `chaseBarrel` resolve the declaration line. Intermediate `resolveSpecifierToFile` results stay as `line: 1`.
-
-### Adding `column` to TreeNode for v1.1
-
-**What goes wrong:** `TreeNode` in `src/ir/schema.ts` is the wire contract. Adding `column` is an additive breaking change for consumers that match the schema exhaustively.
-**Instead:** `line` only for v1.1. `column` is a v1.2 decision when a concrete agent need arises.
-
-### Using a separate tsup entry for src/init/
-
-**What goes wrong:** A separate entry produces a separate `dist/init.js` file that needs to be included in `package.json "files"` and referenced with `import.meta.url` path gymnastics.
-**Instead:** Single entry `src/cli.ts` with dynamic `import("./init/index.js")` — tsup follows the import and bundles `src/init/` into `dist/cli.js`. Zero config change.
-
-### Runtime fs.readFile for the template asset
-
-**What goes wrong:** Paths break across dev (`tsx src/cli.ts`), built (`node dist/cli.js`), and global install (`npx`) because tsup bundles everything into a single flat `dist/cli.js` with no adjacent asset files.
-**Instead:** TypeScript string constant in `src/init/template.ts`. Bundled inline. Zero path resolution needed.
-
----
-
-## Scalability Considerations
-
-| Concern                     | v1.1 scope                                                                                                                                                                       | Future                                                                                 |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Template content growth     | String constant — no size issue for foreseeable future                                                                                                                           | If > 5KB, consider externalize with `import.meta.url` path, but not needed now         |
-| New `--init` targets        | Add entry to `TARGET_MAP` — O(1) change                                                                                                                                          | No architectural change required for 10+ targets                                       |
-| `line` traverse performance | One extra AST traverse per resolved component per query call. Cache is already `per-call` (ParseContext.astCache) so no extra file reads. Acceptable for v1.1 (parse-on-demand). | If hot, combine `foundLocal` traverse and declaration-line traverse into a single pass |
-| Warnings in large trees     | HTML comment block is O(warnings.length) lines — trivial                                                                                                                         | No concern                                                                             |
+| New code touchpoint                              | Existing surface it integrates with                               | Direction         |
+| ------------------------------------------------ | ------------------------------------------------------------------ | ----------------- |
+| `ExpoRouterAdapter` (5 methods)                  | `FrameworkAdapter` interface in `src/adapters/FrameworkAdapter.ts` | implements        |
+| `ExpoRouterAdapter.extractComponents`            | `core/parser/parseFile`, `core/render-flow/walkRenderFlow`, `core/extractors/collectStyleSignals`, `core/styles/rn/extractRnStyles`, `core/resolver/resolveModule` | calls (allowed: adapter → core) |
+| `core/styles/rn/*`                               | (none — leaf module, consumed by `ExpoRouterAdapter`)              | consumed by       |
+| `adapters/select.ts`                             | `next/NextJsAdapter`, `expo/ExpoRouterAdapter`                     | imports both      |
+| `mcp/tools/*.ts` handlers (4 files)              | `selectAdapter` (new), `Analyzer` (unchanged)                      | calls             |
+| Analyzer.scrapeStyleAttributes (lines 61–99)     | (unchanged) reads `RenderNode.attributes` — adapter is responsible for ensuring `style` attributes are pre-expanded for RN | indirect (via shape contract) |
+| `init/template.ts`                               | `INIT_MARKER_VERSION` build constant in `tsup.config.ts`           | depends on        |
 
 ---
 
 ## Sources
 
-- `src/cli.ts` (v1.0) — confirmed 3-line direct boot, no framework
-- `src/mcp/server.ts` — `createServer()` / `startServer()` separation, `__TOOL_VERSION__` define
-- `src/adapters/types.ts` lines 259-264 — `ResolveResult` definition, `local` variant fields
-- `src/core/Analyzer.ts` lines 135-160 — `ImportBinding`, `collectImportBindings()`
-- `src/core/Analyzer.ts` lines 256-314 — `resolveComponentCallsites()`, `line: 1` placeholder with explanatory comment
-- `src/core/resolver/index.ts` — `resolveSpecifierToFile()`, `doResolve()`, call structure
-- `src/renderers/markdown.ts` — `renderMarkdown(tree, _envelope)` with `_envelope` ignored
-- `src/renderers/json.ts` — `renderJson` passes envelope through including `warnings`
-- `test/integration/mcp-e2e.test.ts` — `format: "json"` hardcoded in all four `FixtureInvariants.argsFor()` methods
-- `test/architecture/island.test.ts` — D-11 island enforcement pattern; template for `src/init/` island assertion
-- `test/renderers/markdown.test.ts` — existing file-snapshot harness; all fixtures use `warnings: []`
-- `tsup.config.ts` — single entry `src/cli.ts`, ESM-only, externals list; no change needed for init
-- `package.json` — `"bin": { "ui-hierarchy-mcp": "dist/cli.js" }`, `"type": "module"`
+- Repo file `src/adapters/FrameworkAdapter.ts` — interface contract.
+- Repo file `src/adapters/types.ts` — `ComponentDefinition` (13 fields, R8 lock), `RouteMatch`, `ResolveResult`, `ParseContext`, `RenderNode`.
+- Repo file `src/adapters/next/NextJsAdapter.ts` — reference implementation pattern to mirror for Expo.
+- Repo file `src/core/Analyzer.ts` — confirms adapter consumed via interface only; verified style sidecar wiring in `scrapeStyleAttributes` (lines 61–99).
+- Repo file `src/core/extractors/index.ts` — `collectStyleSignals` shape that `core/styles/rn/extractRnStyles` must mirror.
+- Repo file `src/mcp/tools/get-full-hierarchy.ts` — confirms tool-handler adapter wiring site and route regex.
+- `.planning/PROJECT.md` — Constraints (Node ≥20, ESM, Babel pipeline), Key Decisions (adapter island, parse-on-demand).
+- `.planning/MILESTONES.md` v1.0/v1.1 — confirms 5-method lock and absence of `core/styles/` directory.
