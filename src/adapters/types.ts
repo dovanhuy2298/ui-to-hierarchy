@@ -7,8 +7,10 @@
  *   the adapter island stays one-directional (the rest of the codebase may
  *   import these types, but never the inverse).
  *
- * R8 — `ComponentDefinition` is the locked 12-field shape consumed by every
- *   downstream Wave 2/3 plan. Adding a 13th field is a milestone-level change.
+ * R8 (amended NEXT-04) — `ComponentDefinition` is the locked 13-field shape
+ *   consumed by every downstream Wave 2/3 plan. The original R8 lock was 12
+ *   fields; Phase 4 / NEXT-04 added `runtime` for a final count of 13.
+ *   Adding a 14th field is a milestone-level change.
  *
  * No zod schemas live here (D-04). These are pure TypeScript types — the
  * parser output is internal; runtime validation lives at the IR boundary
@@ -180,16 +182,17 @@ export interface StyledTemplate {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// ComponentDefinition — locked 12-field shape (R8 + NEXT-04).
+// ComponentDefinition — locked 13-field shape (R8 amended by NEXT-04).
 // `runtime` is the framework-boundary field added in Phase 4 via
-// NEXT-04 ("use client" / "use server" detection).
+// NEXT-04 ("use client" / "use server" detection); it extended the
+// original R8 12-field lock to 13.
 // ──────────────────────────────────────────────────────────────────
 
 /**
  * The parser's per-component output.
  *
- * R8 — locked 12-field shape. Adding a 13th field requires a milestone
- *   amendment. Field order (alphabetic-by-purpose):
+ * R8 (amended NEXT-04) — locked 13-field shape. Adding a 14th field
+ *   requires a milestone amendment. Field order (alphabetic-by-purpose):
  *     identity:   name, file, line, kind
  *     wrappers:   wrappers
  *     interface:  props, textContent
