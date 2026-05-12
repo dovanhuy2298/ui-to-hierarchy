@@ -17,9 +17,21 @@ function formatAttributes(
 ): string {
   if (!attrs || attrs.length === 0) return "";
   // Defensive escape: backslashes FIRST (so we don't double-escape the
-  // backslashes we add for quotes), then embedded double quotes. WR-05.
+  // backslashes we add for quotes), then embedded double quotes (WR-05),
+  // then newlines/CRs and angle brackets (WR-03). Without escaping `\n` /
+  // `\r` an attribute value with a real linebreak would split the tree
+  // line mid-render and desynchronize every subsequent prefix column.
+  // `<` / `>` are escaped because the consumer surface is HTML-ish
+  // (`<Name attr="…">`) and an attribute value containing them makes
+  // element boundaries ambiguous for downstream parsers.
   const parts = attrs.map((a) => {
-    const escaped = a.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const escaped = a.value
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
     return `${a.name}="${escaped}"`;
   });
   return ` ${parts.join(" ")}`;
