@@ -13,7 +13,9 @@ describe("renderMarkdown — snapshots", () => {
   for (const { name, fixture } of cases) {
     it(`matches snapshot for ${name}`, async () => {
       const out = renderMarkdown(fixture.tree, fixture.envelope);
-      expect(out).not.toContain("\\");
+      // WR-01: only reject stray backslashes outside the documented escape
+      // positions (\\ and \"). The file snapshot below locks the exact shape.
+      expect(out).not.toMatch(/(?<!\\)\\(?![\\"])/);
       expect(out).toContain(" @ ");
       await expect(out).toMatchFileSnapshot(`./__snapshots__/markdown-${name}.md`);
     });
@@ -28,7 +30,8 @@ describe("renderMarkdown — snapshots", () => {
         true,
       );
       expect(out).toBe(`<!-- warning: a -->\n<!-- warning: b -->\n\n${rootLine}`);
-      expect(out).not.toContain("\\");
+      // WR-01: see comment above — narrow the assertion.
+      expect(out).not.toMatch(/(?<!\\)\\(?![\\"])/);
     });
 
     it("emits no prefix and no leading blank when warnings is empty (byte-identical to v1.0)", () => {
