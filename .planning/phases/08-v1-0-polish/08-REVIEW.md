@@ -16,7 +16,7 @@ findings:
   warning: 4
   info: 5
   total: 9
-status: warnings_fixed
+status: all_addressed
 fixes:
   WR-01:
     status: fixed
@@ -30,6 +30,26 @@ fixes:
   WR-04:
     status: fixed
     commit: 03fd9d7
+  IN-01:
+    status: fixed
+    commit: f407a40
+  IN-02:
+    status: fixed
+    commit: c9f8ac6
+  IN-03:
+    status: fixed
+    commit: 2b27fb8
+  IN-04:
+    status: fixed
+    commit: 084b264
+  IN-05:
+    status: skipped
+    rationale: >-
+      tsconfig.json (lines 18-30) already excludes
+      test/fixtures/parser/parse-errors/** from typecheck, so the `react`
+      type import in decl-lines.tsx is never compiled. The reviewer's
+      concern was "no tsconfig exclude was verified during this review";
+      verification confirms the exclude is in place. No code change needed.
 ---
 
 # Phase 08: Code Review Report
@@ -205,6 +225,8 @@ locked 13-field shape". Verify `test/adapters/types.test.ts` actually asserts
 
 ### IN-01: Text truncation can split UTF-16 surrogate pairs
 
+**Status:** RESOLVED — fixed in commit `f407a40` (`labelFor` text case now uses `Array.from(v)` to slice by Unicode code points).
+
 **File:** `src/renderers/markdown.ts:34-37`
 **Issue:** `v.length > TEXT_MAX` and `v.slice(0, TEXT_MAX)` operate on UTF-16
 code units. A string containing emoji or astral-plane characters can be sliced
@@ -217,6 +239,8 @@ points, or accept the trade-off and document it.
 ---
 
 ### IN-02: `formatAttributes` parameter type doesn't match the source-of-truth shape
+
+**Status:** RESOLVED — fixed in commit `c9f8ac6` (introduced `AttrList = NonNullable<Extract<TreeNode, { kind: "element" }>["attributes"]>` and changed `formatAttributes` to accept `AttrList | undefined`).
 
 **File:** `src/renderers/markdown.ts:15-17`
 **Issue:** The function accepts `Array<{ name: string; value: string }> |
@@ -235,6 +259,8 @@ function formatAttributes(attrs: AttrList | undefined): string { ... }
 
 ### IN-03: `layoutHint` rendering can collide with the `@ file:line` separator
 
+**Status:** RESOLVED — fixed in commit `2b27fb8` (documentation-only: inline comment on `lineFor` documents the ` @ ` separator constraint and tells producers of `layoutHint` not to include ` @ ` in hint values).
+
 **File:** `src/renderers/markdown.ts:78-82`
 **Issue:** `lineFor` produces `${label}${hint} @ ${file}:${line}`. If a
 `layoutHint` ever contains ` @ ` (e.g. a future hint like "@media query"),
@@ -247,6 +273,8 @@ practice; documenting the constraint inline would suffice.
 ---
 
 ### IN-04: Test relies on undocumented content of `valid-baseline.tsx`
+
+**Status:** RESOLVED — fixed in commit `084b264` (added a trailing comment to `valid-baseline.tsx` marking line 1 as load-bearing and naming the dependent assertion in `parseFile.test.ts`). Comment is appended after the export so it does not shift `Hello` off line 1.
 
 **File:** `test/core/parser/parseFile.test.ts:131-132`
 **Issue:** The assertion `expect(r.declLines.get("Hello")).toBe(1)` couples
@@ -264,6 +292,8 @@ itself saying "Line 1 is load-bearing for parseFile.test.ts".
 ---
 
 ### IN-05: `decl-lines.tsx` imports `react` solely for a type — unused at runtime
+
+**Status:** SKIPPED (no-op) — `tsconfig.json` lines 18-30 already exclude `test/fixtures/parser/parse-errors/**` from typecheck, so the `react` type import is never compiled. The reviewer flagged this as unverified during review; verification confirms the exclude is in place. No code change needed.
 
 **File:** `test/fixtures/parser/parse-errors/decl-lines.tsx:3`
 **Issue:** `import { type ReactNode } from "react"` is fine syntactically and
