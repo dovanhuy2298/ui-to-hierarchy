@@ -32,16 +32,16 @@ fixes:
     commit: 03fd9d7
   IN-01:
     status: fixed
-    commit: f407a40
+    commit: e25c875
   IN-02:
     status: fixed
-    commit: c9f8ac6
+    commit: 3613135
   IN-03:
     status: fixed
-    commit: 2b27fb8
+    commit: 0ee9fab
   IN-04:
     status: fixed
-    commit: 084b264
+    commit: 178a17d
   IN-05:
     status: skipped
     rationale: >-
@@ -225,7 +225,7 @@ locked 13-field shape". Verify `test/adapters/types.test.ts` actually asserts
 
 ### IN-01: Text truncation can split UTF-16 surrogate pairs
 
-**Status:** RESOLVED — fixed in commit `f407a40` (`labelFor` text case now uses `Array.from(v)` to slice by Unicode code points).
+**Status:** RESOLVED — fixed in commit `e25c875` (`labelFor` text case now uses `Array.from(v)` to slice by Unicode code points).
 
 **File:** `src/renderers/markdown.ts:34-37`
 **Issue:** `v.length > TEXT_MAX` and `v.slice(0, TEXT_MAX)` operate on UTF-16
@@ -240,7 +240,7 @@ points, or accept the trade-off and document it.
 
 ### IN-02: `formatAttributes` parameter type doesn't match the source-of-truth shape
 
-**Status:** RESOLVED — fixed in commit `c9f8ac6` (introduced `AttrList = NonNullable<Extract<TreeNode, { kind: "element" }>["attributes"]>` and changed `formatAttributes` to accept `AttrList | undefined`).
+**Status:** RESOLVED — fixed in commit `3613135` (introduced `AttrList = NonNullable<Extract<TreeNode, { kind: "element" }>["attributes"]>` and changed `formatAttributes` to accept `AttrList | undefined`).
 
 **File:** `src/renderers/markdown.ts:15-17`
 **Issue:** The function accepts `Array<{ name: string; value: string }> |
@@ -259,7 +259,7 @@ function formatAttributes(attrs: AttrList | undefined): string { ... }
 
 ### IN-03: `layoutHint` rendering can collide with the `@ file:line` separator
 
-**Status:** RESOLVED — fixed in commit `2b27fb8` (documentation-only: inline comment on `lineFor` documents the ` @ ` separator constraint and tells producers of `layoutHint` not to include ` @ ` in hint values).
+**Status:** RESOLVED — fixed in commit `0ee9fab` (documentation-only: inline comment on `lineFor` documents the ` @ ` separator constraint and tells producers of `layoutHint` not to include ` @ ` in hint values).
 
 **File:** `src/renderers/markdown.ts:78-82`
 **Issue:** `lineFor` produces `${label}${hint} @ ${file}:${line}`. If a
@@ -274,7 +274,7 @@ practice; documenting the constraint inline would suffice.
 
 ### IN-04: Test relies on undocumented content of `valid-baseline.tsx`
 
-**Status:** RESOLVED — fixed in commit `084b264` (added a trailing comment to `valid-baseline.tsx` marking line 1 as load-bearing and naming the dependent assertion in `parseFile.test.ts`). Comment is appended after the export so it does not shift `Hello` off line 1.
+**Status:** RESOLVED — fixed in commit `178a17d` (added a trailing comment to `valid-baseline.tsx` marking line 1 as load-bearing and naming the dependent assertion in `parseFile.test.ts`). Comment is appended after the export so it does not shift `Hello` off line 1.
 
 **File:** `test/core/parser/parseFile.test.ts:131-132`
 **Issue:** The assertion `expect(r.declLines.get("Hello")).toBe(1)` couples
