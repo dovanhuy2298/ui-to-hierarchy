@@ -10,6 +10,8 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 V1 targets **Next.js App Router**. Static analysis only — no runtime execution, no DOM, no rendering.
 
+**v1.1** adds one-command agent onboarding (`--init`) plus polish: `format: "markdown"` now surfaces analyzer warnings (no longer silently dropped), and resolved component nodes carry true source declaration line numbers instead of `line: 1`.
+
 ## Install
 
 No install needed when used as an MCP server — clients spawn it via `npx`. To try the binary directly:
@@ -57,6 +59,41 @@ Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` per project):
 ```bash
 npx @modelcontextprotocol/inspector npx -y ui-hierarchy-mcp
 ```
+
+## Onboard your agent (`--init`)
+
+Inject a usage guide for `ui-hierarchy-mcp` into your project's agent instruction files in one command:
+
+```bash
+npx -y ui-hierarchy-mcp --init
+```
+
+By default this writes a marker block into `CLAUDE.md` (created if absent) containing the four tool descriptions, a registration snippet, and example calls. Re-running the command is a no-op when the block is already current — safe to wire into CI or repo bootstrap scripts.
+
+### Targets
+
+Pick one or more agent instruction surfaces via `--target` (comma-separated):
+
+| Target | File written |
+|---|---|
+| `claude` *(default)* | `CLAUDE.md` |
+| `codex` | `AGENTS.md` |
+| `cursor` | `.cursor/rules/ui-hierarchy-mcp.mdc` (with YAML frontmatter) |
+| `copilot` | `.github/copilot-instructions.md` |
+
+```bash
+# Onboard all four agents at once
+npx -y ui-hierarchy-mcp --init --target claude,codex,cursor,copilot
+```
+
+Missing parent directories are created automatically.
+
+### Flags
+
+- `--dry-run` — print a per-target plan (`would create` / `would update` / `would skip`) to stderr, write nothing.
+- `--force` — overwrite the marker block even if it has been hand-edited (otherwise the target is skipped with a warning).
+
+`--init` is fully argv-driven (no prompts) and safe in CI. Running `npx ui-hierarchy-mcp` without `--init` still starts the MCP stdio server unchanged.
 
 ## Tools
 
