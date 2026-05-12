@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Agent Onboarding & v1.0 Polish
-status: planning
-last_updated: "2026-05-12T02:50:11.912Z"
-last_activity: 2026-05-11
+status: Awaiting next milestone
+last_updated: "2026-05-12T03:43:43.675Z"
+last_activity: 2026-05-12 — Milestone v1.1 completed and archived
 progress:
   total_phases: 2
   completed_phases: 2
@@ -19,19 +19,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-11)
+See: .planning/PROJECT.md (updated 2026-05-12)
 
 - **Core value:** When an AI agent can't confidently act on a screenshot or vague UI description, call this MCP for a precise file/component map — edit the right component, not guess.
-- **Current focus:** v1.1 complete — Phase 8 polish landed
+- **Current focus:** Planning v1.2 — run `/gsd-new-milestone` to scope.
 - **Mode:** yolo
 - **Granularity:** standard
 
 ## Current Position
 
-Phase: 8
-Plan: All complete (08-01, 08-02, 08-03, 08-04)
-Status: Phase executed; ready for verification / milestone close
-Last activity: 2026-05-12
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-12 — Milestone v1.1 completed and archived
 
 ## Progress Bar
 
@@ -54,22 +54,26 @@ Captured in PROJECT.md Key Decisions table.
 
 - None
 
-### Carry-forward from v1.0
+### Carry-forward to v1.2
 
 - F-01: live Claude Code transcript export (currently reconstructed from stdio-equivalent capture)
-- Markdown renderer drops `envelope.warnings` — currently silently swallowed (→ POLISH-01)
-- Integration test exercises only `format: "json"` — markdown surface uncovered (→ POLISH-02)
-- Two orphan exports in `src/mcp/errors.ts` (`notImplemented`, `invalidInput`) — deferred to v1.2 cleanup
-- Resolved component nodes use `line: 1` placeholder — replace with `discoverComponents` lookup (→ POLISH-03)
+- Two orphan exports in `src/mcp/errors.ts` (`notImplemented`, `invalidInput`) — Phase 2 stubs superseded by Phase 5
+- Cosmetic: redundant `base.warnings ?? []` fallback in 4 tool handlers (buildEnvelope always initializes)
+- Cosmetic: `__INIT_MARKER_VERSION__` reference in `src/init/index.ts` lacks `typeof` guard (safe via `dist/cli.js`; would `ReferenceError` from direct `tsx`/`vitest` call)
+- Possible v1.2 features: auto-detect installed agents for `--target`, `--global` flag for `~/.claude/CLAUDE.md`, hash-based upgrade detection via the marker `version=X.Y` tag
 
 ## Session Continuity
 
-- Last session: 2026-05-12 — Phase 8 (POLISH-01/02/03) executed across 3 waves; 353/353 tests passing
-- Next command: `/gsd-verify-work 8` or `/gsd-complete-milestone`
-- Released artifact: `ui-hierarchy-mcp` v0.1.0 on npm
+- Last session: 2026-05-12 — Milestone v1.1 archived and tagged
+- Next command: `/gsd-new-milestone` to scope v1.2
+- Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm
 
 ## Quick Tasks Completed
 
 | Date       | Slug                  | Summary                                                                |
 | ---------- | --------------------- | ---------------------------------------------------------------------- |
 | 2026-05-12 | update-readme-v1-1    | README: documented `--init` onboarding + v1.1 polish (warnings, lines) |
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -10,25 +10,18 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 ## Current State
 
-**Shipped:** v1.0 — 2026-05-05
-**Released:** [`ui-hierarchy-mcp`](https://www.npmjs.com/package/ui-hierarchy-mcp) v0.1.0 on npm
-**Codebase:** ~4,890 LOC TypeScript, 35 test files, 256 unit + 20 integration + 8/8 UAT all green
+**Shipped:** v1.1 — 2026-05-12 (built on v1.0 — 2026-05-05)
+**Released:** [`ui-hierarchy-mcp`](https://www.npmjs.com/package/ui-hierarchy-mcp) v0.2.0 on npm
+**Codebase:** ~5,400 LOC TypeScript, 44 test files, 353/353 vitest cases green
 **Stack:** Node ≥20, ESM, `@modelcontextprotocol/sdk@^1.29`, `@babel/parser@^7.29`, `zod@^4.1`, `tsup`, `vitest@^4.3`
 
-## Current Milestone: v1.1 Agent Onboarding & v1.0 Polish
+## Next Milestone
 
-**Goal:** Help AI coding agents auto-discover this MCP and learn its tools via an `--init` CLI that injects usage guidance into agent instruction files, and close remaining v1.0 polish items on the output surfaces.
-
-**Target features:**
-
-- `--init` CLI command — inject MCP usage guide into agent instruction files. Default (no flag) writes to `CLAUDE.md`. Optional `--target claude,codex,cursor,copilot` opts into additional targets (`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`). Idempotent re-runs via marker tags (`<!-- ui-hierarchy-mcp:start --> ... <!-- ui-hierarchy-mcp:end -->`)
-- Surface envelope warnings on markdown renderer (currently dropped — JSON-only)
-- Markdown surface integration test coverage (currently JSON-only)
-- True `line` for resolved component nodes (replace `line: 1` placeholder)
+_None scoped yet — run `/gsd-new-milestone` to define v1.2._
 
 ## Requirements
 
-### Validated (v1.0 — all 24/24 satisfied)
+### Validated (v1.0 — 24/24 satisfied)
 
 - ✓ Ship as npm package that runs as a stdio MCP server (`npx`-able) — v1.0 (MCP-01)
 - ✓ Expose 4 MCP tools with typed zod schemas — v1.0 (MCP-02, TOOL-01..04)
@@ -49,9 +42,29 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 - ✓ Project root resolution: arg > env > cwd — v1.0 (ARCH-03)
 - ✓ Integration suite (3+ fixture Next.js projects) + Windows path gate + MCP Inspector + Claude Code UAT + perf note — v1.0 (ARCH-04)
 
+### Validated (v1.1 — 17/17 satisfied)
+
+- ✓ `npx ui-hierarchy-mcp --init` writes a marker-delimited usage guide into `CLAUDE.md` by default — v1.1 (INIT-01)
+- ✓ `--init` exits cleanly without booting the MCP server; absence preserves v1.0 stdio server behavior — v1.1 (INIT-02)
+- ✓ `--target claude,codex,cursor,copilot` opts into `AGENTS.md`, `.cursor/rules/ui-hierarchy-mcp.mdc`, `.github/copilot-instructions.md` — v1.1 (INIT-03)
+- ✓ Idempotent re-runs via marker block (`<!-- ui-hierarchy-mcp:start version=X.Y --> ... :end -->`) — v1.1 (INIT-04)
+- ✓ Auto-creates missing files and parent directories — v1.1 (INIT-05)
+- ✓ Appends to existing file with separating blank line; preserves prior bytes — v1.1 (INIT-06)
+- ✓ Hand-edit detection via SHA-256 fingerprint; `--force` overrides — v1.1 (INIT-07)
+- ✓ Atomic temp-file + `rename()` with `EXDEV` fallback — v1.1 (INIT-08)
+- ✓ Preserves CRLF/LF + BOM on Windows files — v1.1 (INIT-09)
+- ✓ `--dry-run` previews per-target action without writing — v1.1 (INIT-10)
+- ✓ Per-target summary lines to stderr; exit code 0/1 — v1.1 (INIT-11)
+- ✓ Guide content covers all 4 tools, registration snippet, examples, `projectRoot` hint — v1.1 (INIT-12)
+- ✓ Non-interactive by default (CI-safe) — v1.1 (INIT-13)
+- ✓ `.cursor/rules/ui-hierarchy-mcp.mdc` includes YAML frontmatter above the marker block — v1.1 (INIT-14)
+- ✓ Markdown renderer surfaces `envelope.warnings` as HTML-comment prefix — v1.1 (POLISH-01)
+- ✓ Integration suite exercises `format: "markdown"` against 2 fixtures with glyph + backslash guards — v1.1 (POLISH-02)
+- ✓ Resolved component nodes carry true `loc.start.line` via `ParseResult.declLines` → `ResolveResult.local.line` — v1.1 (POLISH-03)
+
 ### Active
 
-(None — next milestone requirements pending. Run `/gsd-new-milestone` to scope.)
+(None — next milestone requirements pending. Run `/gsd-new-milestone` to scope v1.2.)
 
 ### Out of Scope
 
@@ -92,7 +105,11 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 | Per-tool inline `format` param (not shared in `tools/common.ts`)                                          | Preserves wire-protocol self-description; default `markdown` preserves backward compat | ✓ Good (decided 06-08)                                                                |
 | TreeNode `attributes` literal-string-only in v1                                                           | Keeps `Array<{name, value}>` shape simple at the wire boundary                         | ✓ Good (decided 06-10)                                                                |
 | `findByText` returns matched component/element node when an attribute matches (not a synthetic text node) | file:line points at the JSX site that carries the prop                                 | ✓ Good (decided 06-10)                                                                |
-| Resolved component nodes use `line: 1` placeholder                                                        | ResolveResult exposes only absolutePath; true line lookup deferred                     | ⚠️ Revisit in v1.1 — file pointer alone satisfies v1 acceptance                       |
+| Resolved component nodes use `line: 1` placeholder                                                        | ResolveResult exposes only absolutePath; true line lookup deferred                     | ✓ Resolved in v1.1 — `ParseResult.declLines` populated in-pass; `ResolveResult.local.line` carries true `loc.start.line` (POLISH-03) |
+| `--init` non-interactive by default; only `--force` overrides hand-edit guard                              | CI-safe; no TTY prompts                                                                | ✓ Good (v1.1 INIT-13) — also drove marker-block + SHA-256 fingerprint design          |
+| Single `--init` template + per-target format wrapper (no per-agent tailoring)                              | Research showed ≥90% content overlap across Claude/Codex/Cursor/Copilot                | ✓ Good (v1.1) — kept guide content maintainable                                       |
+| HTML-comment prefix (`<!-- warning: ... -->`) for markdown envelope warnings                              | Invisible when rendered, recoverable by parsers; no envelope schema change             | ✓ Good (v1.1 POLISH-01)                                                               |
+| `ParseResult.declLines` populated in the existing single parse pass                                       | Zero extra parse cost; cache identity preserved                                        | ✓ Good (v1.1 POLISH-03)                                                               |
 
 ## Evolution
 
@@ -115,4 +132,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-_Last updated: 2026-05-11 — v1.1 milestone started_
+_Last updated: 2026-05-12 — after v1.1 milestone shipped_
