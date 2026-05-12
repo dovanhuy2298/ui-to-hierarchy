@@ -45,7 +45,11 @@ function labelFor(node: TreeNode): string {
       return `${node.tag}${formatAttributes(node.attributes)}`;
     case "text": {
       const v = node.value;
-      const shown = v.length > TEXT_MAX ? `${v.slice(0, TEXT_MAX)}…` : v;
+      // IN-01: slice by code points (not UTF-16 code units) so we never split
+      // a surrogate pair mid-truncation. `Array.from` iterates by Unicode
+      // scalar values, preserving emoji and astral-plane characters intact.
+      const cp = Array.from(v);
+      const shown = cp.length > TEXT_MAX ? `${cp.slice(0, TEXT_MAX).join("")}…` : v;
       return `"${shown}"`;
     }
     case "branch":
