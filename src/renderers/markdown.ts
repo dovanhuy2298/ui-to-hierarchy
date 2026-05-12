@@ -12,9 +12,14 @@ import type { Envelope, TreeNode } from "../ir/index.js";
 
 const TEXT_MAX = 60;
 
-function formatAttributes(
-  attrs: Array<{ name: string; value: string }> | undefined,
-): string {
+// IN-02: derive the attribute list type from the canonical TreeNode shape
+// so a future change to TreeNode["attributes"] (e.g. adding a discriminator)
+// surfaces as a compile error here instead of silently desyncing.
+type AttrList = NonNullable<
+  Extract<TreeNode, { kind: "element" }>["attributes"]
+>;
+
+function formatAttributes(attrs: AttrList | undefined): string {
   if (!attrs || attrs.length === 0) return "";
   // Defensive escape: backslashes FIRST (so we don't double-escape the
   // backslashes we add for quotes), then embedded double quotes (WR-05),
