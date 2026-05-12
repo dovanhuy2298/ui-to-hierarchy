@@ -8,19 +8,46 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 
 ## Status
 
-V1 targets **Next.js App Router**. Static analysis only — no runtime execution, no DOM, no rendering.
+Targets **Next.js App Router**. Static analysis only — no runtime execution, no DOM, no rendering.
 
-**v1.1** adds one-command agent onboarding (`--init`) plus polish: `format: "markdown"` now surfaces analyzer warnings (no longer silently dropped), and resolved component nodes carry true source declaration line numbers instead of `line: 1`.
+## Requirements
 
-## Install
+- Node.js `>=20`
+- An MCP-capable client (Claude Code, Claude Desktop, Cursor, or MCP Inspector)
 
-No install needed when used as an MCP server — clients spawn it via `npx`. To try the binary directly:
+## Run
+
+No install step is needed when used as an MCP server — clients spawn the binary on demand via `npx`. The three common ways to run it:
+
+### 1. Via an MCP client (normal usage)
+
+Add the server to your client config (see [Use with an MCP client](#use-with-an-mcp-client) below). The client launches `npx -y ui-hierarchy-mcp` for you and speaks JSON-RPC over stdio.
+
+### 2. Standalone for debugging
 
 ```bash
 npx -y ui-hierarchy-mcp
 ```
 
-(The server speaks JSON-RPC on stdio. Running it directly will sit idle waiting for an MCP client. Use [MCP Inspector](https://github.com/modelcontextprotocol/inspector) for interactive debugging.)
+The process speaks JSON-RPC on stdio, so it will sit idle waiting for a client. Useful only to confirm the binary downloads and launches; press `Ctrl+C` to exit.
+
+### 3. Interactive UI (MCP Inspector)
+
+```bash
+npx @modelcontextprotocol/inspector npx -y ui-hierarchy-mcp
+```
+
+Opens a local web UI where you can list and invoke each tool against a real project — the fastest way to explore the output format without wiring up an AI client.
+
+### Pointing at a project
+
+Every tool accepts a `projectRoot` argument (absolute path). To set a default for all calls, export `UI_TO_HIERARCH_ROOT` before launching the client:
+
+```bash
+export UI_TO_HIERARCH_ROOT=/abs/path/to/your/nextjs/project
+```
+
+If neither is set, the server falls back to `process.cwd()` — usually the directory the MCP client was launched from.
 
 ## Use with an MCP client
 
@@ -52,12 +79,6 @@ Add to `~/.cursor/mcp.json` (or `.cursor/mcp.json` per project):
     }
   }
 }
-```
-
-### MCP Inspector (interactive debugging)
-
-```bash
-npx @modelcontextprotocol/inspector npx -y ui-hierarchy-mcp
 ```
 
 ## Onboard your agent (`--init`)
@@ -155,6 +176,42 @@ All tools accept an optional `projectRoot` (absolute path) — defaults to `UI_T
 - `get-tsconfig` for tsconfig path-alias resolution
 - `tinyglobby` for file discovery
 - ESM-only, Node `>=20`
+
+## Development
+
+Clone and work on the server itself:
+
+```bash
+git clone https://github.com/dovanhuy2298/ui-to-hierarchy.git
+cd ui-to-hierarchy
+pnpm install
+```
+
+Common scripts:
+
+| Script | Purpose |
+|---|---|
+| `pnpm dev` | Run the CLI directly from TypeScript source (`tsx src/cli.ts`). Pass args after `--`, e.g. `pnpm dev -- --init --dry-run`. |
+| `pnpm build` | Bundle to `dist/` via `tsup` (ESM, with shebang). |
+| `pnpm test` | Run the full Vitest suite. |
+| `pnpm test:watch` | Watch mode. |
+| `pnpm test:smoke` | Spawn-the-binary smoke test against the MCP stdio contract. |
+| `pnpm test:integration` | Integration suite against fixture Next.js projects. |
+| `pnpm typecheck` | `tsc --noEmit`. |
+| `pnpm lint` | `biome check .`. |
+
+To test a local build against an MCP client, point its `command` at the built binary:
+
+```json
+{
+  "mcpServers": {
+    "ui-hierarchy": {
+      "command": "node",
+      "args": ["/abs/path/to/ui-to-hierarchy/dist/cli.js"]
+    }
+  }
+}
+```
 
 ## Roadmap
 
