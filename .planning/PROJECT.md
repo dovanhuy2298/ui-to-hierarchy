@@ -15,9 +15,22 @@ When an AI agent cannot confidently act on a screenshot or vague description ("m
 **Codebase:** ~5,400 LOC TypeScript, 44 test files, 353/353 vitest cases green
 **Stack:** Node ≥20, ESM, `@modelcontextprotocol/sdk@^1.29`, `@babel/parser@^7.29`, `zod@^4.1`, `tsup`, `vitest@^4.3`
 
-## Next Milestone
+## Current Milestone: v1.2 React Native + Expo Router
 
-_None scoped yet — run `/gsd-new-milestone` to define v1.2._
+**Goal:** Ship `ExpoRouterAdapter` parallel với `NextJsAdapter` để MCP parse được component hierarchy cho cả Next.js App Router VÀ React Native + Expo Router projects, với adapter auto-detect theo project shape.
+
+**Target features:**
+
+- `ExpoRouterAdapter` — file-system routing từ `app/` (hoặc `src/app/`): routes, `_layout.tsx`, dynamic `[param]/[...rest]/[[...opt]]`, groups `(group)/`, `index.tsx`, tabs (`(tabs)/`) và stacks
+- React Native primitive recognition — `View`, `Text`, `ScrollView`, `Image`, `Touchable*`, `Pressable`, `FlatList`, `SectionList`, ... được nhận diện như component nodes
+- RN style signal extraction:
+  - `StyleSheet.create({...})` + named lookups (`style={styles.card}`)
+  - Inline style object (`style={{ padding: 8 }}`)
+  - Style array merging (`style={[styles.a, styles.b, dynamic && styles.c]}`)
+  - NativeWind `className` (Tailwind cho RN)
+- Adapter auto-detect — đọc `package.json` của project: có `expo-router` → ExpoRouterAdapter, có `next` → NextJsAdapter; conflict → error rõ ràng
+- Test fixtures — ≥2 Expo Router projects (basic + tabs/dynamic params)
+- `--init` guide cập nhật để mention multi-framework support
 
 ## Requirements
 
@@ -62,9 +75,13 @@ _None scoped yet — run `/gsd-new-milestone` to define v1.2._
 - ✓ Integration suite exercises `format: "markdown"` against 2 fixtures with glyph + backslash guards — v1.1 (POLISH-02)
 - ✓ Resolved component nodes carry true `loc.start.line` via `ParseResult.declLines` → `ResolveResult.local.line` — v1.1 (POLISH-03)
 
-### Active
+### Active (v1.2 — being scoped)
 
-(None — next milestone requirements pending. Run `/gsd-new-milestone` to scope v1.2.)
+- [ ] ExpoRouterAdapter implementing FrameworkAdapter 5-method interface
+- [ ] RN primitive recognition + RN style signal extraction (StyleSheet.create + inline + array merge + NativeWind)
+- [ ] Adapter auto-detect via target project's `package.json`
+- [ ] Fixture coverage for Expo Router routing semantics (≥2 projects)
+- [ ] `--init` guide mentions multi-framework support
 
 ### Out of Scope
 
