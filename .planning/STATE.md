@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-12T04:04:48.118Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,58 +15,70 @@ progress:
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-12 — Phase 8 (v1.0 Polish) executed; all plans complete
+**Last updated:** 2026-05-12 — v1.2 roadmap drafted; 7 phases (9–15), 28 requirements mapped
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 - **Core value:** When an AI agent can't confidently act on a screenshot or vague UI description, call this MCP for a precise file/component map — edit the right component, not guess.
-- **Current focus:** Planning v1.2 — run `/gsd-new-milestone` to scope.
+- **Current focus:** v1.2 React Native + Expo Router — roadmap drafted; ready to plan Phase 9.
 - **Mode:** yolo
 - **Granularity:** standard
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 9 — Fixture Design & Stub Packages (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-12 — Milestone v1.2 started
+Status: Roadmap complete, awaiting `/gsd-plan-phase 9`
+Last activity: 2026-05-12 — v1.2 ROADMAP.md + REQUIREMENTS traceability written
 
 ## Progress Bar
 
 ```
-Phase 7 [##########] 100%
-Phase 8 [##########] 100%
+v1.0   Phases 1–6 [##########] 100% (shipped 2026-05-05)
+v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
+v1.2   Phase 9   [..........]   0%
+v1.2   Phase 10  [..........]   0%
+v1.2   Phase 11  [..........]   0%
+v1.2   Phase 12  [..........]   0%
+v1.2   Phase 13  [..........]   0%
+v1.2   Phase 14  [..........]   0%
+v1.2   Phase 15  [..........]   0%
 ```
 
 ## Accumulated Context
 
 ### Decisions
 
-Captured in PROJECT.md Key Decisions table.
+Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as phases land:
+
+- Widen `FrameworkAdapter` interface (3 new methods) rather than port-and-patch — adjudicated from PITFALLS.md Pitfall 1.
+- Two-signal adapter auto-detect: deps key + config file; parallel; exactly-one-true; `--framework` override.
+- `StyleSheet.create` support matrix: in-file literal + one-hop import only; everything else `{ raw }` + warning.
+- Platform-suffix mechanism ships in v1.2 (INTEG-05); `--platform` CLI flag exposure deferred to v1.3.
+- `layoutHint` field stays Next-specific in v1.2; RN nodes leave it unset.
 
 ### Open Todos
 
-- None
+- Run `/gsd-plan-phase 9` to decompose Phase 9 into plans.
 
 ### Blockers
 
-- None
+- None.
 
-### Carry-forward to v1.2
+### Carry-forward to v1.2 (now in scope or deferred)
 
-- F-01: live Claude Code transcript export (currently reconstructed from stdio-equivalent capture)
-- Two orphan exports in `src/mcp/errors.ts` (`notImplemented`, `invalidInput`) — Phase 2 stubs superseded by Phase 5
-- Cosmetic: redundant `base.warnings ?? []` fallback in 4 tool handlers (buildEnvelope always initializes)
-- Cosmetic: `__INIT_MARKER_VERSION__` reference in `src/init/index.ts` lacks `typeof` guard (safe via `dist/cli.js`; would `ReferenceError` from direct `tsx`/`vitest` call)
-- Possible v1.2 features: auto-detect installed agents for `--target`, `--global` flag for `~/.claude/CLAUDE.md`, hash-based upgrade detection via the marker `version=X.Y` tag
+- F-01: live Claude Code transcript export — deferred again, methodology footnote remains.
+- Two orphan exports in `src/mcp/errors.ts` (`notImplemented`, `invalidInput`) — opportunistic cleanup if a phase touches the file.
+- Cosmetic: redundant `base.warnings ?? []` fallback in 4 tool handlers — opportunistic during Phase 11 tool-handler refactor.
+- Cosmetic: `__INIT_MARKER_VERSION__` `typeof` guard in `src/init/index.ts` — opportunistic during Phase 15.
 
 ## Session Continuity
 
-- Last session: 2026-05-12 — Milestone v1.1 archived and tagged
-- Next command: `/gsd-new-milestone` to scope v1.2
-- Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm
+- Last session: 2026-05-12 — v1.2 roadmap drafted, 7 phases, 28/28 requirements mapped.
+- Next command: `/gsd-plan-phase 9`
+- Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
 
@@ -76,4 +88,4 @@ Captured in PROJECT.md Key Decisions table.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- `/gsd-plan-phase 9` — decompose Fixture Design & Stub Packages into plans.

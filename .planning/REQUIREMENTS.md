@@ -75,39 +75,39 @@
 
 ## Traceability
 
-| Requirement | Phase   | Status  |
-| ----------- | ------- | ------- |
-| ADAPT-01    | TBD     | Pending |
-| ADAPT-02    | TBD     | Pending |
-| ADAPT-03    | TBD     | Pending |
-| ADAPT-04    | TBD     | Pending |
-| ADAPT-05    | TBD     | Pending |
-| ADAPT-06    | TBD     | Pending |
-| ROUTE-01    | TBD     | Pending |
-| ROUTE-02    | TBD     | Pending |
-| ROUTE-03    | TBD     | Pending |
-| ROUTE-04    | TBD     | Pending |
-| ROUTE-05    | TBD     | Pending |
-| ROUTE-06    | TBD     | Pending |
-| ROUTE-07    | TBD     | Pending |
-| ROUTE-08    | TBD     | Pending |
-| RN-01       | TBD     | Pending |
-| RN-02       | TBD     | Pending |
-| RN-03       | TBD     | Pending |
-| RN-04       | TBD     | Pending |
-| RN-05       | TBD     | Pending |
-| RN-06       | TBD     | Pending |
-| RN-07       | TBD     | Pending |
-| RN-08       | TBD     | Pending |
-| INTEG-01    | TBD     | Pending |
-| INTEG-02    | TBD     | Pending |
-| INTEG-03    | TBD     | Pending |
-| INTEG-04    | TBD     | Pending |
-| INTEG-05    | TBD     | Pending |
-| INTEG-06    | TBD     | Pending |
+| Requirement | Phase    | Status  |
+| ----------- | -------- | ------- |
+| ADAPT-01    | Phase 10 | Planned |
+| ADAPT-02    | Phase 10 | Planned |
+| ADAPT-03    | Phase 11 | Planned |
+| ADAPT-04    | Phase 11 | Planned |
+| ADAPT-05    | Phase 11 | Planned |
+| ADAPT-06    | Phase 11 | Planned |
+| ROUTE-01    | Phase 12 | Planned |
+| ROUTE-02    | Phase 12 | Planned |
+| ROUTE-03    | Phase 12 | Planned |
+| ROUTE-04    | Phase 12 | Planned |
+| ROUTE-05    | Phase 12 | Planned |
+| ROUTE-06    | Phase 12 | Planned |
+| ROUTE-07    | Phase 12 | Planned |
+| ROUTE-08    | Phase 12 | Planned |
+| RN-01       | Phase 12 | Planned |
+| RN-02       | Phase 12 | Planned |
+| RN-03       | Phase 12 | Planned |
+| RN-04       | Phase 13 | Planned |
+| RN-05       | Phase 13 | Planned |
+| RN-06       | Phase 13 | Planned |
+| RN-07       | Phase 13 | Planned |
+| RN-08       | Phase 13 | Planned |
+| INTEG-01    | Phase 9  | Planned |
+| INTEG-02    | Phase 9  | Planned |
+| INTEG-03    | Phase 15 | Planned |
+| INTEG-04    | Phase 11 | Planned |
+| INTEG-05    | Phase 14 | Planned |
+| INTEG-06    | Phase 15 | Planned |
 
-**Coverage:** 28 requirements (6 ADAPT + 8 ROUTE + 8 RN + 6 INTEG); phase mapping populated by gsd-roadmapper.
+**Coverage:** 28/28 requirements mapped (6 ADAPT + 8 ROUTE + 8 RN + 6 INTEG); every requirement assigned to exactly one phase.
 
 ---
 
-_Last updated: 2026-05-12_
+_Last updated: 2026-05-12 — roadmap traceability populated by gsd-roadmapper_
