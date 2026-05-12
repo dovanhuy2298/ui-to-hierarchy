@@ -29,7 +29,11 @@ type BabelParseReturn = ReturnType<typeof parse>;
  *
  * Recorded:
  *   - Named `FunctionDeclaration`
- *   - `VariableDeclarator` with Identifier id and arrow/function init
+ *   - `VariableDeclarator` with Identifier id and a callable-like init:
+ *     arrow/function, plus `CallExpression` (forwardRef/memo/HOCs) and
+ *     `TaggedTemplateExpression` (styled-components) — WR-02. These are
+ *     the dominant real-world wrapped-component shapes; recording them
+ *     prevents silent fallback to `line: 1`.
  *   - Named `ClassDeclaration`
  *   - `ExportSpecifier` re-export names (`export { X as Y } from "..."`)
  *   - Named function/class wrapped in `ExportNamedDeclaration` / `ExportDefaultDeclaration`
@@ -61,7 +65,16 @@ function collectDeclLines(body: Statement[]): Map<string, number> {
       if (decl.id.type !== "Identifier") continue;
       const init = decl.init;
       if (!init) continue;
-      if (init.type !== "ArrowFunctionExpression" && init.type !== "FunctionExpression") continue;
+      // WR-02: also record callable-like wrappers — `forwardRef(...)`,
+      // `memo(...)`, `styled.div\`...\`` are the dominant real-world
+      // component shapes. Without these, we'd silently fall back to
+      // `line: 1` for a large fraction of production components.
+      const callableLike =
+        init.type === "ArrowFunctionExpression" ||
+        init.type === "FunctionExpression" ||
+        init.type === "CallExpression" ||
+        init.type === "TaggedTemplateExpression";
+      if (!callableLike) continue;
       const line = decl.id.loc?.start.line ?? decl.loc?.start.line;
       if (line !== undefined) out.set(decl.id.name, line);
     }

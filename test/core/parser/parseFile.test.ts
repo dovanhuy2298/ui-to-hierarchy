@@ -138,4 +138,32 @@ describe("POLISH-03 D-01 parseFile.declLines", () => {
     const b = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
     expect(a).toBe(b);
   });
+
+  // ──────────────────────────────────────────────────────────────
+  // WR-02 — forwardRef / memo / styled wrapping should record the
+  // binding's declaration line, not fall back to 1. Fixture lines:
+  //   Line 12: export const Button = forwardRef<...>(...)
+  //   Line 16: export const Card = memo(function Card(...) { ... })
+  //   Line 20: export const Box = styled.div`...`
+  // ──────────────────────────────────────────────────────────────
+  it("records VariableDeclarator with forwardRef CallExpression init at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "forwardref-component.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    expect(r.declLines.get("Button")).toBe(12);
+  });
+
+  it("records VariableDeclarator with memo CallExpression init at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "forwardref-component.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    expect(r.declLines.get("Card")).toBe(16);
+  });
+
+  it("records VariableDeclarator with styled TaggedTemplateExpression init at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "forwardref-component.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    expect(r.declLines.get("Box")).toBe(20);
+  });
 });
