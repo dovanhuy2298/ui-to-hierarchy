@@ -19,6 +19,25 @@ describe("renderMarkdown — snapshots", () => {
     });
   }
 
+  describe("warnings prefix", () => {
+    it("emits one <!-- warning: ... --> line per warning + blank separator before the tree", () => {
+      const envelope = { ...singleLeaf.envelope, warnings: ["a", "b"] };
+      const out = renderMarkdown(singleLeaf.tree, envelope);
+      const rootLine = renderMarkdown(singleLeaf.tree, singleLeaf.envelope);
+      expect(out.startsWith("<!-- warning: a -->\n<!-- warning: b -->\n\n")).toBe(
+        true,
+      );
+      expect(out).toBe(`<!-- warning: a -->\n<!-- warning: b -->\n\n${rootLine}`);
+      expect(out).not.toContain("\\");
+    });
+
+    it("emits no prefix and no leading blank when warnings is empty (byte-identical to v1.0)", () => {
+      const out = renderMarkdown(singleLeaf.tree, singleLeaf.envelope);
+      expect(out.startsWith("<!--")).toBe(false);
+      expect(out.startsWith("\n")).toBe(false);
+    });
+  });
+
   it("kitchen-sink contains all required substrings", () => {
     const out = renderMarkdown(kitchenSink.tree, kitchenSink.envelope);
     const required = [
