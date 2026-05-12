@@ -1,41 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync, statSync } from "node:fs";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { EnvelopeSchema, type Envelope } from "../../src/ir/envelope.js";
 import type { TreeNode } from "../../src/ir/schema.js";
+import { spawnMcpClient } from "./_helpers.js";
 
 // Phase 06-04 — End-to-end MCP integration suite (SPEC R1..R5).
 //
 // Per D-01: per-fixture spawned-binary lifecycle, 4 tools per fixture.
 // Per D-03: schema parse + targeted invariants, NO snapshots.
 // Per D-04: build-staleness guard; this suite does NOT auto-run `pnpm build`.
+//   (assertFreshBuild lives in _helpers.ts and runs inside spawnMcpClient.)
 // Per D-11 (Phase 3): no imports from src/adapters/**.
+// Phase 08-04 (D-06): spawn lifecycle extracted to _helpers.ts.
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const distCli = resolve(__dirname, "../../dist/cli.js");
-const srcCli = resolve(__dirname, "../../src/cli.ts");
 const fixturesRoot = resolve(__dirname, "../fixtures/phase-06");
-
-// ---------------------------------------------------------------------------
-// Build-staleness guard (D-04)
-// ---------------------------------------------------------------------------
-function assertFreshBuild(): void {
-  if (!existsSync(distCli)) {
-    throw new Error(
-      `dist/cli.js not found at ${distCli}. Run 'pnpm build' before 'pnpm test:integration'.`,
-    );
-  }
-  const distMtime = statSync(distCli).mtimeMs;
-  const srcMtime = statSync(srcCli).mtimeMs;
-  if (srcMtime > distMtime) {
-    throw new Error(
-      `dist/cli.js is older than src/cli.ts. Run 'pnpm build' before 'pnpm test:integration'.`,
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Tree walking helpers (exhaustive over 9-kind TreeNode union)
@@ -226,19 +208,14 @@ function makeFixtureSuite(label: string, fixturePath: string, invariants: Fixtur
   describe(`MCP integration — ${label}`, () => {
     let client: Client;
     let transport: StdioClientTransport;
-    const stderrChunks: Buffer[] = [];
+    let stderrChunks: Buffer[] = [];
     const allEnvelopes: Envelope[] = [];
 
     beforeAll(async () => {
-      assertFreshBuild();
-      transport = new StdioClientTransport({
-        command: "node",
-        args: [distCli],
-        stderr: "pipe",
-      });
-      transport.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-      client = new Client({ name: "phase-06-integration", version: "0.0.0" });
-      await client.connect(transport);
+      const spawned = await spawnMcpClient("phase-06-integration");
+      client = spawned.client;
+      transport = spawned.transport;
+      stderrChunks = spawned.stderrChunks;
     }, 30_000);
 
     afterAll(async () => {
