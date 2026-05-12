@@ -16,7 +16,20 @@ findings:
   warning: 4
   info: 5
   total: 9
-status: issues_found
+status: warnings_fixed
+fixes:
+  WR-01:
+    status: fixed
+    commit: f2701d6
+  WR-02:
+    status: fixed
+    commit: f2484d3
+  WR-03:
+    status: fixed
+    commit: 3887f7e
+  WR-04:
+    status: fixed
+    commit: 03fd9d7
 ---
 
 # Phase 08: Code Review Report
@@ -54,6 +67,8 @@ However, the review uncovered several real defects:
 
 ### WR-01: Test assertion forbids the exact output the renderer is documented to produce
 
+**Status:** RESOLVED — fixed in commit `f2701d6` (assertions narrowed to a regex that only rejects stray backslashes outside documented escape positions).
+
 **File:** `test/renderers/markdown.test.ts:16, 31`
 **Issue:** Two test cases assert `expect(out).not.toContain("\\")`. But
 `renderMarkdown` → `formatAttributes` (src/renderers/markdown.ts:21-24)
@@ -79,6 +94,8 @@ expect(out).not.toMatch(/(?<!\\)\\(?![\\"])/);
 ---
 
 ### WR-02: `collectDeclLines` misses the dominant React component pattern (`forwardRef` / `memo`)
+
+**Status:** RESOLVED — fixed in commit `f2484d3` (`recordVariable` broadened to accept `CallExpression` and `TaggedTemplateExpression` inits; new `forwardref-component.tsx` fixture + 3 assertions added for Button/Card/Box at lines 12/16/20).
 
 **File:** `src/core/parser/index.ts:59-68`
 **Issue:** `recordVariable` only records a `VariableDeclarator` when its `init`
@@ -124,6 +141,8 @@ is captured (not falling back to 1).
 
 ### WR-03: Markdown renderer escapes only `\` and `"` — `<`, `>`, and `\n` in attribute values produce malformed tree lines
 
+**Status:** RESOLVED — fixed in commit `3887f7e` (`formatAttributes` now also escapes `\n`→`\n`, `\r`→`\r`, `<`→`&lt;`, `>`→`&gt;` in attribute values).
+
 **File:** `src/renderers/markdown.ts:19-25`
 **Issue:** `formatAttributes` escapes backslashes and double quotes:
 ```ts
@@ -159,6 +178,8 @@ const escaped = a.value
 ---
 
 ### WR-04: `ComponentDefinition` doc says "12-field shape" but the interface has 13 fields
+
+**Status:** RESOLVED — fixed in commit `03fd9d7` (header comment, R8 docstring, and inline R8 reference all amended to "13-field shape (R8 amended by NEXT-04)"). `test/adapters/types.test.ts` already asserts 13 fields — no test change needed.
 
 **File:** `src/adapters/types.ts:183, 188-202`
 **Issue:** The block-comment header (line 183) and the docstring (line 188)
