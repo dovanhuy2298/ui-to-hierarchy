@@ -300,9 +300,19 @@ export interface RouteMatch {
  *
  * D-02 — cache value is the discriminated union, so re-entries to the same
  *   file (barrel chase) don't re-parse and don't re-throw.
+ *
+ * D-01 (Phase 8 / POLISH-03) — the `ok` variant additionally carries
+ *   `declLines`: a per-file map from a top-level binding name to its
+ *   declaration line (`loc.start.line`). Populated by `parseFile` during the
+ *   existing single parse pass so downstream `resolveModule` callers can read
+ *   the true component declaration line with zero extra parses. Covered names:
+ *   named `FunctionDeclaration`, named `VariableDeclarator` with arrow/function
+ *   init, `ClassDeclaration`, and re-exported `ExportSpecifier` names.
+ *   Anonymous default exports are intentionally absent — callers fall back to
+ *   `line: 1` (D-03).
  */
 export type ParseResult =
-  | { kind: "ok"; ast: File; source: string }
+  | { kind: "ok"; ast: File; source: string; declLines: Map<string, number> }
   | { kind: "error"; message: string; line: number };
 
 // ──────────────────────────────────────────────────────────────────
