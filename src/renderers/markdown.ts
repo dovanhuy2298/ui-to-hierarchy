@@ -99,6 +99,11 @@ function childrenOf(node: TreeNode): TreeNode[] {
 function lineFor(node: TreeNode): string {
   const label = labelFor(node);
   const hint = node.layoutHint ? ` ${node.layoutHint}` : "";
+  // IN-03: ` @ ` is the documented separator between (label + hint) and
+  // (file:line). Producers of `layoutHint` MUST NOT include ` @ ` in the hint
+  // value, otherwise downstream regex parsers that split on ` @ ` to recover
+  // the file:line suffix may mis-split. If a future hint kind (e.g. media
+  // queries) needs `@`, change the separator here AND update consumers.
   return `${label}${hint} @ ${node.file}:${node.line}`;
 }
 
