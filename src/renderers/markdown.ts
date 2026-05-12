@@ -104,8 +104,14 @@ function walk(
   }
 }
 
-export function renderMarkdown(tree: TreeNode, _envelope: Envelope): string {
+export function renderMarkdown(tree: TreeNode, envelope: Envelope): string {
   const lines: string[] = [];
+  if (envelope.warnings.length > 0) {
+    for (const msg of envelope.warnings) {
+      lines.push(`<!-- warning: ${msg} -->`);
+    }
+    lines.push("");
+  }
   walk(tree, "", true, true, lines);
   return lines.join("\n");
 }
