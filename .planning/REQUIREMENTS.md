@@ -27,7 +27,7 @@
 ### POLISH — v1.0 polish items
 
 - [x] **POLISH-01**: Markdown renderer surfaces `envelope.warnings` (currently the JSON renderer emits them but markdown drops them); warnings appear as an HTML-comment-prefixed block at the top of the rendered tree, ordered before the tree itself.
-- [ ] **POLISH-02**: Integration suite exercises `format: "markdown"` end-to-end for at least 2 fixture projects, asserting tree glyphs, `@` file:line separator, and `not.toContain('\\')` (Windows backslash guard); current suite only exercises `format: "json"`.
+- [x] **POLISH-02**: Integration suite exercises `format: "markdown"` end-to-end for at least 2 fixture projects, asserting tree glyphs, `@` file:line separator, and `not.toContain('\\')` (Windows backslash guard); current suite only exercises `format: "json"`.
 - [ ] **POLISH-03**: `ResolveResult` (local kind) carries a true `line` number sourced from the declaration's Babel `loc.start.line`; `Analyzer.ts` propagates it to `TreeNode.line` for resolved component nodes, replacing the `line: 1` placeholder.
 
 ---
@@ -70,7 +70,7 @@
 | INIT-13     | Phase 7 | Pending |
 | INIT-14     | Phase 7 | Pending |
 | POLISH-01   | Phase 8 | Complete |
-| POLISH-02   | Phase 8 | Pending |
+| POLISH-02   | Phase 8 | Complete |
 | POLISH-03   | Phase 8 | Pending |
 
 **Coverage:** 17/17 requirements mapped

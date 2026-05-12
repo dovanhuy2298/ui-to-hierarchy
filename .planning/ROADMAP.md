@@ -65,7 +65,7 @@ Plans:
 - [x] 08-01-PLAN.md — POLISH-01: renderMarkdown surfaces envelope.warnings as HTML-comment prefix
 - [x] 08-02-PLAN.md — POLISH-03 part A: parseFile populates ParseResult.declLines map in existing parse pass
 - [x] 08-03-PLAN.md — POLISH-03 part B: ResolveResult.local carries true line; Analyzer writes result.line; regression fixture
-- [ ] 08-04-PLAN.md — POLISH-02: integration suite exercises format:markdown against phase-05/micro + kitchen-sink
+- [x] 08-04-PLAN.md — POLISH-02: integration suite exercises format:markdown against phase-05/micro + kitchen-sink
 
 ## Progress
 
