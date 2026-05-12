@@ -72,3 +72,70 @@ describe("PARSE-01 parseFile", () => {
     expect(a).toBe(b);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────
+// Phase 8 / POLISH-03 D-01 — declLines population
+// Fixture: test/fixtures/parser/parse-errors/decl-lines.tsx
+//   Line  5: export function Foo
+//   Line  9: export const Bar = () => ...
+//   Line 13: export class Baz
+//   Line 19: export { Renamed as Outer } from "./renamed-source.js"
+//   Line 21: export default () => null   (anonymous — NOT recorded)
+// ──────────────────────────────────────────────────────────────────
+describe("POLISH-03 D-01 parseFile.declLines", () => {
+  it("records FunctionDeclaration name at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    expect(r.kind).toBe("ok");
+    if (r.kind !== "ok") return;
+    expect(r.declLines.get("Foo")).toBe(5);
+  });
+
+  it("records VariableDeclarator with arrow init at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    expect(r.declLines.get("Bar")).toBe(9);
+  });
+
+  it("records ClassDeclaration name at its declaration line", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    expect(r.declLines.get("Baz")).toBe(13);
+  });
+
+  it("records ExportSpecifier re-export name with line > 0", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    const outerLine = r.declLines.get("Outer");
+    expect(outerLine).toBeGreaterThan(0);
+    expect(outerLine).toBe(19);
+  });
+
+  it("does NOT record anonymous default exports", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    if (r.kind !== "ok") throw new Error("expected ok");
+    // Anonymous `export default () => null` has no binding name to record.
+    expect(r.declLines.has("default")).toBe(false);
+  });
+
+  it("declLines is present on the ok variant for the baseline fixture", () => {
+    const ctx = makeCtx();
+    const r = parseFile(ctx, path.join(FIX, "valid-baseline.tsx"));
+    expect(r.kind).toBe("ok");
+    if (r.kind !== "ok") return;
+    expect(r.declLines).toBeInstanceOf(Map);
+    // valid-baseline.tsx declares `export function Hello() { ... }` on line 1.
+    expect(r.declLines.get("Hello")).toBe(1);
+  });
+
+  it("D-02 cache identity holds — same result object on re-entry (no re-parse)", () => {
+    const ctx = makeCtx();
+    const a = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    const b = parseFile(ctx, path.join(FIX, "decl-lines.tsx"));
+    expect(a).toBe(b);
+  });
+});
