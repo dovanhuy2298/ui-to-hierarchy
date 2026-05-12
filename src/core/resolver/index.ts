@@ -62,6 +62,7 @@ function resolveSpecifierToFile(
   ctx: ParseContext,
   fromFile: string,
   specifier: string,
+  importedName: string,
 ): ResolveResult {
   // 1. tsconfig paths
   const matcher = getPathsMatcher(ctx);
@@ -74,9 +75,13 @@ function resolveSpecifierToFile(
       if (hit) {
         const fwd = toForwardSlash(hit);
         const ext = detectNodeModules(fwd);
-        return ext
-          ? { ok: true, kind: "external", packageName: ext }
-          : { ok: true, kind: "local", absolutePath: fwd };
+        if (ext) return { ok: true, kind: "external", packageName: ext };
+        // POLISH-03 D-02/D-03: read declaration line from parseFile.declLines.
+        // parseFile is ctx-cached, so this is free on subsequent calls.
+        const parsed = parseFile(ctx, fwd);
+        const line =
+          parsed.kind === "ok" ? (parsed.declLines.get(importedName) ?? 1) : 1;
+        return { ok: true, kind: "local", absolutePath: fwd, line };
       }
     }
     // If the matcher produced candidates but none existed, fall through
@@ -92,9 +97,11 @@ function resolveSpecifierToFile(
     if (hit) {
       const fwd = toForwardSlash(hit);
       const ext = detectNodeModules(fwd);
-      return ext
-        ? { ok: true, kind: "external", packageName: ext }
-        : { ok: true, kind: "local", absolutePath: fwd };
+      if (ext) return { ok: true, kind: "external", packageName: ext };
+      const parsed = parseFile(ctx, fwd);
+      const line =
+        parsed.kind === "ok" ? (parsed.declLines.get(importedName) ?? 1) : 1;
+      return { ok: true, kind: "local", absolutePath: fwd, line };
     }
     return { ok: false, kind: "not-found", specifier, tried: triedPaths };
   }
@@ -112,7 +119,7 @@ function doResolve(
   specifier: string,
   importedName: string,
 ): ResolveResult {
-  const fileResult = resolveSpecifierToFile(ctx, fromFile, specifier);
+  const fileResult = resolveSpecifierToFile(ctx, fromFile, specifier, importedName);
   if (!fileResult.ok) return fileResult;
   if (fileResult.kind === "external") return fileResult;
 
@@ -176,7 +183,7 @@ function doResolve(
   // Recurse into the original import source.
   if (bareReExport) {
     const re = bareReExport as BareReExport;
-    const next = resolveSpecifierToFile(ctx, fileResult.absolutePath, re.source);
+    const next = resolveSpecifierToFile(ctx, fileResult.absolutePath, re.source, re.importedFromSource);
     if (!next.ok) return next;
     if (next.kind === "external") return next;
     return chaseBarrel(ctx, next.absolutePath, re.importedFromSource, resolveSpecifierToFile);

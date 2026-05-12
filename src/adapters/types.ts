@@ -255,9 +255,16 @@ export interface ComponentDefinition {
  *   `RenderNode { kind: "error" }` or drop the import silently.
  * D-13 — `not-found` carries the list of probed paths (`tried`) for
  *   diagnostic surfacing in `ctx.warnings`.
+ *
+ * D-02 (Phase 8 / POLISH-03) — the `local` variant additionally carries
+ *   `line`: the true declaration line of `importedName` in `absolutePath`,
+ *   sourced from `ParseResult.declLines` (populated by parseFile). Falls
+ *   back to `1` per D-03 when the name is absent from declLines (anonymous
+ *   default exports, re-export indirection not recorded) or when the target
+ *   file fails to parse.
  */
 export type ResolveResult =
-  | { ok: true; kind: "local"; absolutePath: string }
+  | { ok: true; kind: "local"; absolutePath: string; line: number }
   | { ok: true; kind: "external"; packageName: string }
   | { ok: false; kind: "cycle"; chain: string[] }
   | { ok: false; kind: "not-found"; specifier: string; tried: string[] }

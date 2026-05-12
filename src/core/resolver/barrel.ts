@@ -26,7 +26,12 @@ import { parseFile } from "../parser/index.js";
  * this module's job.
  */
 
-type SpecifierResolver = (ctx: ParseContext, fromFile: string, specifier: string) => ResolveResult;
+type SpecifierResolver = (
+  ctx: ParseContext,
+  fromFile: string,
+  specifier: string,
+  importedName: string,
+) => ResolveResult;
 
 export function chaseBarrel(
   ctx: ParseContext,
@@ -79,18 +84,24 @@ export function chaseBarrel(
     },
   });
 
-  if (foundLocal) return { ok: true, kind: "local", absolutePath: startFile };
+  if (foundLocal) {
+    // POLISH-03 D-02/D-03: report the true declaration line of importedName
+    // in this file. parseFile is ctx-cached (we just used it above), so this
+    // lookup is free. declLines.get → undefined falls back to 1 per D-03.
+    const line = parsed.declLines.get(importedName) ?? 1;
+    return { ok: true, kind: "local", absolutePath: startFile, line };
+  }
 
   if (reExportFrom) {
     const re = reExportFrom as { source: string; renamed: string };
-    const next = resolveSpecifier(ctx, startFile, re.source);
+    const next = resolveSpecifier(ctx, startFile, re.source, re.renamed);
     if (!next.ok) return next;
     if (next.kind === "external") return next;
     return chaseBarrel(ctx, next.absolutePath, re.renamed, resolveSpecifier, visited);
   }
 
   for (const starSource of starExports) {
-    const next = resolveSpecifier(ctx, startFile, starSource);
+    const next = resolveSpecifier(ctx, startFile, starSource, importedName);
     if (!next.ok) continue;
     if (next.kind === "external") continue;
     // Fork visited per branch so sibling stars don't poison each other,
