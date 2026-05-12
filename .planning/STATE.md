@@ -67,3 +67,9 @@ Captured in PROJECT.md Key Decisions table.
 - Last session: 2026-05-12 — Phase 8 (POLISH-01/02/03) executed across 3 waves; 353/353 tests passing
 - Next command: `/gsd-verify-work 8` or `/gsd-complete-milestone`
 - Released artifact: `ui-hierarchy-mcp` v0.1.0 on npm
+
+## Quick Tasks Completed
+
+| Date       | Slug                  | Summary                                                                |
+| ---------- | --------------------- | ---------------------------------------------------------------------- |
+| 2026-05-12 | update-readme-v1-1    | README: documented `--init` onboarding + v1.1 polish (warnings, lines) |
