@@ -259,9 +259,11 @@ function renderNodeToTreeNode(
 // For every `kind:"component"` TreeNode produced from an `isComponent` JSX
 // callsite, look up its tag name in the entry's import-binding map and call
 // `adapter.resolveModule`. On a successful local resolution, override the
-// node's `file` (and reset `line` to 1 since ResolveResult does not carry the
-// declaration line). On `ok:false` failures, append a warning. On
-// `ok:true, kind:"external"` (node_modules), leave the node alone silently.
+// node's `file` AND `line` (POLISH-03 D-02/D-03/D-04: ResolveResult.local now
+// carries the true declaration line, sourced from ParseResult.declLines, with
+// fallback to 1 when the name is absent or the file failed to parse). On
+// `ok:false` failures, append a warning. On `ok:true, kind:"external"`
+// (node_modules), leave the node alone silently.
 //
 // The override does NOT cascade into children — a component's TreeNode
 // children are JSX expressions passed AS PROPS in the calling file (e.g.
@@ -301,7 +303,7 @@ function resolveComponentCallsites(
           ...tree,
           children: newChildren,
           file: toForwardSlash(result.absolutePath),
-          line: 1,
+          line: result.line,
         };
       }
       if (!result.ok) {

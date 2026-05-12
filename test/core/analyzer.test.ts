@@ -49,6 +49,7 @@ function stripRoot(markdown: string, root: string): string {
 const KS = path.resolve("test/fixtures/phase-05/kitchen-sink");
 const PE = path.resolve("test/fixtures/phase-05/micro/parse-error");
 const MT = path.resolve("test/fixtures/phase-05/micro/mutation-test");
+const LT = path.resolve("test/fixtures/phase-05/micro/line-test");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tree walk helpers
@@ -608,5 +609,37 @@ describe("forward-slash discipline (D-07)", () => {
     for (const f of allFiles) {
       expect(f, `file path "${f}" contains backslash`).not.toContain("\\");
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLISH-03 — resolved local-kind component nodes report the TRUE declaration
+// line from ParseResult.declLines, not the legacy `line: 1` placeholder.
+//
+// Fixture: test/fixtures/phase-05/micro/line-test/
+//   components/Foo.tsx declares `export function Foo` on line 3 (after two
+//   leading comment lines). app/page.tsx imports and renders <Foo />.
+//
+// Behavior under test: after resolveComponentCallsites overrides the Foo
+// TreeNode's file to point at components/Foo.tsx, the line MUST equal 3
+// (D-02), not 1 (the pre-POLISH-03 fallback).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Analyzer resolved-component line propagation (POLISH-03)", () => {
+  it("emits TreeNode.line === 3 for Foo declared on line 3 of components/Foo.tsx", async () => {
+    const analyzer = new Analyzer({ root: LT, adapter: NextJsAdapter });
+    const { tree } = await analyzer.getFullHierarchy({ route: "/" });
+
+    const fooNode = findNode(
+      tree,
+      (n) =>
+        n.kind === "component" &&
+        n.name === "Foo" &&
+        toForwardSlash(n.file).endsWith("components/Foo.tsx"),
+    );
+    expect(fooNode, "resolved Foo component TreeNode not found").not.toBeNull();
+    if (!fooNode) return;
+    expect(fooNode.line).toBe(3);
+    expect(fooNode.line).not.toBe(1);
   });
 });
