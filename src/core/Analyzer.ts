@@ -488,23 +488,6 @@ function findDefaultExportName(ast: t.File): string | undefined {
   return undefined;
 }
 
-/**
- * Collect all line numbers where `{children}` JSX expressions appear in an AST.
- * These are JSXExpressionContainer nodes whose expression is an Identifier named "children".
- */
-function collectChildrenSlotLines(ast: t.File): Set<number> {
-  const lines = new Set<number>();
-  traverse(ast, {
-    JSXExpressionContainer(path: { node: t.JSXExpressionContainer }) {
-      const expr = path.node.expression;
-      if (t.isIdentifier(expr) && expr.name === "children") {
-        const line = path.node.loc?.start.line ?? 0;
-        lines.add(line);
-      }
-    },
-  });
-  return lines;
-}
 
 /**
  * Build a map from JSXElement opening-tag line → closing-tag line (WR-01).
@@ -654,25 +637,6 @@ function injectChildrenSlots(
     default:
       return tree;
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// File role helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function isPageFile(absPath: string): boolean {
-  const base = toForwardSlash(absPath).split("/").pop() ?? "";
-  return /^page\.(tsx|jsx|ts|js)$/.test(base);
-}
-
-function isSpecialFile(absPath: string): boolean {
-  const base = toForwardSlash(absPath).split("/").pop() ?? "";
-  return /^(layout|template|loading|error|not-found|default)\.(tsx|jsx|ts|js)$/.test(base);
-}
-
-function isLayoutFile(absPath: string): boolean {
-  const base = toForwardSlash(absPath).split("/").pop() ?? "";
-  return /^layout\.(tsx|jsx|ts|js)$/.test(base);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -841,7 +805,7 @@ export class Analyzer {
       const fwdFile = toForwardSlash(absFile);
       const cachedParse = this.ctx.astCache.get(fwdFile);
       if (cachedParse && cachedParse.kind === "ok") {
-        const slotLines = collectChildrenSlotLines(cachedParse.ast);
+        const slotLines = this.collectChildrenSlotLines(cachedParse.ast);
         if (slotLines.size > 0) {
           // WR-01: thread element open→close line ranges so empty-element slot
           // injection is bounded on both ends by the element's source extent.
@@ -895,11 +859,11 @@ export class Analyzer {
     // Identify the page file (last page.tsx in entries)
     let pageFile: string | undefined;
     for (let i = entries.length - 1; i >= 0; i--) {
-      if (isPageFile(entries[i]!)) { pageFile = entries[i]; break; }
+      if (this.adapter.classifyEntry(entries[i]!) === "page") { pageFile = entries[i]; break; }
     }
 
     // Layout files only (skip template, loading, error, etc.)
-    const layoutFiles = entries.filter((e) => isLayoutFile(e));
+    const layoutFiles = entries.filter((e) => this.adapter.classifyEntry(e) === "layout");
 
     // Build page tree
     let tree: TreeNode = pageFile
@@ -966,16 +930,15 @@ export class Analyzer {
    * Returns one TreeNode per route. Uses within-call memoization.
    */
   private async buildUnionIR(): Promise<TreeNode[]> {
-    let entries: string[];
+    let routes: string[];
     try {
-      entries = await this.adapter.discoverEntries(this.root);
+      routes = await this.adapter.enumerateRoutes(this.root);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.ctx.warnings.push(`discoverEntries error: ${message}`);
+      this.ctx.warnings.push(`enumerateRoutes error: ${message}`);
       return [];
     }
 
-    const routes = deriveRoutesFromEntries(entries, this.root);
     const trees: TreeNode[] = [];
 
     for (const route of routes) {
@@ -1181,55 +1144,26 @@ export class Analyzer {
       return { tree: buildFragmentRoot([]), warnings: [...this.ctx.warnings] };
     }
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Route derivation from discovered entry files
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Derive unique route strings from discovered entry file paths.
- * Only page files contribute routes. Handles route groups, parallel routes, private folders.
- */
-function deriveRoutesFromEntries(entries: string[], absRoot: string): string[] {
-  const routes = new Set<string>();
-  const fwdRoot = toForwardSlash(absRoot);
-
-  // Find app root (app/ or src/app/)
-  let appRoot: string | null = null;
-  for (const dir of ["app", "src/app"]) {
-    const candidate = `${fwdRoot}/${dir}`;
-    if (entries.some((e) => toForwardSlash(e).startsWith(`${candidate}/`))) {
-      appRoot = candidate;
-      break;
-    }
+  /**
+   * Collect all line numbers where slot injection points appear in an AST.
+   * Uses adapter.slotMarker to determine which JSXExpressionContainer identifiers
+   * count as slot injection points (Next.js: "children"; Expo Router: "Slot").
+   */
+  private collectChildrenSlotLines(ast: t.File): Set<number> {
+    const lines = new Set<number>();
+    const adapter = this.adapter; // capture before traverse (Pitfall 3 — this context)
+    traverse(ast, {
+      JSXExpressionContainer(path: { node: t.JSXExpressionContainer }) {
+        const expr = path.node.expression;
+        if (t.isIdentifier(expr) && adapter.slotMarker(expr.name, "")) {
+          const line = path.node.loc?.start.line ?? 0;
+          lines.add(line);
+        }
+      },
+    });
+    return lines;
   }
-  if (!appRoot) return [];
-
-  for (const entry of entries) {
-    const fwd = toForwardSlash(entry);
-    if (!isPageFile(fwd)) continue;
-    if (!fwd.startsWith(`${appRoot}/`)) continue;
-
-    const rel = fwd.slice(appRoot.length + 1); // relative to app root
-    const parts = rel.split("/");
-    parts.pop(); // remove the page.tsx filename
-
-    const routeSegments: string[] = [];
-    let skip = false;
-    for (const part of parts) {
-      if (/^\(.+\)$/.test(part)) continue; // route group — transparent
-      if (/^@/.test(part)) { skip = true; break; } // parallel route folder — not a route
-      if (/^_/.test(part)) { skip = true; break; } // private folder
-      routeSegments.push(part);
-    }
-    if (skip) continue;
-
-    const route = routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`;
-    routes.add(route);
-  }
-
-  return Array.from(routes).sort();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
