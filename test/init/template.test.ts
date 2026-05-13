@@ -20,20 +20,15 @@ describe("renderGuide — payload contract (INIT-12)", () => {
     }
   });
 
-  it("contains the literal MCP registration JSON tokens", () => {
+  it("contains the Golden Rule heading", () => {
     const out = renderGuide({ cwd: "/test/project", version: "0.1" });
-    expect(out).toContain('"npx", "-y", "ui-hierarchy-mcp"');
+    expect(out).toContain("## Golden Rule");
   });
 
-  it("contains exactly 5 fenced code blocks (1 registration + 4 example invocations)", () => {
+  it("contains Always and Never rule sections", () => {
     const out = renderGuide({ cwd: "/test/project", version: "0.1" });
-    const fenceMatches = out.match(/```/g);
-    const totalFences = fenceMatches?.length ?? 0;
-    // Each fenced block has an opening and a closing fence => fences must be even.
-    expect(totalFences % 2).toBe(0);
-    const blocks = totalFences / 2;
-    // 4 example invocations + 1 MCP registration JSON block = 5 fenced blocks.
-    expect(blocks).toBe(5);
+    expect(out).toContain("**Always:**");
+    expect(out).toContain("**Never:**");
   });
 
   it("contains the literal cwd value passed in", () => {
@@ -58,6 +53,19 @@ describe("renderGuide — payload contract (INIT-12)", () => {
     expect(a).not.toBe(b);
     expect(b).toContain("/another/root");
     expect(b).not.toContain("/test/project");
+  });
+
+  it("local mode embeds cwd in tool example", () => {
+    const out = renderGuide({ cwd: "/test/project", version: "0.1" });
+    expect(out).toContain('projectRoot: "/test/project"');
+    expect(out).toContain("**projectRoot for this checkout:**");
+  });
+
+  it("global mode uses placeholder instead of cwd", () => {
+    const out = renderGuide({ cwd: "/test/project", version: "0.1", global: true });
+    expect(out).toContain("<absolute-path-to-repo>");
+    expect(out).not.toContain("/test/project");
+    expect(out).not.toContain("**projectRoot for this checkout:**");
   });
 
   it("matches snapshot for rendered guide", async () => {
