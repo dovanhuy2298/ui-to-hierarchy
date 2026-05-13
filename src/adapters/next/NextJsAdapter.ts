@@ -64,8 +64,8 @@ export const NextJsAdapter: FrameworkAdapter = {
   classifyEntry(absPath: string): "page" | "layout" | "special" | "other" {
     const base = toForwardSlash(absPath).split("/").pop() ?? "";
     if (/^page\.(tsx|jsx|ts|js)$/.test(base)) return "page";
-    if (/^layout\.(tsx|jsx|ts|js)$/.test(base)) return "layout";
-    if (/^(layout|template|loading|error|not-found|default)\.(tsx|jsx|ts|js)$/.test(base)) return "special";
+    else if (/^layout\.(tsx|jsx|ts|js)$/.test(base)) return "layout";
+    else if (/^(template|loading|error|not-found|default)\.(tsx|jsx|ts|js)$/.test(base)) return "special";
     return "other";
   },
 
@@ -386,7 +386,6 @@ function collectTextContent(node: RenderNode | null): string[] {
 }
 
 function sliceSource(source: string, node: t.Node): string {
-  const start = node.start ?? 0;
-  const end = node.end ?? start;
-  return source.slice(start, end);
+  if (node.start == null || node.end == null) return "";
+  return source.slice(node.start, node.end);
 }
