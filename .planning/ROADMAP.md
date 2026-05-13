@@ -55,7 +55,10 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   2. `test/fixtures/expo-tabs-and-dynamic/` exists with `(tabs)/_layout.tsx`, `[id].tsx`, `+not-found.tsx`, a NativeWind `className` usage, and at least one `style={[a, b, cond && c]}` site.
   3. Both fixtures include a `Button.ios.tsx` / `Button.android.tsx` (or equivalent) pair so Phase 14 has a real probe target.
   4. Resolver, when run against either fixture, classifies `react-native` and `expo-router` imports as `kind: "external"` (not `unresolved`) — verified by a smoke test, not asserted via adapter code.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 09-01-PLAN.md — Author expo-basic fixture (stubs + tsconfig + app/ files + Button platform pair)
+- [ ] 09-02-PLAN.md — Author expo-tabs-and-dynamic fixture (stubs + tsconfig + tab group + dynamic + not-found + NativeWind + style array + Button platform pair)
+- [ ] 09-03-PLAN.md — Add resolver external-classification smoke test at test/core/resolver/expo-stubs.test.ts
 **Scope**: IN — fixture file shapes, stub `package.json` + `index.d.ts`, tsconfig path aliases. OUT — any adapter logic, any parsing of Expo semantics; fixtures must be inert from the analyzer's perspective until Phase 12.
 
 ### Phase 10: Interface Widening & Analyzer De-Next-ification
@@ -146,7 +149,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 6. Hardening & Fixture Gates                   | v1.0      | 10/10          | Complete    | 2026-05-05 |
 | 7. `--init` File Writer                        | v1.1      | 5/5            | Complete    | 2026-05-12 |
 | 8. v1.0 Polish                                 | v1.1      | 4/4            | Complete    | 2026-05-12 |
-| 9. Fixture Design & Stub Packages              | v1.2      | 0/?            | Not started | —          |
+| 9. Fixture Design & Stub Packages              | v1.2      | 0/3            | Not started | —          |
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 0/?            | Not started | —          |
 | 11. Adapter Detection, Selection & Tool Routing | v1.2     | 0/?            | Not started | —          |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 0/?            | Not started | —          |
