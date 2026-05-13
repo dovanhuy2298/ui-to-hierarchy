@@ -61,6 +61,60 @@ export const NextJsAdapter: FrameworkAdapter = {
     return coreResolveModule(ctx, fromFile, specifier, importedName);
   },
 
+  classifyEntry(absPath: string): "page" | "layout" | "special" | "other" {
+    const base = toForwardSlash(absPath).split("/").pop() ?? "";
+    if (/^page\.(tsx|jsx|ts|js)$/.test(base)) return "page";
+    if (/^layout\.(tsx|jsx|ts|js)$/.test(base)) return "layout";
+    if (/^(layout|template|loading|error|not-found|default)\.(tsx|jsx|ts|js)$/.test(base)) return "special";
+    return "other";
+  },
+
+  async enumerateRoutes(absRoot: string): Promise<string[]> {
+    const entries = await discoverNextEntries(absRoot);
+    const routes = new Set<string>();
+    const fwdRoot = toForwardSlash(absRoot);
+
+    let appRoot: string | null = null;
+    for (const dir of ["app", "src/app"]) {
+      const candidate = `${fwdRoot}/${dir}`;
+      if (entries.some((e) => toForwardSlash(e).startsWith(`${candidate}/`))) {
+        appRoot = candidate;
+        break;
+      }
+    }
+    if (!appRoot) return [];
+
+    for (const entry of entries) {
+      const fwd = toForwardSlash(entry);
+      const base = fwd.split("/").pop() ?? "";
+      if (!/^page\.(tsx|jsx|ts|js)$/.test(base)) continue;
+      if (!fwd.startsWith(`${appRoot}/`)) continue;
+
+      const rel = fwd.slice(appRoot.length + 1);
+      const parts = rel.split("/");
+      parts.pop();
+
+      const routeSegments: string[] = [];
+      let skip = false;
+      for (const part of parts) {
+        if (/^\(.+\)$/.test(part)) continue;
+        if (/^@/.test(part)) { skip = true; break; }
+        if (/^_/.test(part)) { skip = true; break; }
+        routeSegments.push(part);
+      }
+      if (skip) continue;
+
+      const route = routeSegments.length === 0 ? "/" : `/${routeSegments.join("/")}`;
+      routes.add(route);
+    }
+
+    return Array.from(routes).sort();
+  },
+
+  slotMarker(name: string, _importSource: string): boolean {
+    return name === "children";
+  },
+
   extractComponents(
     ctx: ParseContext,
     entryFiles: string[],
