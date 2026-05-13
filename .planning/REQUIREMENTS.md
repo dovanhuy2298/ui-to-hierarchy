@@ -40,8 +40,8 @@
 
 ### INTEG — Fixtures, integration tests, --init guide
 
-- [ ] **INTEG-01**: Two Expo Router fixtures committed under `test/fixtures/`: `expo-basic` (single `app/_layout.tsx` + `<Slot/>` + `app/index.tsx` + a screen using `StyleSheet.create`) and `expo-tabs-and-dynamic` (`(tabs)` group + `[id].tsx` dynamic + `+not-found.tsx` + NativeWind class + style array).
-- [ ] **INTEG-02**: Both fixtures ship stubbed `react-native` and `expo-router` `package.json` + minimal `index.d.ts` exports so the resolver returns `kind: "external"` rather than `unresolved`.
+- [x] **INTEG-01**: Two Expo Router fixtures committed under `test/fixtures/`: `expo-basic` (single `app/_layout.tsx` + `<Slot/>` + `app/index.tsx` + a screen using `StyleSheet.create`) and `expo-tabs-and-dynamic` (`(tabs)` group + `[id].tsx` dynamic + `+not-found.tsx` + NativeWind class + style array).
+- [x] **INTEG-02**: Both fixtures ship stubbed `react-native` and `expo-router` `package.json` + minimal `index.d.ts` exports so the resolver returns `kind: "external"` rather than `unresolved`.
 - [ ] **INTEG-03**: Integration suite exercises `format: "json"` AND `format: "markdown"` against both new fixtures; tree glyphs, `@` file:line separator, and Windows backslash guard (`not.toContain('\\')`) re-asserted.
 - [ ] **INTEG-04**: A monorepo fixture (Next.js in `apps/web/`, Expo Router in `apps/mobile/`) verifies `selectAdapter` picks the right adapter per `projectRoot` argument across calls within a single MCP session.
 - [ ] **INTEG-05**: `core/resolver/relative.ts` extended with platform-suffix fallback preference order `no-suffix > .native > .ios > .android > .web`; resolver cache shape updated if needed; behavior tested with a `Button.{ios,android}.tsx` fixture pair.
@@ -99,8 +99,8 @@
 | RN-06       | Phase 13 | Planned |
 | RN-07       | Phase 13 | Planned |
 | RN-08       | Phase 13 | Planned |
-| INTEG-01    | Phase 9  | Planned |
-| INTEG-02    | Phase 9  | Planned |
+| INTEG-01    | Phase 9  | Complete |
+| INTEG-02    | Phase 9  | Complete |
 | INTEG-03    | Phase 15 | Planned |
 | INTEG-04    | Phase 11 | Planned |
 | INTEG-05    | Phase 14 | Planned |

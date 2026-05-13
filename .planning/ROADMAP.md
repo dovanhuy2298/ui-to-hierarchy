@@ -36,7 +36,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 
 **v1.2 React Native + Expo Router** — 7 phases (9–15), 28 requirements, 0/28 plans staged.
 
-- [ ] **Phase 9: Fixture Design & Stub Packages** — Commit two Expo Router fixtures with stubbed `react-native` / `expo-router` exports before any adapter code lands.
+- [x] **Phase 9: Fixture Design & Stub Packages** — Commit two Expo Router fixtures with stubbed `react-native` / `expo-router` exports before any adapter code lands.
 - [ ] **Phase 10: Interface Widening & Analyzer De-Next-ification** — Widen `FrameworkAdapter` (3 new methods) and delegate Analyzer's 5 Next.js leak sites; NextJsAdapter migrated, full suite re-locked green.
 - [ ] **Phase 11: Adapter Detection, Selection & Tool Routing** — Two-signal auto-detect, `--framework` override, conflict/zero-match errors with named paths; 4 MCP tools route through `selectAdapter`.
 - [ ] **Phase 12: ExpoRouterAdapter Routing & RN Primitives** — Discover routes from `app/` (and `src/app/`), compose `_layout.tsx` chain via `<Slot/>`, dynamic segments, groups, `index`, `<Tabs>`/`<Stack>`, `+not-found`; RN primitive recognition by import source; `<Text>`-anchored text content.
@@ -56,9 +56,9 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   3. Both fixtures include a `Button.ios.tsx` / `Button.android.tsx` (or equivalent) pair so Phase 14 has a real probe target.
   4. Resolver, when run against either fixture, classifies `react-native` and `expo-router` imports as `kind: "external"` (not `unresolved`) — verified by a smoke test, not asserted via adapter code.
 **Plans**: 3 plans
-- [ ] 09-01-PLAN.md — Author expo-basic fixture (stubs + tsconfig + app/ files + Button platform pair)
-- [ ] 09-02-PLAN.md — Author expo-tabs-and-dynamic fixture (stubs + tsconfig + tab group + dynamic + not-found + NativeWind + style array + Button platform pair)
-- [ ] 09-03-PLAN.md — Add resolver external-classification smoke test at test/core/resolver/expo-stubs.test.ts
+- [x] 09-01-PLAN.md — Author expo-basic fixture (stubs + tsconfig + app/ files + Button platform pair)
+- [x] 09-02-PLAN.md — Author expo-tabs-and-dynamic fixture (stubs + tsconfig + tab group + dynamic + not-found + NativeWind + style array + Button platform pair)
+- [x] 09-03-PLAN.md — Add resolver external-classification smoke test at test/core/resolver/expo-stubs.test.ts
 **Scope**: IN — fixture file shapes, stub `package.json` + `index.d.ts`, tsconfig path aliases. OUT — any adapter logic, any parsing of Expo semantics; fixtures must be inert from the analyzer's perspective until Phase 12.
 
 ### Phase 10: Interface Widening & Analyzer De-Next-ification
