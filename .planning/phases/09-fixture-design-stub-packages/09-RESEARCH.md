@@ -424,17 +424,19 @@ if (pkg) return { ok: true, kind: "external", packageName: pkg };
 
 **A2 là LOW risk** — đọc trực tiếp `getPathsMatcher` sẽ confirm, nhưng từ `resolver/index.ts` code flow đã rõ: nếu `matcher` là null thì step 1 skip, specifier đến step 3 ngay.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **TypeScript strict mode cho fixture files**
    - What we know: Fixtures dùng minimal tsconfig (không có `"strict": true`)
    - What's unclear: TypeScript sẽ type-check fixture files như thế nào trong context của `tsc --noEmit` trên toàn project
    - Recommendation: Smoke test chỉ dùng `vitest run` (không có tsc type-check step trong acceptance criteria); fixtures chỉ cần đủ valid để không gây runtime errors trong resolver — TypeScript strict compliance là nice-to-have
+   - RESOLVED: Smoke test dùng `vitest run` only; `tsc --noEmit` được đặt trong Manual-Only Verifications của VALIDATION.md. CONTEXT.md D-03 xác nhận minimal tsconfig không có strict. Fixtures chỉ cần TypeScript validity đủ để resolver không crash, không yêu cầu strict compliance.
 
 2. **Namespace declaration merging cho Tabs/Stack**
    - What we know: `declare namespace Tabs { const Screen: ... }` + `declare const Tabs: ...` pattern cần careful ordering
    - What's unclear: Có thể có TypeScript declaration merging issues với complex intersection types
    - Recommendation: Dùng simpler interface approach nếu namespace approach gây issues; planner nên pick simplest working shape
+   - RESOLVED: Dùng `interface TabsComponent extends React.ComponentType` approach (không dùng namespace/typeof pattern) per CONTEXT.md D-02 và PATTERNS.md. Interface approach tránh TypeScript circular reference issues từ namespace declaration merging. Planner và PATTERNS.md đã implement consistent interface approach.
 
 ## Environment Availability
 
