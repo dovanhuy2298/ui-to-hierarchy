@@ -30,6 +30,7 @@ import {
  */
 export const INIT_OPTION_SCHEMA = {
   init: { type: "boolean" as const },
+  global: { type: "boolean" as const },
   target: { type: "string" as const },
   "dry-run": { type: "boolean" as const },
   force: { type: "boolean" as const },
@@ -45,6 +46,8 @@ export interface InitFlags {
    * else branch boots the v1.0 MCP stdio server byte-for-byte (INIT-02).
    */
   init: boolean;
+  /** Write to global agent config files (~/.claude/CLAUDE.md etc.) instead of ./CLAUDE.md. */
+  global: boolean;
   targets: TargetId[];
   dryRun: boolean;
   force: boolean;
@@ -98,6 +101,7 @@ export function parseInitArgs(argv: string[]): ParseArgsResult {
       ok: true,
       flags: {
         init: Boolean(values.init),
+        global: Boolean(values.global),
         // Safe cast: every entry was just checked against VALID_TARGET_IDS.
         targets: rawTargets as TargetId[],
         dryRun: Boolean(values["dry-run"]),

@@ -49,6 +49,16 @@ export const TARGETS: TargetSpec[] = [
 ];
 
 /**
+ * Global targets written when `--global` is passed: paths relative to
+ * the user's home directory. Each entry maps to an agent config file
+ * that the respective tool reads on startup.
+ */
+export const GLOBAL_TARGETS: TargetSpec[] = [
+  { id: "claude", relativePath: ".claude/CLAUDE.md", hasFrontmatter: false },
+  { id: "codex", relativePath: ".codex/AGENTS.md", hasFrontmatter: false },
+];
+
+/**
  * Targets applied when the user omits `--target` on the command line.
  * Locked to a single Claude file per D-01.
  */

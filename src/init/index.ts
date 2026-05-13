@@ -33,10 +33,11 @@
  */
 
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 import type { InitFlags } from "./argv.js";
-import { TARGETS, type TargetSpec } from "./targets.js";
+import { TARGETS, GLOBAL_TARGETS, type TargetSpec } from "./targets.js";
 import {
   MARKER_END,
   MARKER_START_PREFIX,
@@ -137,7 +138,7 @@ async function runTarget(
   }
 
   // 3. Render the body (fingerprint preimage).
-  const body = renderGuide({ cwd, version: __INIT_MARKER_VERSION__ });
+  const body = renderGuide({ cwd, version: __INIT_MARKER_VERSION__, global: flags.global });
   const fingerprint = computeFingerprint(body);
   const markerBlock = assembleMarkerBlock(body, fingerprint);
 
@@ -221,13 +222,16 @@ export async function runInit(
   flags: InitFlags,
   { cwd = process.cwd() }: { cwd?: string } = {},
 ): Promise<number> {
-  // Resolve enabled targets in canonical TARGETS order for deterministic
-  // stderr output regardless of the order the user passed via --target.
-  const enabled = TARGETS.filter((t) => flags.targets.includes(t.id));
+  // In global mode use GLOBAL_TARGETS at homedir; otherwise filter local TARGETS.
+  const targetPool = flags.global ? GLOBAL_TARGETS : TARGETS;
+  const effectiveCwd = flags.global ? homedir() : cwd;
+  const enabled = flags.global
+    ? GLOBAL_TARGETS
+    : targetPool.filter((t) => flags.targets.includes(t.id));
 
   let exitCode = 0;
   for (const target of enabled) {
-    const result = await runTarget(target, flags, cwd);
+    const result = await runTarget(target, flags, effectiveCwd);
     const label = actionLabel(result.outcome, flags.dryRun);
     if (result.outcome === "error") {
       process.stderr.write(

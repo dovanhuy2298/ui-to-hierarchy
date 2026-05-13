@@ -7,13 +7,14 @@ import { parseInitArgs, INIT_OPTION_SCHEMA } from "./init/argv.js";
 
 // Note: shebang (#!/usr/bin/env node) is injected by tsup banner — do NOT add it here.
 
-const HELP_TEXT = `Usage: npx ui-hierarchy-mcp [--init [--target <list>] [--dry-run] [--force]]
+const HELP_TEXT = `Usage: npx ui-hierarchy-mcp [--init [--global] [--target <list>] [--dry-run] [--force]]
 
   (no args)            Start the MCP stdio server (default).
-  --init               Write the ui-hierarchy-mcp usage guide into agent config files
-                       in the current working directory.
+  --init               Write usage rules into agent config files.
+    --global           Write to global config (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md).
+                       Default: write to ./CLAUDE.md in the current project.
     --target <list>    Comma-separated subset of: claude, codex, cursor, copilot
-                       (default: all four).
+                       (default: claude). Ignored when --global is set.
     --dry-run          Print planned actions to stderr without touching disk.
     --force            Overwrite a hand-edited marker block instead of skipping it.
   -h, --help           Print this help text and exit.
