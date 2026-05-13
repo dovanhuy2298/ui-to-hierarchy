@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
 status: executing
-last_updated: "2026-05-13T06:00:00.000Z"
-last_activity: 2026-05-13 -- Phase 10 planning complete (2 plans, 2 waves)
+last_updated: "2026-05-13T04:43:53.386Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-13 — Phase 9 complete; expo-basic + expo-tabs-and-dynamic fixtures + INTEG-02 smoke test
+**Last updated:** 2026-05-13 — Phase 10 Plan 01 complete; FrameworkAdapter widened to 8 methods + NextJsAdapter RED tests
 
 ## Project Reference
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 10 — Interface Widening & Analyzer De-Next-ification
-Plan: 0 of 2 (ready to execute)
-Status: Ready to execute
-Last activity: 2026-05-13 -- Phase 10 planning complete (2 plans created)
+Plan: 1 of 2 (plan 01 complete — plan 02 next)
+Status: Executing
+Last activity: 2026-05-13 -- Plan 01 complete: FrameworkAdapter 5→8 methods, RED tests created
 
 ## Progress Bar
 
@@ -39,7 +39,7 @@ Last activity: 2026-05-13 -- Phase 10 planning complete (2 plans created)
 v1.0   Phases 1–6 [##########] 100% (shipped 2026-05-05)
 v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
-v1.2   Phase 10  [▶▶▶▶▶▶▶▶▶▶] planned (0/2 plans executed)
+v1.2   Phase 10  [#####▶▶▶▶▶] executing (1/2 plans complete)
 v1.2   Phase 11  [..........]   0%
 v1.2   Phase 12  [..........]   0%
 v1.2   Phase 13  [..........]   0%
@@ -54,6 +54,7 @@ v1.2   Phase 15  [..........]   0%
 Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as phases land:
 
 - Widen `FrameworkAdapter` interface (3 new methods) rather than port-and-patch — adjudicated from PITFALLS.md Pitfall 1.
+- Plan 01 delivered: FrameworkAdapter widened 5→8 methods (classifyEntry, enumerateRoutes, slotMarker); locking test updated atomically; RED unit tests for all 3 methods created in NextJsAdapter.test.ts.
 - Two-signal adapter auto-detect: deps key + config file; parallel; exactly-one-true; `--framework` override.
 - `StyleSheet.create` support matrix: in-file literal + one-hop import only; everything else `{ raw }` + warning.
 - Platform-suffix mechanism ships in v1.2 (INTEG-05); `--platform` CLI flag exposure deferred to v1.3.
@@ -76,8 +77,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-13 — Phase 10 planned (Plans 01-02); interface widening + Analyzer de-Next-ification.
-- Next command: `/gsd-execute-phase 10`
+- Last session: 2026-05-13 — Phase 10 Plan 01 executed: FrameworkAdapter widened to 8 methods, RED tests for NextJsAdapter created.
+- Next command: `/gsd-execute-phase 10` (Plan 02 — implement classifyEntry, enumerateRoutes, slotMarker in NextJsAdapter + Analyzer de-Next-ification)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
