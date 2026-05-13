@@ -4,16 +4,15 @@
 
 **Use MCP tools to locate components — do not read source files to find UI elements.**
 ui-hierarchy-mcp parses the live codebase into a queryable tree with exact `file:line` locations.
-**projectRoot for this checkout:** `/test/project`
 
 ## Tools
 
 | When the user describes UI by... | Call |
 |----------------------------------|------|
-| Screenshot, vague description, or needs a full map | `get_full_hierarchy({projectRoot: "/test/project"})` |
-| A known component or area ("the card section") | `focus_on({..., anchor: "ComponentName"})` |
-| Visible text ("Sign in button", "Welcome heading") | `find_by_text({..., text: "text"})` |
-| Visual attributes ("blue banner", "flex-col container") | `find_by_style({..., style: "className"})` |
+| Screenshot, vague description, or needs a full map | `get_full_hierarchy` |
+| A known component or area ("the card section") | `focus_on` with `anchor: "ComponentName"` |
+| Visible text ("Sign in button", "Welcome heading") | `find_by_text` with `text: "..."` |
+| Visual attributes ("blue banner", "flex-col container") | `find_by_style` with `style: "className"` |
 
 ## Rules
 

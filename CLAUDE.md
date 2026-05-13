@@ -239,3 +239,34 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 
 <!-- GSD:profile-end -->
+
+<!-- ui-hierarchy-mcp:start version=0.2 fingerprint=ad06618a5346df7fcf226c4c908c2b88a9155da7717a444a504b7a4239795360 -->
+# ui-hierarchy-mcp — UI Component Tree (v0.2)
+
+## Golden Rule
+
+**Use MCP tools to locate components — do not read source files to find UI elements.**
+ui-hierarchy-mcp parses the live codebase into a queryable tree with exact `file:line` locations.
+
+## Tools
+
+| When the user describes UI by... | Call |
+|----------------------------------|------|
+| Screenshot, vague description, or needs a full map | `get_full_hierarchy` |
+| A known component or area ("the card section") | `focus_on` with `anchor: "ComponentName"` |
+| Visible text ("Sign in button", "Welcome heading") | `find_by_text` with `text: "..."` |
+| Visual attributes ("blue banner", "flex-col container") | `find_by_style` with `style: "className"` |
+
+## Rules
+
+**Always:**
+- Call `get_full_hierarchy` first when you cannot confidently locate a component from a screenshot or description
+- Use `focus_on` to narrow down once you know the general area
+- Trust the tree's `file:line` anchors — they are the exact edit location
+
+**Never:**
+- Read source files to find component locations — query the tree instead
+- Guess a file path from a component name — the tree resolves it precisely
+- Skip querying when the user provides a vague or visual description
+
+<!-- ui-hierarchy-mcp:end -->

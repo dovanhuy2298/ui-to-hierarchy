@@ -23,29 +23,22 @@ export interface RenderGuideOptions {
   global?: boolean;
 }
 
-export function renderGuide({ cwd, version, global: isGlobal }: RenderGuideOptions): string {
-  const rootHint = isGlobal
-    ? `{projectRoot: "<absolute-path-to-repo>"}`
-    : `{projectRoot: "${cwd}"}`;
-
-  const projectRootSection = isGlobal
-    ? ``
-    : `\n**projectRoot for this checkout:** \`${cwd}\`\n`;
-
+export function renderGuide({ version }: RenderGuideOptions): string {
   return `# ui-hierarchy-mcp — UI Component Tree (v${version})
 
 ## Golden Rule
 
 **Use MCP tools to locate components — do not read source files to find UI elements.**
-ui-hierarchy-mcp parses the live codebase into a queryable tree with exact \`file:line\` locations.${projectRootSection}
+ui-hierarchy-mcp parses the live codebase into a queryable tree with exact \`file:line\` locations.
+
 ## Tools
 
 | When the user describes UI by... | Call |
 |----------------------------------|------|
-| Screenshot, vague description, or needs a full map | \`get_full_hierarchy(${rootHint})\` |
-| A known component or area ("the card section") | \`focus_on({..., anchor: "ComponentName"})\` |
-| Visible text ("Sign in button", "Welcome heading") | \`find_by_text({..., text: "text"})\` |
-| Visual attributes ("blue banner", "flex-col container") | \`find_by_style({..., style: "className"})\` |
+| Screenshot, vague description, or needs a full map | \`get_full_hierarchy\` |
+| A known component or area ("the card section") | \`focus_on\` with \`anchor: "ComponentName"\` |
+| Visible text ("Sign in button", "Welcome heading") | \`find_by_text\` with \`text: "..."\` |
+| Visual attributes ("blue banner", "flex-col container") | \`find_by_style\` with \`style: "className"\` |
 
 ## Rules
 

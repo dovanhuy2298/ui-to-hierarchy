@@ -31,11 +31,6 @@ describe("renderGuide — payload contract (INIT-12)", () => {
     expect(out).toContain("**Never:**");
   });
 
-  it("contains the literal cwd value passed in", () => {
-    const out = renderGuide({ cwd: "/test/project", version: "0.1" });
-    expect(out).toContain("/test/project");
-  });
-
   it("contains the version value passed in", () => {
     const out = renderGuide({ cwd: "/test/project", version: "0.1" });
     expect(out).toContain("0.1");
@@ -47,25 +42,15 @@ describe("renderGuide — payload contract (INIT-12)", () => {
     expect(a).toBe(b);
   });
 
-  it("substitutes the cwd argument (different cwd => different output)", () => {
-    const a = renderGuide({ cwd: "/test/project", version: "0.1" });
-    const b = renderGuide({ cwd: "/another/root", version: "0.1" });
-    expect(a).not.toBe(b);
-    expect(b).toContain("/another/root");
-    expect(b).not.toContain("/test/project");
-  });
-
-  it("local mode embeds cwd in tool example", () => {
+  it("does not embed cwd or project-specific paths", () => {
     const out = renderGuide({ cwd: "/test/project", version: "0.1" });
-    expect(out).toContain('projectRoot: "/test/project"');
-    expect(out).toContain("**projectRoot for this checkout:**");
+    expect(out).not.toContain("/test/project");
   });
 
-  it("global mode uses placeholder instead of cwd", () => {
-    const out = renderGuide({ cwd: "/test/project", version: "0.1", global: true });
-    expect(out).toContain("<absolute-path-to-repo>");
-    expect(out).not.toContain("/test/project");
-    expect(out).not.toContain("**projectRoot for this checkout:**");
+  it("global and local modes produce identical output", () => {
+    const local = renderGuide({ cwd: "/test/project", version: "0.1" });
+    const global = renderGuide({ cwd: "/test/project", version: "0.1", global: true });
+    expect(local).toBe(global);
   });
 
   it("matches snapshot for rendered guide", async () => {
