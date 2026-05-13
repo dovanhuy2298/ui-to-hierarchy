@@ -70,7 +70,9 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   2. `Analyzer.deriveRoutesFromEntries`, `isPageFile/isLayoutFile/isSpecialFile`, `attachParallelSlot`, the `runtime → layoutHint:"client"` propagation, and `collectChildrenSlotLines` all call the adapter rather than hard-coding Next.js conventions.
   3. `NextJsAdapter` implements every new method and produces byte-identical markdown + JSON snapshots after re-locking — full vitest suite stays ≥353/353 green.
   4. A grep for `_layout`, `page.`, `not-found`, `children` (as identifier) inside `src/core/Analyzer.ts` returns zero remaining Next-specific string literals.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 10-01-PLAN.md — Widen FrameworkAdapter interface (5→8 methods), update structural locking test, create NextJsAdapter unit tests (RED state)
+- [ ] 10-02-PLAN.md — Implement 3 new methods in NextJsAdapter, de-Next-ify Analyzer.ts (5 functions removed, adapter delegation wired), snapshot re-lock
 **Scope**: IN — interface widening, Analyzer delegation, NextJsAdapter migration, snapshot re-lock. OUT — any Expo adapter logic, any RN style work.
 
 ### Phase 11: Adapter Detection, Selection & Tool Routing
@@ -149,8 +151,8 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 6. Hardening & Fixture Gates                   | v1.0      | 10/10          | Complete    | 2026-05-05 |
 | 7. `--init` File Writer                        | v1.1      | 5/5            | Complete    | 2026-05-12 |
 | 8. v1.0 Polish                                 | v1.1      | 4/4            | Complete    | 2026-05-12 |
-| 9. Fixture Design & Stub Packages              | v1.2      | 0/3            | Not started | —          |
-| 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 0/?            | Not started | —          |
+| 9. Fixture Design & Stub Packages              | v1.2      | 3/3            | Complete    | 2026-05-13 |
+| 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 0/2            | Not started | —          |
 | 11. Adapter Detection, Selection & Tool Routing | v1.2     | 0/?            | Not started | —          |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 0/?            | Not started | —          |
 | 13. RN Style Signal Extraction                 | v1.2      | 0/?            | Not started | —          |
