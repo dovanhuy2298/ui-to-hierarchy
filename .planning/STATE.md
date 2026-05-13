@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
 status: executing
-last_updated: "2026-05-13T04:49:09.168Z"
+last_updated: "2026-05-13T05:00:00.000Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-13 — Phase 10 Plan 01 complete; FrameworkAdapter widened to 8 methods + NextJsAdapter RED tests
+**Last updated:** 2026-05-13 — Phase 10 complete; FrameworkAdapter widened to 8 methods, NextJsAdapter migrated, Analyzer de-Next-ified, 371 tests green
 
 ## Project Reference
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 
 ## Current Position
 
-Phase: 10 — Interface Widening & Analyzer De-Next-ification
-Plan: 2 of 2 (plan 01 complete — plan 02 next)
-Status: Ready to execute
+Phase: 11 — Adapter Detection, Selection & Tool Routing
+Plan: 0 of ? (ready to plan)
+Status: Ready to plan
 Last activity: 2026-05-13
 
 ## Progress Bar
@@ -39,7 +39,7 @@ Last activity: 2026-05-13
 v1.0   Phases 1–6 [##########] 100% (shipped 2026-05-05)
 v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
-v1.2   Phase 10  [#####▶▶▶▶▶] executing (1/2 plans complete)
+v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [..........]   0%
 v1.2   Phase 12  [..........]   0%
 v1.2   Phase 13  [..........]   0%
@@ -77,8 +77,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-13 — Phase 10 Plan 01 executed: FrameworkAdapter widened to 8 methods, RED tests for NextJsAdapter created.
-- Next command: `/gsd-execute-phase 10` (Plan 02 — implement classifyEntry, enumerateRoutes, slotMarker in NextJsAdapter + Analyzer de-Next-ification)
+- Last session: 2026-05-13 — Phase 10 complete: FrameworkAdapter widened 5→8 methods; NextJsAdapter migrated; Analyzer.ts de-Next-ified (5 module-scope functions removed, delegate via adapter); 371 tests green.
+- Next command: `/gsd-discuss-phase 11` or `/gsd-plan-phase 11`
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -89,4 +89,5 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 9` — decompose Fixture Design & Stub Packages into plans.
+- `/gsd-discuss-phase 11` — discuss Phase 11 (Adapter Detection, Selection & Tool Routing) before planning.
+- `/gsd-plan-phase 11` — plan Phase 11 (skip discuss).
