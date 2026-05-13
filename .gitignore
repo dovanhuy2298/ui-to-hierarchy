@@ -2,6 +2,9 @@
 node_modules/
 .pnpm-store/
 
+# Fixture stub node_modules are tracked intentionally (test infrastructure)
+!test/fixtures/**/node_modules/
+
 # Build output
 dist/
 build/
