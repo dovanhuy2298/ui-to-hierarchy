@@ -55,13 +55,16 @@ describe("NextJsAdapter.slotMarker", () => {
 });
 
 describe("NextJsAdapter.enumerateRoutes", () => {
-  it("returns sorted routes from expo-basic fixture", async () => {
-    // expo-basic has: app/index.tsx → route "/"
-    // No parallel-route (@...) or private-folder (_...) entries expected.
-    const root = path.join(process.cwd(), "test/fixtures/expo-basic");
+  it("returns sorted routes from next-app-router fixture", async () => {
+    // next-app-router has: app/page.tsx → route "/"
+    // Also has parallel-route (@modal) and private-folder (_internal) entries
+    // that must be excluded from the enumerated routes.
+    const root = path.join(process.cwd(), "test/fixtures/next-app-router");
     const routes = await NextJsAdapter.enumerateRoutes(root);
 
     expect(Array.isArray(routes)).toBe(true);
+    // Must include the root route — non-vacuous assertion
+    expect(routes).toContain("/");
     // Result must be sorted
     const sorted = [...routes].sort();
     expect(routes).toEqual(sorted);
