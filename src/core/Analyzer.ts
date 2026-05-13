@@ -1152,9 +1152,10 @@ export class Analyzer {
    */
   private collectChildrenSlotLines(ast: t.File): Set<number> {
     const lines = new Set<number>();
-    const adapter = this.adapter; // `this` is not available inside @babel/traverse visitor callbacks (the
+    // `this` is not available inside @babel/traverse visitor callbacks (the
     // traverse function calls visitors without binding them to the outer class
     // instance). Capture adapter in a local variable before entering traverse.
+    const adapter = this.adapter;
     const bindings = collectImportBindings(ast);
     traverse(ast, {
       JSXExpressionContainer(path: { node: t.JSXExpressionContainer }) {
