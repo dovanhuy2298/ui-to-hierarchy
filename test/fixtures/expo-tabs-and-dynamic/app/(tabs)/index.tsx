@@ -3,7 +3,7 @@ const styles = StyleSheet.create({ card: { padding: 8 }, bold: { fontWeight: "bo
 export default function HomeTab({ active }: { active?: boolean }) {
   return (
     <View style={[styles.card, active && styles.bold]}>
-      <Text className="text-lg font-bold">Home</Text>
+      <Text style={{ fontWeight: "bold" }}>Home</Text>
     </View>
   );
 }
