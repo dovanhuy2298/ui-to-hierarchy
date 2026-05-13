@@ -4,10 +4,9 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "es2022",
-    "baseUrl": ".",
     "paths": {
-      "@acme/ui": ["packages/ui/src/index.ts"],
-      "@acme/ui/*": ["packages/ui/src/*"]
+      "@acme/ui": ["./packages/ui/src/index.ts"],
+      "@acme/ui/*": ["./packages/ui/src/*"]
     }
   }
 }

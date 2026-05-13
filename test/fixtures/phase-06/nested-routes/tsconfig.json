@@ -3,7 +3,6 @@
     "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "target": "es2022",
-    "baseUrl": "."
+    "target": "es2022"
   }
 }
