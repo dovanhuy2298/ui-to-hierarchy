@@ -1152,13 +1152,20 @@ export class Analyzer {
    */
   private collectChildrenSlotLines(ast: t.File): Set<number> {
     const lines = new Set<number>();
-    const adapter = this.adapter; // capture before traverse (Pitfall 3 — this context)
+    const adapter = this.adapter; // `this` is not available inside @babel/traverse visitor callbacks (the
+    // traverse function calls visitors without binding them to the outer class
+    // instance). Capture adapter in a local variable before entering traverse.
+    const bindings = collectImportBindings(ast);
     traverse(ast, {
       JSXExpressionContainer(path: { node: t.JSXExpressionContainer }) {
         const expr = path.node.expression;
-        if (t.isIdentifier(expr) && adapter.slotMarker(expr.name, "")) {
-          const line = path.node.loc?.start.line ?? 0;
-          lines.add(line);
+        if (t.isIdentifier(expr)) {
+          const binding = bindings.get(expr.name);
+          const importSource = binding?.source ?? "";
+          if (adapter.slotMarker(expr.name, importSource)) {
+            const line = path.node.loc?.start.line ?? 0;
+            lines.add(line);
+          }
         }
       },
     });
@@ -1193,6 +1200,12 @@ function nodeWithChildren(node: TreeNode, children: TreeNode[]): TreeNode {
     case "component": return { ...node, children };
     case "element":   return { ...node, children };
     case "fragment":  return { ...node, children };
-    default:          return node;
+    case "branch":
+      // Preserve the branch structure; nest the descendant chain in thenBranch.
+      return { ...node, thenBranch: children[0] ?? null, elseBranch: null };
+    case "list":
+      return children[0] ? { ...node, item: children[0] } : node;
+    default:
+      return node;
   }
 }
