@@ -8,9 +8,8 @@ import type { ComponentDefinition, ParseContext, ResolveResult, RouteMatch } fro
  * `mapRouteToEntry` (Next.js routing semantics — layouts, route groups,
  * dynamic / parallel / intercepting routes).
  *
- * Adding a 6th method to this interface requires a milestone amendment.
- * The 5-key set is asserted at runtime by
- * `test/adapters/FrameworkAdapter.test.ts` to catch accidental additions.
+ * 8-method set locked by Phase 10 SPEC (10-SPEC.md).
+ * Asserted at runtime by `test/adapters/FrameworkAdapter.test.ts`.
  *
  * Island rule (D-11): nothing under src/core/, src/ir/, or src/renderers/
  * may import this file or any other file under src/adapters/. Enforced by
@@ -44,4 +43,18 @@ export interface FrameworkAdapter {
 
   /** Map a route string to entries + params + slots (Phase 4, NEXT-01..03). */
   mapRouteToEntry(absRoot: string, route: string): Promise<RouteMatch> | RouteMatch;
+
+  /** Classify an entry file by its role in the framework's routing model. */
+  classifyEntry(absPath: string): "page" | "layout" | "special" | "other";
+
+  /** Enumerate all route strings for the project root. */
+  enumerateRoutes(absRoot: string): string[] | Promise<string[]>;
+
+  /**
+   * Return true if the identifier `name` (from source `importSource`) is a
+   * slot injection point for this framework.
+   * Next.js: name === "children" (importSource ignored).
+   * Expo Router: name === "Slot" && importSource === "expo-router".
+   */
+  slotMarker(name: string, importSource: string): boolean;
 }
