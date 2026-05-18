@@ -640,14 +640,14 @@ describe("selectAdapter integration", () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does the monorepo-mixed root need to trigger zero-match or conflict?**
+1. RESOLVED: **Does the monorepo-mixed root need to trigger zero-match or conflict?**
    - What we know: SPEC R4 says "calling `selectAdapter` on a monorepo-mixed root returns `{ isError: true }` with text naming both matched paths" — this implies conflict, not zero-match
    - What's unclear: For the root to be a conflict, both next.js AND expo-router signals must be detected at the root level. But a well-designed monorepo fixture wouldn't have `next.config.ts` at the root — it would only be in `apps/web/`
    - Recommendation: Design the `monorepo-mixed` fixture to NOT have next.config.ts or _layout.tsx at root level. The root will be zero-match. The SPEC acceptance criterion only says `isError: true` — both zero-match and conflict satisfy that. The integration test should test `apps/web/` and `apps/mobile/` individually (which passes INTEG-04).
 
-2. **Should `next-detect-with-app` and `next-detect-with-src-app` fixtures also get package.json?**
+2. RESOLVED: **Should `next-detect-with-app` and `next-detect-with-src-app` fixtures also get package.json?**
    - What we know: These fixtures are used only by `detect.ts` unit tests which call the OLD `detect()` function (no package.json check). They don't affect Phase 11.
    - Recommendation: Leave them alone. Only `expo-basic` and `next-app-router` need package.json additions for Phase 11.
 
