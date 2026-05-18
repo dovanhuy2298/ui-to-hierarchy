@@ -22,6 +22,8 @@ export interface ToolModule {
   // Per-handler args type is z.infer<inputSchema>; cannot narrow at the registry boundary.
   // The SDK re-validates against inputSchema before invoking, so `any` here is intentional.
   readonly handler: (args: any) => Promise<ToolResponse>;
+  // Factory for creating a handler with an explicit framework override (CR-01).
+  readonly makeHandler: (frameworkOverride?: string) => (args: any) => Promise<ToolResponse>;
 }
 
 /**

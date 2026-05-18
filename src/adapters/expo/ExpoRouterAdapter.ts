@@ -19,7 +19,13 @@ import type {
 import { resolveModule as coreResolveModule } from "../../core/resolver/index.js";
 
 export class ExpoRouterAdapter implements FrameworkAdapter {
-  /** Always returns false — real detection is in src/adapters/expo/detect.ts. */
+  /**
+   * Always returns false — real detection is in src/adapters/expo/detect.ts.
+   *
+   * TODO(Wave 2): implement real detection here.
+   * Do NOT call this method on an already-selected ExpoRouterAdapter instance
+   * for post-selection verification — it will always report no match (IN-01).
+   */
   async detect(_absRoot: string): Promise<boolean> {
     return false;
   }

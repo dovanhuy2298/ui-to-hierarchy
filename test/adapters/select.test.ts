@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/adapters/next/detect.js", () => ({ detectNextJs: vi.fn() }));
 vi.mock("../../src/adapters/expo/detect.js", () => ({ detectExpoRouter: vi.fn() }));
 
-import { selectAdapter, setFrameworkOverride } from "../../src/adapters/select.js";
+import { selectAdapter } from "../../src/adapters/select.js";
 import { NextJsAdapter } from "../../src/adapters/next/NextJsAdapter.js";
 import { ExpoRouterAdapter } from "../../src/adapters/expo/ExpoRouterAdapter.js";
 import { detectNextJs } from "../../src/adapters/next/detect.js";
@@ -24,7 +24,6 @@ const realDetectExpoRouter = async (root: string) => {
 
 describe("selectAdapter", () => {
   beforeEach(() => {
-    setFrameworkOverride(undefined as any);
     vi.resetAllMocks();
   });
 

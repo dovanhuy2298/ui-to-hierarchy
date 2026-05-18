@@ -19,20 +19,9 @@ const NEXT_CONFIGS = [
 ] as const;
 
 export async function detect(absRoot: string): Promise<boolean> {
-  // 1) Any next.config.*?
-  let hasConfig = false;
-  for (const name of NEXT_CONFIGS) {
-    if (await exists(join(absRoot, name))) {
-      hasConfig = true;
-      break;
-    }
-  }
-  if (!hasConfig) return false;
-
-  // 2) Any app/ or src/app/?
-  if (await exists(join(absRoot, "app"))) return true;
-  if (await exists(join(absRoot, "src", "app"))) return true;
-  return false;
+  // Delegate to detectNextJs so both functions use the same two-signal logic (WR-04).
+  const { detected } = await detectNextJs(absRoot);
+  return detected;
 }
 
 export async function detectNextJs(absRoot: string): Promise<{ detected: boolean; signals: string[] }> {

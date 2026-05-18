@@ -32,13 +32,14 @@ export async function detectExpoRouter(
     // Missing or malformed package.json — skip signal
   }
 
-  // ── Signal 2: app/_layout.tsx or src/app/_layout.tsx ────────────────────
+  // ── Signal 2: app/_layout.{tsx,jsx,js} or src/app/_layout.{tsx,jsx,js} ──
   const layoutCandidates = [
     { rel: "app/_layout.tsx", full: join(absRoot, "app", "_layout.tsx") },
-    {
-      rel: "src/app/_layout.tsx",
-      full: join(absRoot, "src", "app", "_layout.tsx"),
-    },
+    { rel: "app/_layout.jsx", full: join(absRoot, "app", "_layout.jsx") },
+    { rel: "app/_layout.js",  full: join(absRoot, "app", "_layout.js") },
+    { rel: "src/app/_layout.tsx", full: join(absRoot, "src", "app", "_layout.tsx") },
+    { rel: "src/app/_layout.jsx", full: join(absRoot, "src", "app", "_layout.jsx") },
+    { rel: "src/app/_layout.js",  full: join(absRoot, "src", "app", "_layout.js") },
   ];
 
   for (const { rel, full } of layoutCandidates) {

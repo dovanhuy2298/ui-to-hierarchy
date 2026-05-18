@@ -4,7 +4,7 @@ import { log } from "./mcp/log.js";
 import { startServer } from "./mcp/server.js";
 import { runInit } from "./init/index.js";
 import { parseInitArgs, INIT_OPTION_SCHEMA } from "./init/argv.js";
-import { setFrameworkOverride } from "./adapters/select.js";
+import { VALID_FRAMEWORKS } from "./adapters/select.js";
 
 // Note: shebang (#!/usr/bin/env node) is injected by tsup banner — do NOT add it here.
 
@@ -74,17 +74,15 @@ if (meta.init) {
 } else {
   const frameworkVal = meta.framework as string | undefined;
   if (frameworkVal !== undefined) {
-    const VALID_FRAMEWORKS = ["nextjs", "expo-router"] as const;
     if (!(VALID_FRAMEWORKS as readonly string[]).includes(frameworkVal)) {
       process.stderr.write(
-        `[framework] error: unknown value "${frameworkVal}". Valid values: nextjs, expo-router\n`,
+        `[framework] error: unknown value "${frameworkVal}". Valid values: ${VALID_FRAMEWORKS.join(", ")}\n`,
       );
       process.exit(1);
     }
-    setFrameworkOverride(frameworkVal);
   }
 
-  startServer().catch((err: unknown) => {
+  startServer(frameworkVal).catch((err: unknown) => {
     log.error("server error", {
       message: err instanceof Error ? err.message : String(err),
     });

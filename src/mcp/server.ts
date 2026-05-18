@@ -16,8 +16,11 @@ const TOOL_VERSION = typeof __TOOL_VERSION__ !== "undefined" ? __TOOL_VERSION__ 
  *
  * Keep createServer (returns server, no transport) and startServer (wires stdio)
  * separate so tests can inject InMemoryTransport without touching real stdio.
+ *
+ * @param frameworkOverride - Optional framework name to pass to every tool handler,
+ *   eliminating the need for a process-global singleton (CR-01).
  */
-export function createServer(): McpServer {
+export function createServer(frameworkOverride?: string): McpServer {
   const server = new McpServer({
     name: "ui-hierarchy-mcp",
     version: TOOL_VERSION,
@@ -31,7 +34,7 @@ export function createServer(): McpServer {
         description: tool.description,
         inputSchema: tool.inputSchema.shape,
       },
-      tool.handler,
+      tool.makeHandler(frameworkOverride),
     );
   }
 
@@ -44,10 +47,12 @@ export function createServer(): McpServer {
  *
  * After connect() returns, the process stays alive because StdioServerTransport
  * holds process.stdin open.
+ *
+ * @param frameworkOverride - Optional framework name forwarded to createServer.
  */
-export async function startServer(): Promise<void> {
+export async function startServer(frameworkOverride?: string): Promise<void> {
   log.info("server starting", { version: TOOL_VERSION });
-  const server = createServer();
+  const server = createServer(frameworkOverride);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

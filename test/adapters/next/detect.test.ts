@@ -13,8 +13,11 @@ describe("R5 NextJsAdapter.detect heuristic", () => {
     expect(await detect(fx("next-detect-with-src-app"))).toBe(true);
   });
 
-  it("returns false for Pages-Router-only project (no app/ or src/app/)", async () => {
-    expect(await detect(fx("next-detect-pages-only"))).toBe(false);
+  it("returns true for Pages-Router project with next dep + next.config (WR-04: detect delegates to detectNextJs)", async () => {
+    // After WR-04, detect() delegates to detectNextJs() which uses two signals:
+    // package.json#next + any next.config.* file. A Pages-Router project that has
+    // both signals is correctly detected as Next.js (it IS Next.js — just not App Router).
+    expect(await detect(fx("next-detect-pages-only"))).toBe(true);
   });
 
   it("returns false when no next.config.* present (even with app/)", async () => {
