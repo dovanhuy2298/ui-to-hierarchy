@@ -8,7 +8,7 @@
  * `import()` config files — only `fs.access` them.
  */
 
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const NEXT_CONFIGS = [
@@ -33,6 +33,32 @@ export async function detect(absRoot: string): Promise<boolean> {
   if (await exists(join(absRoot, "app"))) return true;
   if (await exists(join(absRoot, "src", "app"))) return true;
   return false;
+}
+
+export async function detectNextJs(absRoot: string): Promise<{ detected: boolean; signals: string[] }> {
+  const signals: string[] = [];
+
+  // Signal 1: "next" in package.json dependencies or devDependencies
+  try {
+    const raw = await readFile(join(absRoot, "package.json"), "utf8");
+    const pkg = JSON.parse(raw) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    if ("next" in allDeps) {
+      signals.push("package.json#next");
+    }
+  } catch {
+    // missing or malformed package.json — no signal
+  }
+
+  // Signal 2: any next.config.{js,mjs,cjs,ts} file exists
+  for (const name of NEXT_CONFIGS) {
+    if (await exists(join(absRoot, name))) {
+      signals.push(name);
+      break;
+    }
+  }
+
+  return { detected: signals.length === 2, signals };
 }
 
 async function exists(p: string): Promise<boolean> {
