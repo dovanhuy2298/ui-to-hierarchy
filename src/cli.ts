@@ -4,12 +4,15 @@ import { log } from "./mcp/log.js";
 import { startServer } from "./mcp/server.js";
 import { runInit } from "./init/index.js";
 import { parseInitArgs, INIT_OPTION_SCHEMA } from "./init/argv.js";
+import { setFrameworkOverride } from "./adapters/select.js";
 
 // Note: shebang (#!/usr/bin/env node) is injected by tsup banner — do NOT add it here.
 
 const HELP_TEXT = `Usage: npx ui-hierarchy-mcp [--init [--global] [--target <list>] [--dry-run] [--force]]
 
   (no args)            Start the MCP stdio server (default).
+  --framework <name>   Force adapter selection. Valid values: nextjs, expo-router.
+                       Skips auto-detection; use when the project root is ambiguous.
   --init               Write usage rules into agent config files.
     --global           Write to global config (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md).
                        Default: write to ./CLAUDE.md in the current project.
@@ -69,6 +72,18 @@ if (meta.init) {
       process.exit(1);
     });
 } else {
+  const frameworkVal = meta.framework as string | undefined;
+  if (frameworkVal !== undefined) {
+    const VALID_FRAMEWORKS = ["nextjs", "expo-router"] as const;
+    if (!(VALID_FRAMEWORKS as readonly string[]).includes(frameworkVal)) {
+      process.stderr.write(
+        `[framework] error: unknown value "${frameworkVal}". Valid values: nextjs, expo-router\n`,
+      );
+      process.exit(1);
+    }
+    setFrameworkOverride(frameworkVal);
+  }
+
   startServer().catch((err: unknown) => {
     log.error("server error", {
       message: err instanceof Error ? err.message : String(err),

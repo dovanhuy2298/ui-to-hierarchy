@@ -36,6 +36,7 @@ export const INIT_OPTION_SCHEMA = {
   force: { type: "boolean" as const },
   help: { type: "boolean" as const, short: "h" as const },
   version: { type: "boolean" as const, short: "v" as const },
+  framework: { type: "string" as const },
 };
 
 /** Normalized flag bag returned to the orchestrator. */

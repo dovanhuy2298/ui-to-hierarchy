@@ -32,7 +32,8 @@ describe("selectAdapter", () => {
     vi.mocked(detectNextJs).mockImplementation(realDetectNextJs);
     vi.mocked(detectExpoRouter).mockImplementation(realDetectExpoRouter);
     const result = await selectAdapter(fx("next-app-router"));
-    expect(result).toBeInstanceOf(NextJsAdapter);
+    // NextJsAdapter is an object literal (not a class), so use toBe for reference equality
+    expect(result).toBe(NextJsAdapter);
   });
 
   it("returns ExpoRouterAdapter instance for expo-basic", async () => {
@@ -66,14 +67,16 @@ describe("selectAdapter", () => {
 
   it("override 'nextjs' returns NextJsAdapter regardless of root", async () => {
     const result = await selectAdapter(fx("expo-basic"), "nextjs");
-    expect(result).toBeInstanceOf(NextJsAdapter);
+    // NextJsAdapter is an object literal (not a class), so use toBe for reference equality
+    expect(result).toBe(NextJsAdapter);
   });
 
   it("INTEG-04: monorepo-mixed/apps/web returns NextJsAdapter", async () => {
     vi.mocked(detectNextJs).mockImplementation(realDetectNextJs);
     vi.mocked(detectExpoRouter).mockImplementation(realDetectExpoRouter);
     const result = await selectAdapter(fx("monorepo-mixed/apps/web"));
-    expect(result).toBeInstanceOf(NextJsAdapter);
+    // NextJsAdapter is an object literal (not a class), so use toBe for reference equality
+    expect(result).toBe(NextJsAdapter);
   });
 
   it("INTEG-04: monorepo-mixed/apps/mobile returns ExpoRouterAdapter", async () => {
