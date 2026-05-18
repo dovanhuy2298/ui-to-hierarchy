@@ -14,7 +14,7 @@
 - [ ] **ADAPT-03**: `selectAdapter(projectRoot)` auto-detects the framework using a two-signal pattern per adapter: NextJs needs `next` in deps AND a `next.config.*` file; ExpoRouter needs `expo-router` in deps AND `app/_layout.tsx` (or `src/app/_layout.tsx`). Detection runs in parallel and requires exactly one true.
 - [ ] **ADAPT-04**: When both adapters detect true (e.g., monorepo with mixed apps at one root), `selectAdapter` returns an MCP `{isError: true}` error message that names both matched signal paths so the agent knows what conflicted; when zero detect, the error suggests `--framework` override.
 - [ ] **ADAPT-05**: `--framework nextjs|expo-router` CLI flag overrides auto-detect for CI/monorepo contexts; flag value is forwarded to `selectAdapter` and skips the two-signal probe.
-- [ ] **ADAPT-06**: All 4 MCP tool handlers (`get_full_hierarchy`, `focus_on`, `find_by_text`, `find_by_style`) route through `selectAdapter` per call instead of importing `NextJsAdapter` directly; existing Next.js E2E flows continue to pass.
+- [x] **ADAPT-06**: All 4 MCP tool handlers (`get_full_hierarchy`, `focus_on`, `find_by_text`, `find_by_style`) route through `selectAdapter` per call instead of importing `NextJsAdapter` directly; existing Next.js E2E flows continue to pass.
 
 ### ROUTE — Expo Router routing semantics
 

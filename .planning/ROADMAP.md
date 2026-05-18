@@ -38,7 +38,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 
 - [x] **Phase 9: Fixture Design & Stub Packages** — Commit two Expo Router fixtures with stubbed `react-native` / `expo-router` exports before any adapter code lands.
 - [x] **Phase 10: Interface Widening & Analyzer De-Next-ification** — Widen `FrameworkAdapter` (3 new methods) and delegate Analyzer's 5 Next.js leak sites; NextJsAdapter migrated, full suite re-locked green. (completed 2026-05-13)
-- [ ] **Phase 11: Adapter Detection, Selection & Tool Routing** — Two-signal auto-detect, `--framework` override, conflict/zero-match errors with named paths; 4 MCP tools route through `selectAdapter`.
+- [x] **Phase 11: Adapter Detection, Selection & Tool Routing** — Two-signal auto-detect, `--framework` override, conflict/zero-match errors with named paths; 4 MCP tools route through `selectAdapter`. (completed 2026-05-18)
 - [ ] **Phase 12: ExpoRouterAdapter Routing & RN Primitives** — Discover routes from `app/` (and `src/app/`), compose `_layout.tsx` chain via `<Slot/>`, dynamic segments, groups, `index`, `<Tabs>`/`<Stack>`, `+not-found`; RN primitive recognition by import source; `<Text>`-anchored text content.
 - [ ] **Phase 13: RN Style Signal Extraction** — `StyleSheet.create` named lookup (in-file + one-hop), inline `style={{}}`, `flattenStyleArray`, NativeWind `className` with variant strip; unsupported patterns degrade to `{ raw }` + warning.
 - [ ] **Phase 14: Resolver Platform-Suffix Fallback** — `core/resolver/relative.ts` resolves `Button.tsx` from `Button.{ios,android,native,web}.tsx` with preference `no-suffix > .native > .ios > .android > .web`.
@@ -98,7 +98,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] 11-04-PLAN.md — selectAdapter + setFrameworkOverride + --framework CLI flag
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 11-05-PLAN.md — Refactor all 4 tool handlers through selectAdapter + human checkpoint
+- [x] 11-05-PLAN.md — Refactor all 4 tool handlers through selectAdapter + human checkpoint
 **Scope**: IN — `expo/detect.ts`, `adapters/select.ts`, CLI flag plumbing, tool-handler refactor, monorepo fixture. OUT — actual Expo parsing logic (returns stub IR until Phase 12).
 
 ### Phase 12: ExpoRouterAdapter Routing & RN Primitives
@@ -166,7 +166,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 8. v1.0 Polish                                 | v1.1      | 4/4            | Complete    | 2026-05-12 |
 | 9. Fixture Design & Stub Packages              | v1.2      | 3/3            | Complete    | 2026-05-13 |
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 2/2 | Complete   | 2026-05-13 |
-| 11. Adapter Detection, Selection & Tool Routing | v1.2     | 4/5 | In Progress|  |
+| 11. Adapter Detection, Selection & Tool Routing | v1.2     | 5/5 | Complete   | 2026-05-18 |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 0/?            | Not started | —          |
 | 13. RN Style Signal Extraction                 | v1.2      | 0/?            | Not started | —          |
 | 14. Resolver Platform-Suffix Fallback          | v1.2      | 0/?            | Not started | —          |
