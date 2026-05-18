@@ -4,7 +4,7 @@ import type { ToolResponse } from "../errors.js";
 import { resolveRoot } from "../../core/resolve-root.js";
 import { projectRootSchema } from "./common.js";
 import { Analyzer } from "../../core/Analyzer.js";
-import { NextJsAdapter } from "../../adapters/next/NextJsAdapter.js";
+import { selectAdapter } from "../../adapters/select.js";
 import { buildEnvelope } from "../../renderers/envelope-builder.js";
 import { renderMarkdown } from "../../renderers/markdown.js";
 import { renderJson } from "../../renderers/json.js";
@@ -39,10 +39,12 @@ export const inputSchema = z.object({
 export async function handler(args: z.infer<typeof inputSchema>): Promise<ToolResponse> {
   return withErrorBoundary(name, async () => {
     const root = resolveRoot(args.projectRoot);
-    const analyzer = new Analyzer({ root, adapter: NextJsAdapter });
+    const adapter = await selectAdapter(root);
+    if ("isError" in adapter) return adapter;
+    const analyzer = new Analyzer({ root, adapter });
     const { tree, warnings } = await analyzer.focusOn({ component: args.component, scope: args.scope });
     const base = buildEnvelope(tree, { resolvedRootOverride: root });
-    const envelope = { ...base, warnings: [...(base.warnings ?? []), ...warnings] };
+    const envelope = { ...base, warnings: [...base.warnings, ...warnings] };
     const text =
       args.format === "json"
         ? JSON.stringify(renderJson(tree, envelope), null, 2)
