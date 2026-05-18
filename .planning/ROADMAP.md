@@ -86,12 +86,19 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   4. All 4 tool handlers (`get_full_hierarchy`, `focus_on`, `find_by_text`, `find_by_style`) call `selectAdapter(projectRoot)` per request — no remaining direct `import { NextJsAdapter }` in `src/mcp/tools/*`.
   5. A `monorepo-mixed` integration fixture (Next.js in `apps/web/`, Expo Router in `apps/mobile/`) is parsed by one MCP session across consecutive calls and each `projectRoot` argument picks the matching adapter.
 **Plans**: 5 plans
-Plans:
-- [ ] 11-01-PLAN.md — Wave 0: fixture package.json gaps + monorepo-mixed fixture + RED test stubs
-- [ ] 11-02-PLAN.md — Wave 1: ExpoRouterAdapter stub class + detectExpoRouter two-signal probe
-- [ ] 11-03-PLAN.md — Wave 1: detectNextJs export added to next/detect.ts (parallel with 11-02)
-- [ ] 11-04-PLAN.md — Wave 2: selectAdapter + setFrameworkOverride + --framework CLI flag
-- [ ] 11-05-PLAN.md — Wave 3: tool handler refactor (remove NextJsAdapter, route through selectAdapter)
+
+**Wave 0**
+- [ ] 11-01-PLAN.md — Fixture package.json gaps + monorepo-mixed fixture + RED test stubs
+
+**Wave 1** *(blocked on Wave 0 completion)*
+- [ ] 11-02-PLAN.md — ExpoRouterAdapter stub class + detectExpoRouter two-signal probe
+- [ ] 11-03-PLAN.md — detectNextJs export added to next/detect.ts *(parallel with 11-02)*
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 11-04-PLAN.md — selectAdapter + setFrameworkOverride + --framework CLI flag
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 11-05-PLAN.md — Refactor all 4 tool handlers through selectAdapter + human checkpoint
 **Scope**: IN — `expo/detect.ts`, `adapters/select.ts`, CLI flag plumbing, tool-handler refactor, monorepo fixture. OUT — actual Expo parsing logic (returns stub IR until Phase 12).
 
 ### Phase 12: ExpoRouterAdapter Routing & RN Primitives
