@@ -2,35 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
-status: executing
-last_updated: "2026-05-18T03:14:11.669Z"
+status: planning
+last_updated: "2026-05-18T04:00:00.000Z"
 last_activity: 2026-05-18
 progress:
   total_phases: 7
-  completed_phases: 3
-  total_plans: 10
+  completed_phases: 4
+  total_plans: 15
   completed_plans: 10
-  percent: 43
+  percent: 57
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-18 — Phase 11 planned; 5 plans in 4 waves; selectAdapter, detectExpoRouter, ExpoRouterAdapter stub, --framework flag, and tool handler refactor planned
+**Last updated:** 2026-05-18 — Phase 11 complete; 5/5 plans executed; adapter detection, selection, and tool routing wired end-to-end; 389 tests passing
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-12)
 
 - **Core value:** When an AI agent can't confidently act on a screenshot or vague UI description, call this MCP for a precise file/component map — edit the right component, not guess.
-- **Current focus:** v1.2 React Native + Expo Router — roadmap drafted; ready to plan Phase 9.
+- **Current focus:** v1.2 React Native + Expo Router — Phase 11 complete; ready for Phase 12.
 - **Mode:** yolo
 - **Granularity:** standard
 
 ## Current Position
 
 Phase: 11 — Adapter Detection, Selection & Tool Routing
-Plan: 5 of 5 (ready to execute)
-Status: Ready to execute
+Plan: 5 of 5 (complete)
+Status: Complete — ready for Phase 12
 Last activity: 2026-05-18
 
 ## Progress Bar
@@ -40,7 +40,7 @@ v1.0   Phases 1–6 [##########] 100% (shipped 2026-05-05)
 v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
-v1.2   Phase 11  [**planned**]   0% (5/5 plans staged, ready to execute)
+v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
 v1.2   Phase 12  [..........]   0%
 v1.2   Phase 13  [..........]   0%
 v1.2   Phase 14  [..........]   0%
@@ -62,7 +62,7 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ### Open Todos
 
-- Run `/gsd:execute-phase 11` to execute the 5 staged plans.
+- None. Phase 11 complete. Ready for Phase 12.
 
 ### Blockers
 
@@ -72,13 +72,13 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 - F-01: live Claude Code transcript export — deferred again, methodology footnote remains.
 - Two orphan exports in `src/mcp/errors.ts` (`notImplemented`, `invalidInput`) — opportunistic cleanup if a phase touches the file.
-- Cosmetic: redundant `base.warnings ?? []` fallback in 4 tool handlers — opportunistic during Phase 11 tool-handler refactor.
+- ~~Cosmetic: redundant `base.warnings ?? []` fallback in 4 tool handlers~~ — **DONE in Phase 11 Plan 05 (D-09).**
 - Cosmetic: `__INIT_MARKER_VERSION__` `typeof` guard in `src/init/index.ts` — opportunistic during Phase 15.
 
 ## Session Continuity
 
-- Last session: 2026-05-18 — Phase 11 planned: 5 plans in 4 waves covering selectAdapter, detectExpoRouter, ExpoRouterAdapter stub, --framework CLI flag, tool handler refactor. Verification passed (2 iterations).
-- Next command: `/gsd:execute-phase 11`
+- Last session: 2026-05-18 — Phase 11 executed: 5/5 plans complete across 4 waves. ExpoRouterAdapter stub, detectExpoRouter, detectNextJs, selectAdapter + --framework flag, tool handler refactor all shipped. 389 tests passing. Deviation: 7 existing fixtures had no package.json (fixed by Plan 05 executor).
+- Next command: `/gsd:plan-phase 12` or `/gsd:execute-phase 12`
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -89,4 +89,5 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd:execute-phase 11` — execute Phase 11 (5 plans staged, Wave 0 first).
+- `/gsd:plan-phase 12` — plan Phase 12 (ExpoRouterAdapter real parsing — Expo Router routes, components, classifyEntry).
+- `/gsd:execute-phase 12` — execute Phase 12 once planned.
