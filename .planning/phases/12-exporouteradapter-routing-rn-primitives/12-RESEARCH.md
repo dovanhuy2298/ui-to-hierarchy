@@ -662,22 +662,19 @@ traverse(ast, {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Warning channel for `discoverEntries`**
+1. **Warning channel for `discoverEntries`** — RESOLVED
    - What we know: `discoverEntries(absRoot): Promise<string[]>` has no `ctx` parameter
-   - What's unclear: Best pattern for routing dual-root warning into `ctx.warnings`
-   - Recommendation: Instance-level `pendingWarnings: string[]` on `ExpoRouterAdapter`, flushed at start of `extractComponents`; OR document it as "warning returned only when `extractComponents` is called" and suppress in `enumerateRoutes` path (SPEC acceptance test calls `get_full_hierarchy` which goes through `extractComponents`)
+   - **Decision:** Use instance-level `pendingWarnings: string[]` on `ExpoRouterAdapter`, flushed into `ctx.warnings` at the start of `extractComponents`. This is the pattern chosen in Plan 12-02 (detectDualRoots) and Plan 12-03 (ExpoRouterAdapter implementation). The SPEC acceptance test for ROUTE-01 calls `get_full_hierarchy` which goes through `extractComponents`, so the warning will be emitted.
 
-2. **`mapRouteToEntry` algorithm complexity**
+2. **`mapRouteToEntry` algorithm complexity** — RESOLVED
    - What we know: Must return `entries` in root→leaf→page order (D-09); groups are transparent; layout chain must include group `_layout.tsx` files
-   - What's unclear: Whether to reuse the Next.js tree-building approach or implement a simpler linear scan
-   - Recommendation: Start with simpler linear scan (Expo has no parallel slots, no intercepting routes in v1) — walk the path, collect `_layout.tsx` at each directory level (even inside groups), append the page file
+   - **Decision:** Implement with a simple linear scan — walk the file path from appRoot to page, collecting `_layout.tsx` at each directory level (even inside groups), then append the page file. Expo has no parallel slots or intercepting routes in v1, so the Next.js tree-building complexity is not needed. This is reflected in Plan 12-02 Task 4 (`mapRouteToEntry`).
 
-3. **`<Tabs.Screen>` as `kind: "component"` vs `kind: "element"`**
-   - What we know: D-01 says `kind: "component"` for consistency with how the tree renders every JSX element
-   - What's unclear: `Tabs.Screen` is a JSX member expression — the render-flow walker likely emits it as `isComponent: true` already (since it starts with uppercase `Tabs`)
-   - Recommendation: Verify by running render-flow walker on `(tabs)/_layout.tsx` fixture; if it already produces `kind: "component"` for `Tabs.Screen`, no special handling needed
+3. **`<Tabs.Screen>` as `kind: "component"` vs `kind: "element"`** — RESOLVED
+   - What we know: D-01 says `kind: "component"` for consistency
+   - **Decision:** The executor MUST verify by running the render-flow walker on the `(tabs)/_layout.tsx` fixture before deciding. If the walker already emits `Tabs.Screen` as `kind: "component"` (likely, since it starts with uppercase), only the attribute summary (`name`, `options`) and non-literal warning logic need to be added. If NOT, a full TreeNode synthesis is required. Plan 12-03 Task 2 instructs the executor to perform this verification step first.
 
 ---
 
