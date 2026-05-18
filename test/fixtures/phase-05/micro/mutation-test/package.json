@@ -1,0 +1,1 @@
+{ "name": "mutation-test", "private": true, "dependencies": { "next": "*" } }

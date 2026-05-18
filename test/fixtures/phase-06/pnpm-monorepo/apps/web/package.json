@@ -1,1 +1,1 @@
-{ "name": "@acme/web", "private": true }
+{ "name": "@acme/web", "private": true, "dependencies": { "next": "*" } }
