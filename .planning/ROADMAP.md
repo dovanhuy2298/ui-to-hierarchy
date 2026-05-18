@@ -88,7 +88,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 **Plans**: 5 plans
 
 **Wave 0**
-- [ ] 11-01-PLAN.md — Fixture package.json gaps + monorepo-mixed fixture + RED test stubs
+- [x] 11-01-PLAN.md — Fixture package.json gaps + monorepo-mixed fixture + RED test stubs
 
 **Wave 1** *(blocked on Wave 0 completion)*
 - [ ] 11-02-PLAN.md — ExpoRouterAdapter stub class + detectExpoRouter two-signal probe
@@ -166,7 +166,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 8. v1.0 Polish                                 | v1.1      | 4/4            | Complete    | 2026-05-12 |
 | 9. Fixture Design & Stub Packages              | v1.2      | 3/3            | Complete    | 2026-05-13 |
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 2/2 | Complete   | 2026-05-13 |
-| 11. Adapter Detection, Selection & Tool Routing | v1.2     | 0/?            | Not started | —          |
+| 11. Adapter Detection, Selection & Tool Routing | v1.2     | 1/5 | In Progress|  |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 0/?            | Not started | —          |
 | 13. RN Style Signal Extraction                 | v1.2      | 0/?            | Not started | —          |
 | 14. Resolver Platform-Suffix Fallback          | v1.2      | 0/?            | Not started | —          |
