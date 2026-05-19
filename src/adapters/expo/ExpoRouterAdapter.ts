@@ -562,6 +562,46 @@ function collectRNPrimitiveStyles(
     return;
   }
 
+  // WR-02: recurse into IfStatement consequent and alternate
+  if (t.isIfStatement(node)) {
+    collectRNPrimitiveStyles(
+      node.consequent,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    collectRNPrimitiveStyles(
+      node.alternate ?? null,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  // WR-02: unwrap ExpressionStatement to reach its expression
+  if (t.isExpressionStatement(node)) {
+    collectRNPrimitiveStyles(
+      node.expression,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
   if (t.isReturnStatement(node)) {
     collectRNPrimitiveStyles(
       node.argument ?? null,
