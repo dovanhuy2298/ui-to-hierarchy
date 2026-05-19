@@ -387,7 +387,7 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
     const accumulatedInlineStyles: Record<string, string | { raw: string }> = {};
 
     // 5. RN primitive post-processing on render flow (injects synthetic style signal attributes)
-    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings, fileStyleIndex, localWarnings);
+    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings, fileStyleIndex, localWarnings, file);
 
     // Walk the component body recursively to collect RN primitive JSX elements.
     // We cannot use traverse(comp.body, ...) because babel traverse requires a
@@ -701,9 +701,11 @@ function postProcessRenderFlow(
   bindings: Map<string, { source: string; importedName: string }>,
   fileStyleIndex: Map<string, string[]>,
   warnings: string[],
+  file: string,
 ): RenderNode {
   if (!node) {
-    return { kind: "error", message: "null render flow", file: "", line: 0 };
+    // WR-06: surface file context for actionable error messages
+    return { kind: "error", message: "walkRenderFlow returned null", file, line: 0 };
   }
   return visitRenderNode(node, bindings, fileStyleIndex, warnings);
 }
