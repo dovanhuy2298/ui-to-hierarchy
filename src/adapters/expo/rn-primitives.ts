@@ -12,12 +12,6 @@
  * (type-only). It MUST NOT be imported from src/core/.
  */
 
-import type { ImportBinding } from "../../core/import-bindings.js";
-
-// The type-only import above is kept for future type tightening (D-06).
-// Explicitly reference it to satisfy --noUnusedLocals.
-type _ImportBindingRef = ImportBinding;
-
 /**
  * Exact set of React Native core primitive component names.
  * SPEC Req 9 — exactly 13 members.
