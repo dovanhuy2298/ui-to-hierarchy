@@ -20,9 +20,9 @@
 
 - [x] **ROUTE-01**: ExpoRouterAdapter discovers routes from `app/` and `src/app/`; when both exist, `src/app/` wins and a warning is emitted naming both directories.
 - [x] **ROUTE-02**: `_layout.tsx` files compose a root → leaf layout chain; the JSX walker recognizes `<Slot/>` (imported from `expo-router`) as the children injection point — analogous to Next.js's `{children}` identifier.
-- [ ] **ROUTE-03**: Dynamic segments parsed and surfaced in the route: `[param]`, `[...rest]`, `[[...opt]]`; each segment kind reflected in the rendered tree's route label.
-- [ ] **ROUTE-04**: Route groups `(group)/` are transparent — they do not contribute a URL segment but their `_layout.tsx` still participates in the layout chain.
-- [ ] **ROUTE-05**: `index.tsx` becomes the default route at its directory's URL (e.g., `app/index.tsx` → `/`, `app/settings/index.tsx` → `/settings`).
+- [x] **ROUTE-03**: Dynamic segments parsed and surfaced in the route: `[param]`, `[...rest]`, `[[...opt]]`; each segment kind reflected in the rendered tree's route label.
+- [x] **ROUTE-04**: Route groups `(group)/` are transparent — they do not contribute a URL segment but their `_layout.tsx` still participates in the layout chain.
+- [x] **ROUTE-05**: `index.tsx` becomes the default route at its directory's URL (e.g., `app/index.tsx` → `/`, `app/settings/index.tsx` → `/settings`).
 - [x] **ROUTE-06**: `<Tabs>` from `expo-router` recognized in `_layout.tsx`; literal-string `<Tabs.Screen name="..." options={...}>` children enumerated by name with their `options` summarized as attributes on the tab node.
 - [x] **ROUTE-07**: `<Stack>` from `expo-router` recognized in `_layout.tsx`; `<Stack.Screen name="..." options={...}>` enumerated analogously to Tabs.Screen.
 - [x] **ROUTE-08**: Expo-prefixed specials handled by convention: `+not-found.tsx` registered as a special sibling (not URL-mapped); `+html.tsx` and `+native-intent.tsx` skipped; `+api.ts` skipped (server route, no UI).

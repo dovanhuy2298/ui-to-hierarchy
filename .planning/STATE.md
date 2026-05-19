@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
 status: executing
-last_updated: "2026-05-19T02:14:39.843Z"
+last_updated: "2026-05-19T02:26:14.687Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
-  percent: 43
+  completed_plans: 14
+  percent: 57
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-19 — Phase 12 Plan 03 complete; ExpoRouterAdapter real implementation + Analyzer JSXOpeningElement slot fix; 34 new tests (457→491)
+**Last updated:** 2026-05-19 — Phase 12 Plan 04 complete; snapshot lock for expo-basic and expo-tabs-and-dynamic; EXPO-SLOT-01 bug surfaced (Slot injection not working for kind:component); 3 new tests (491→494)
 
 ## Project Reference
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 12 — ExpoRouterAdapter Routing & RN Primitives
-Plan: 3 of 4 (Plan 03 complete — Wave 2 done)
-Status: Ready to execute
+Plan: 4 of 4 (Plan 04 complete — Wave 3 done, Phase 12 COMPLETE)
+Status: Phase complete
 Last activity: 2026-05-19
 
 ## Progress Bar
@@ -41,7 +41,7 @@ v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
-v1.2   Phase 12  [######.....]  75% (3/4 plans)
+v1.2   Phase 12  [##########] 100% (4/4 plans complete 2026-05-19)
 v1.2   Phase 13  [..........]   0%
 v1.2   Phase 14  [..........]   0%
 v1.2   Phase 15  [..........]   0%
@@ -71,10 +71,11 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ### Open Todos
 
-- Phase 12 Plan 03 complete. ExpoRouterAdapter fully implemented with RN primitives, slot injection fix, Tabs/Stack.Screen walker. 491 tests passing.
-- Pre-existing failures in test/adapters/select.test.ts (6) and test/cli/framework-flag.test.ts (1) — vi.mocked hoisting issue, unrelated to Wave 1-2, deferred to Wave 3 investigation.
+- Phase 12 ALL PLANS COMPLETE. ExpoRouterAdapter fully implemented (Plans 01-03) + snapshot baselines locked (Plan 04).
+- EXPO-SLOT-01: Slot injection does not work for kind:component nodes in injectChildrenSlots. Expo layouts show <Slot> component node instead of substituted page tree. Fix needed in Phase 13.
+- Pre-existing failures in test/adapters/select.test.ts (6) — vi.mocked hoisting issue, unrelated to Phase 12.
+- Snapshot baselines at test/adapters/expo/__snapshots__/ reflect current limited output; will improve when EXPO-SLOT-01 is fixed.
 - RN text extraction uses __rnText synthetic attribute on RenderNode — future plan can promote to TreeNode text field.
-- pendingWarnings pattern established: queue in discoverEntries, flush in extractComponents.
 
 ### Blockers
 
@@ -89,8 +90,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-19 — Phase 12 Plan 03 executed: ExpoRouterAdapter all 5 stubs replaced + Analyzer JSXOpeningElement fix. Test count 457 → 491 (+34 tests). Commits: b81f40f, b93bf4f.
-- Next command: `/gsd:execute-phase 12` (continue with Plan 04: ExpoRouterAdapter snapshot tests)
+- Last session: 2026-05-19 — Phase 12 Plan 04 executed: locked expo-basic and expo-tabs-and-dynamic snapshots; EXPO-SLOT-01 bug surfaced. Test count 491 → 494 (+3 tests). Commit: 8d0dbdd.
+- Next command: `/gsd:execute-phase 13` (Phase 13: fix EXPO-SLOT-01 and further Expo Router work)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -101,4 +102,5 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd:execute-phase 12` — continue Phase 12 (Plan 04: ExpoRouterAdapter snapshot tests).
+- Phase 12 complete. Fix EXPO-SLOT-01 (Slot injection for kind:component nodes) before Phase 13.
+- `/gsd:execute-phase 13` — start Phase 13.
