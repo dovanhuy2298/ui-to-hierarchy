@@ -8,7 +8,7 @@
 
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { parse } from "@babel/parser";
 import { describe, expect, it } from "vitest";
 import { ExpoRouterAdapter } from "../../../src/adapters/expo/ExpoRouterAdapter.js";
 import { Analyzer } from "../../../src/core/Analyzer.js";
@@ -17,7 +17,6 @@ import { renderMarkdown } from "../../../src/renderers/markdown.js";
 import { toForwardSlash } from "../../../src/core/paths.js";
 import type { ParseContext } from "../../../src/adapters/types.js";
 
-const require = createRequire(import.meta.url);
 
 const EXPO_BASIC_ROOT = path.resolve("test/fixtures/expo-basic");
 const EXPO_TABS_ROOT = path.resolve("test/fixtures/expo-tabs-and-dynamic");
@@ -217,7 +216,6 @@ describe("namespace import warning (SPEC Req 10)", () => {
     const ctx = makeCtx();
 
     // Manually inject a parse result with namespace import into the ctx
-    const { parse } = require("@babel/parser");
     const nsSource = `import * as RN from "react-native";
 export default function Comp() { return null; }`;
 
@@ -267,7 +265,6 @@ describe("Tabs.Screen / Stack.Screen walker", () => {
     const ctx = makeCtx();
 
     // Parse a source with non-literal name prop
-    const { parse } = require("@babel/parser");
     const nonLiteralSource = `import { Tabs } from "expo-router";
 const tabName = "home";
 export default function Layout() {
@@ -298,7 +295,6 @@ export default function Layout() {
     const adapter = new ExpoRouterAdapter();
     const ctx = makeCtx();
 
-    const { parse } = require("@babel/parser");
     const stackSource = `import { Stack } from "expo-router";
 export default function Layout() {
   return (
@@ -329,7 +325,6 @@ export default function Layout() {
     const adapter = new ExpoRouterAdapter();
     const ctx = makeCtx();
 
-    const { parse } = require("@babel/parser");
     const stackSource = `import { Stack } from "expo-router";
 const screenName = "home";
 export default function Layout() {
@@ -365,7 +360,6 @@ describe("Text content extraction (SPEC Req 9 + 11)", () => {
     const adapter = new ExpoRouterAdapter();
     const ctx = makeCtx();
 
-    const { parse } = require("@babel/parser");
     const source = `import { Text } from "react-native";
 export default function Comp() {
   return <Text>Hello world</Text>;
@@ -405,7 +399,6 @@ export default function Comp() {
     const adapter = new ExpoRouterAdapter();
     const ctx = makeCtx();
 
-    const { parse } = require("@babel/parser");
     const source = `import Text from "@/components/Text";
 export default function Comp() {
   return <Text>Hello world</Text>;
@@ -440,7 +433,6 @@ export default function Comp() {
     const adapter = new ExpoRouterAdapter();
     const ctx = makeCtx();
 
-    const { parse } = require("@babel/parser");
     const source = `import { Text } from "react-native";
 export default function Comp({ msg }: { msg: string }) {
   return <Text>{msg}</Text>;
