@@ -401,6 +401,15 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
 
     for (const w of localWarnings) ctx.warnings.push(w);
 
+    // Deduplicate className tokens by value+file+line (CR-02 fix)
+    const seen = new Set<string>();
+    const dedupedClassNames = accumulatedClassNames.filter((tok) => {
+      const key = `${tok.kind}:${tok.value}:${tok.file}:${tok.line}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     return {
       name: comp.name,
       file,
@@ -410,7 +419,7 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
       props,
       textContent,
       renderFlow: processedRenderFlow,
-      classNames: accumulatedClassNames,
+      classNames: dedupedClassNames,
       inlineStyles: accumulatedInlineStyles,
       cssModuleRefs: [],
       styledTemplates: [],
@@ -696,17 +705,23 @@ function resolveStyleExpressionKeys(
           memberEl.property.type === "Identifier"
         ) {
           const varName = memberEl.object.name;
+          const accessedKey = memberEl.property.name;
           const indexKeys = fileStyleIndex.get(varName);
           if (indexKeys) {
-            arrayKeys.push(...indexKeys);
+            // Emit only the accessed key, not all keys in the stylesheet var (CR-01 fix)
+            if (indexKeys.includes(accessedKey)) {
+              arrayKeys.push(accessedKey);
+            } else {
+              warnings.push(`StyleSheet key '${accessedKey}' not found in var '${varName}' at ${file}`);
+            }
           } else {
             warnings.push(`StyleSheet var '${varName}' not found in index at ${file}`);
           }
         }
       }
     }
-  } catch {
-    // parse failure — silently skip (D-14 style)
+  } catch (e) {
+    warnings.push(`resolveStyleExpressionKeys: failed to parse expression "${expressionSource.slice(0, 60)}" — ${(e as Error).message}`);
   }
   return { styleKeys, arrayKeys };
 }
