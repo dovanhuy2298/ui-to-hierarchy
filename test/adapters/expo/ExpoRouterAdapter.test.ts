@@ -577,8 +577,9 @@ describe("snapshots", () => {
     );
     const content = readFileSync(snapshotPath, "utf8");
     expect(content).not.toContain("\\");
-    // RootLayout from app/_layout.tsx must appear at the root of the tree
     expect(content).toMatch(/app\/_layout\.tsx/);
+    // Page content must be injected via Slot (EXPO-SLOT-01 fix)
+    expect(content).toMatch(/app\/index\.tsx/);
   });
 
   it("expo-tabs-and-dynamic full-hierarchy snapshot", async () => {
@@ -605,12 +606,10 @@ describe("snapshots", () => {
     );
     const content = readFileSync(snapshotPath, "utf8");
     expect(content).not.toContain("\\");
-    // RootLayout from app/_layout.tsx must appear at the root of the tree.
-    // NOTE: Due to Bug EXPO-SLOT-01 (see 12-04-SUMMARY.md), the Slot injection
-    // algorithm does not substitute page content into the <Slot/> component node,
-    // so (tabs)/_layout.tsx, [id].tsx, and Tabs.Screen do NOT appear in this snapshot.
-    // This snapshot locks the current (limited) baseline; fix is tracked in EXPO-SLOT-01.
     expect(content).toMatch(/app\/_layout\.tsx/);
+    // EXPO-SLOT-01 fixed: (tabs)/_layout.tsx and Tabs.Screen now appear after slot injection
+    expect(content).toMatch(/\(tabs\)\/_layout\.tsx/);
+    expect(content).toMatch(/Tabs\.Screen/);
     // +not-found.tsx is a special sibling in the fixture directory (not in route trees).
     // Special files are excluded from routing per route-map.ts entryToRoute().
     // Verified separately via fixture file existence:

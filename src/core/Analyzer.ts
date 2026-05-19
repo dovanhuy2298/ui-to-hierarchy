@@ -505,7 +505,17 @@ function injectChildrenSlots(
 
   switch (tree.kind) {
     case "component": {
-      // Recurse on existing children first
+      // If this component's line matches a slot line, it IS the slot marker
+      // (e.g. <Slot /> in Expo Router — uppercase → kind:"component").
+      // Replace the entire component node with kind:"slot" so replaceSlot()
+      // can substitute the page tree at this position.
+      for (const sl of slotLines) {
+        if (sl === tree.line) {
+          slotLines.delete(sl);
+          return { kind: "slot", name: "children", file, line: sl };
+        }
+      }
+      // Otherwise recurse on children.
       const newChildren = tree.children.map((c) =>
         injectChildrenSlots(c, slotLines, file, elementRanges),
       );
@@ -1123,10 +1133,11 @@ export class Analyzer {
     traverse(ast, {
       JSXExpressionContainer(path: { node: t.JSXExpressionContainer }) {
         const expr = path.node.expression;
-        if (t.isIdentifier(expr)) {
-          const binding = bindings.get(expr.name);
-          const importSource = binding?.source ?? "";
-          if (adapter.slotMarker(expr.name, importSource)) {
+        // Only match `{children}`-style expression containers, never arbitrary
+        // identifiers that happen to share a name with a JSX-element slot marker
+        // (e.g. {Slot} would false-positive for Expo Router if not guarded here).
+        if (t.isIdentifier(expr) && expr.name === "children") {
+          if (adapter.slotMarker(expr.name, "")) {
             const line = path.node.loc?.start.line ?? 0;
             lines.add(line);
           }
