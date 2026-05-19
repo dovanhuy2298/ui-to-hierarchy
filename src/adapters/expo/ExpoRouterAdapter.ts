@@ -237,6 +237,10 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
       globalStyleIndex.set(fwdFile, fileStyleIndex);
 
       // One-hop StyleSheet import resolution (D-02/D-03)
+      // Note: `bindings` maps JSX component imports, not StyleSheet variable imports.
+      // StyleSheet vars (e.g., `const styles = StyleSheet.create(...)`) are VariableDeclarations,
+      // not import bindings. The fileStyleIndex.has(localName) guard here is a no-op in practice
+      // (StyleSheet var names rarely match component import names) but is kept as a safety net.
       for (const [localName, binding] of bindings) {
         if (fileStyleIndex.has(localName)) continue;
         if (!binding.source.startsWith(".")) continue;
