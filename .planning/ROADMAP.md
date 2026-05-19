@@ -131,7 +131,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   5. Unsupported `StyleSheet.create` patterns (computed keys, factory functions, hook-returned styles, two-hop imports) emit a node with `{ raw: <source-text> }` plus an envelope warning — the tool returns success, not error.
 **Plans**: 3 plans
 - [x] 13-01-PLAN.md — Wave 0: scaffold src/core/styles/rn/ stubs + test it.todo files + verify EXPO-SLOT-01 at 494 tests
-- [ ] 13-02-PLAN.md — Wave 1: implement parseStyleSheetCreate, extractRNInlineStyle, extractNativeWindClassNames, flattenStyleArray + 18+ unit tests (RN-04/05/06/07/08)
+- [x] 13-02-PLAN.md — Wave 1: implement parseStyleSheetCreate, extractRNInlineStyle, extractNativeWindClassNames, flattenStyleArray + 18+ unit tests (RN-04/05/06/07/08)
 - [ ] 13-03-PLAN.md — Wave 2: wire ExpoRouterAdapter (one-hop import resolution + globalStyleIndex) + NativeWind fixture + re-lock Expo snapshots
 **Scope**: IN — `core/styles/rn/stylesheet-create.ts`, `core/styles/rn/style-prop.ts`, `core/styles/rn/index.ts`, NativeWind variant regex; wired post-processing into `ExpoRouterAdapter`. OUT — statically computing merged style results; type-aware resolution.
 
@@ -175,7 +175,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 2/2 | Complete   | 2026-05-13 |
 | 11. Adapter Detection, Selection & Tool Routing | v1.2     | 5/5 | Complete   | 2026-05-18 |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 4/4 | Complete   | 2026-05-19 |
-| 13. RN Style Signal Extraction                 | v1.2      | 1/3 | In Progress|  |
+| 13. RN Style Signal Extraction                 | v1.2      | 2/3 | In Progress|  |
 | 14. Resolver Platform-Suffix Fallback          | v1.2      | 0/?            | Not started | —          |
 | 15. Integration Suite & --init Template        | v1.2      | 0/?            | Not started | —          |
 ### Phase 12: ExpoRouterAdapter Routing & RN Primitives
