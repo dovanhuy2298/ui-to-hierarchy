@@ -285,10 +285,36 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
         },
       });
 
-      // 2. screenInfos traversal deactivated (IN-01): populated but never used.
-      // The ScreenInfo interface is kept for future propagation into ComponentDefinition.
-      // Re-enable this block when screen metadata propagation is implemented.
-      // const screenInfos: ScreenInfo[] = []; // deferred — see IN-01
+      // 2. Tabs.Screen / Stack.Screen traversal: emits warnings for non-literal name props.
+      // NOTE (IN-01): screenInfos collection is disabled — the array was populated but never used.
+      // The traversal is kept for its warning side-effects; re-enable push when propagation lands.
+      traverse(parsed.ast, {
+        JSXElement(path: { node: t.JSXElement }) {
+          const openingEl = path.node.openingElement;
+          const nameNode = openingEl.name;
+          if (!t.isJSXMemberExpression(nameNode)) return;
+          const objName = t.isJSXIdentifier(nameNode.object) ? nameNode.object.name : null;
+          const propName = t.isJSXIdentifier(nameNode.property) ? nameNode.property.name : null;
+          if (!objName || !propName) return;
+          if (!["Tabs", "Stack"].includes(objName)) return;
+          if (propName !== "Screen") return;
+
+          const line = openingEl.loc?.start.line ?? 0;
+          const navigatorName = objName;
+
+          const nameAttr = getJsxAttr(openingEl.attributes, "name");
+          if (!nameAttr.found) return;
+
+          const nameAttrValue = nameAttr.node.value;
+          if (!nameAttrValue || !t.isStringLiteral(nameAttrValue)) {
+            ctx.warnings.push(
+              `Non-literal name prop on <${navigatorName}.Screen> at ${fwdFile}:${line} — screen not enumerated`,
+            );
+            return;
+          }
+          // screenInfos.push(...) deferred — IN-01
+        },
+      });
 
       // 3. Discover components and post-process
       const components = discoverComponents(parsed.ast);
@@ -776,7 +802,7 @@ function visitRenderNode(
           typeof attr.value.value === "string"
         ) {
           // Strip NativeWind platform-variant prefixes (ios: / android: / web: / native:)
-          const PLATFORM_VARIANT_RE = /(?:ios|android|web|native):(S+)/g;
+          const PLATFORM_VARIANT_RE = /(?:ios|android|web|native):(\S+)/g;
           const stripped = attr.value.value
             .replace(PLATFORM_VARIANT_RE, "$1")
             .trim()
