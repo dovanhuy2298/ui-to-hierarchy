@@ -1132,6 +1132,17 @@ export class Analyzer {
           }
         }
       },
+      JSXOpeningElement(path: { node: t.JSXOpeningElement }) {
+        const nameNode = path.node.name;
+        if (t.isJSXIdentifier(nameNode)) {
+          const binding = bindings.get(nameNode.name);
+          const importSource = binding?.source ?? "";
+          if (adapter.slotMarker(nameNode.name, importSource)) {
+            const line = path.node.loc?.start.line ?? 0;
+            lines.add(line);
+          }
+        }
+      },
     });
     return lines;
   }
