@@ -40,7 +40,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] **Phase 10: Interface Widening & Analyzer De-Next-ification** — Widen `FrameworkAdapter` (3 new methods) and delegate Analyzer's 5 Next.js leak sites; NextJsAdapter migrated, full suite re-locked green. (completed 2026-05-13)
 - [x] **Phase 11: Adapter Detection, Selection & Tool Routing** — Two-signal auto-detect, `--framework` override, conflict/zero-match errors with named paths; 4 MCP tools route through `selectAdapter`. (completed 2026-05-18)
 - [x] **Phase 12: ExpoRouterAdapter Routing & RN Primitives** — Discover routes from `app/` (and `src/app/`), compose `_layout.tsx` chain via `<Slot/>`, dynamic segments, groups, `index`, `<Tabs>`/`<Stack>`, `+not-found`; RN primitive recognition by import source; `<Text>`-anchored text content. (completed 2026-05-19)
-- [ ] **Phase 13: RN Style Signal Extraction** — `StyleSheet.create` named lookup (in-file + one-hop), inline `style={{}}`, `flattenStyleArray`, NativeWind `className` with variant strip; unsupported patterns degrade to `{ raw }` + warning.
+- [x] **Phase 13: RN Style Signal Extraction** — `StyleSheet.create` named lookup (in-file + one-hop), inline `style={{}}`, `flattenStyleArray`, NativeWind `className` with variant strip; unsupported patterns degrade to `{ raw }` + warning. (completed 2026-05-19)
 - [ ] **Phase 14: Resolver Platform-Suffix Fallback** — `core/resolver/relative.ts` resolves `Button.tsx` from `Button.{ios,android,native,web}.tsx` with preference `no-suffix > .native > .ios > .android > .web`.
 - [ ] **Phase 15: Integration Suite & --init Template** — Markdown + JSON integration coverage on both Expo fixtures; `init/template.ts` mentions multi-framework support; `__INIT_MARKER_VERSION__` bumped for clean re-injection.
 
@@ -132,7 +132,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 **Plans**: 3 plans
 - [x] 13-01-PLAN.md — Wave 0: scaffold src/core/styles/rn/ stubs + test it.todo files + verify EXPO-SLOT-01 at 494 tests
 - [x] 13-02-PLAN.md — Wave 1: implement parseStyleSheetCreate, extractRNInlineStyle, extractNativeWindClassNames, flattenStyleArray + 18+ unit tests (RN-04/05/06/07/08)
-- [ ] 13-03-PLAN.md — Wave 2: wire ExpoRouterAdapter (one-hop import resolution + globalStyleIndex) + NativeWind fixture + re-lock Expo snapshots
+- [x] 13-03-PLAN.md — Wave 2: wire ExpoRouterAdapter (one-hop import resolution + globalStyleIndex) + NativeWind fixture + re-lock Expo snapshots
 **Scope**: IN — `core/styles/rn/stylesheet-create.ts`, `core/styles/rn/style-prop.ts`, `core/styles/rn/index.ts`, NativeWind variant regex; wired post-processing into `ExpoRouterAdapter`. OUT — statically computing merged style results; type-aware resolution.
 
 ### Phase 14: Resolver Platform-Suffix Fallback
@@ -175,7 +175,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 2/2 | Complete   | 2026-05-13 |
 | 11. Adapter Detection, Selection & Tool Routing | v1.2     | 5/5 | Complete   | 2026-05-18 |
 | 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 4/4 | Complete   | 2026-05-19 |
-| 13. RN Style Signal Extraction                 | v1.2      | 2/3 | In Progress|  |
+| 13. RN Style Signal Extraction                 | v1.2      | 3/3 | Complete   | 2026-05-19 |
 | 14. Resolver Platform-Suffix Fallback          | v1.2      | 0/?            | Not started | —          |
 | 15. Integration Suite & --init Template        | v1.2      | 0/?            | Not started | —          |
 ### Phase 12: ExpoRouterAdapter Routing & RN Primitives
