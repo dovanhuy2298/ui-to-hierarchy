@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
-status: executing
-last_updated: "2026-05-19T02:26:14.687Z"
+status: in_progress
+last_updated: "2026-05-19T02:30:00.000Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 7
@@ -73,7 +73,6 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 - Phase 12 ALL PLANS COMPLETE. ExpoRouterAdapter fully implemented (Plans 01-03) + snapshot baselines locked (Plan 04).
 - EXPO-SLOT-01: Slot injection does not work for kind:component nodes in injectChildrenSlots. Expo layouts show <Slot> component node instead of substituted page tree. Fix needed in Phase 13.
-- Pre-existing failures in test/adapters/select.test.ts (6) — vi.mocked hoisting issue, unrelated to Phase 12.
 - Snapshot baselines at test/adapters/expo/__snapshots__/ reflect current limited output; will improve when EXPO-SLOT-01 is fixed.
 - RN text extraction uses __rnText synthetic attribute on RenderNode — future plan can promote to TreeNode text field.
 
