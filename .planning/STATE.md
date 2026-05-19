@@ -15,7 +15,7 @@ progress:
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-19 — Phase 12 Plan 04 complete; snapshot lock for expo-basic and expo-tabs-and-dynamic; EXPO-SLOT-01 bug surfaced (Slot injection not working for kind:component); 3 new tests (491→494)
+**Last updated:** 2026-05-19 — Phase 13 planned; 3 plans in 3 waves (Wave 0: stubs, Wave 1: core extractors, Wave 2: adapter wiring); EXPO-SLOT-01 already fixed in commit 7b80ae0
 
 ## Project Reference
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 
 ## Current Position
 
-Phase: 12 — ExpoRouterAdapter Routing & RN Primitives
-Plan: 4 of 4 (Plan 04 complete — Wave 3 done, Phase 12 COMPLETE)
-Status: Phase complete
+Phase: 13 — RN Style Signal Extraction
+Plan: 0 of 3 (planning complete — ready to execute)
+Status: Ready to execute
 Last activity: 2026-05-19
 
 ## Progress Bar
