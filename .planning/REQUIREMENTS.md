@@ -32,11 +32,11 @@
 - [x] **RN-01**: RN primitive allowlist (`View`, `Text`, `ScrollView`, `Image`, `Touchable*`, `Pressable`, `FlatList`, `SectionList`, `Modal`, `KeyboardAvoidingView`, `SafeAreaView` when from `react-native`, etc.) is recognized as `kind: "element"` when imported from `react-native`.
 - [x] **RN-02**: A user-defined component sharing a primitive name (e.g., `<Text>` imported from `@/components/Text`) stays `kind: "component"` — disambiguation is by **import source**, not by tag name alone. Namespace imports (`import * as RN from "react-native"`) handled or documented.
 - [x] **RN-03**: Text content extraction is anchored on `<Text>` children: literal strings inside `<Text>` populate the node's text content (parallel to v1.0 text extraction on web).
-- [ ] **RN-04**: `StyleSheet.create({card: {...}})` calls are indexed at parse time and exposed via `ParseResult`; `style={styles.card}` references resolve to the property name keys. Supports in-file literal object + one-hop import (lookup-only); behavior documented in a doc-comment support matrix in `core/styles/rn/stylesheet-create.ts`.
-- [ ] **RN-05**: Inline `style={{ padding: 8 }}` extracted on RN primitives (parity with v1.0 web inline-style extractor); existing v1.0 extractor reused where possible.
-- [ ] **RN-06**: Style array merging `style={[a, b, dynamic && c]}` flattened by a dedicated `flattenStyleArray` utility; conditional members contribute as a union to `find_by_style` recall (so `dynamic && styles.c` makes `c`'s keys findable even though the runtime evaluation is unknown).
-- [ ] **RN-07**: NativeWind `className` extracted on RN primitives; platform variants stripped via regex audit (`ios:`, `android:`, `web:`, `native:`); unsupported `tw\`...\`` tagged template is acknowledged with a warning, not silently dropped.
-- [ ] **RN-08**: Unsupported `StyleSheet.create` patterns (computed keys, factory functions, hook-returned styles, two-hop imports) emit `{ raw: <source-text> }` plus an envelope warning rather than throw — degrades gracefully.
+- [x] **RN-04**: `StyleSheet.create({card: {...}})` calls are indexed at parse time and exposed via `ParseResult`; `style={styles.card}` references resolve to the property name keys. Supports in-file literal object + one-hop import (lookup-only); behavior documented in a doc-comment support matrix in `core/styles/rn/stylesheet-create.ts`.
+- [x] **RN-05**: Inline `style={{ padding: 8 }}` extracted on RN primitives (parity with v1.0 web inline-style extractor); existing v1.0 extractor reused where possible.
+- [x] **RN-06**: Style array merging `style={[a, b, dynamic && c]}` flattened by a dedicated `flattenStyleArray` utility; conditional members contribute as a union to `find_by_style` recall (so `dynamic && styles.c` makes `c`'s keys findable even though the runtime evaluation is unknown).
+- [x] **RN-07**: NativeWind `className` extracted on RN primitives; platform variants stripped via regex audit (`ios:`, `android:`, `web:`, `native:`); unsupported `tw\`...\`` tagged template is acknowledged with a warning, not silently dropped.
+- [x] **RN-08**: Unsupported `StyleSheet.create` patterns (computed keys, factory functions, hook-returned styles, two-hop imports) emit `{ raw: <source-text> }` plus an envelope warning rather than throw — degrades gracefully.
 
 ### INTEG — Fixtures, integration tests, --init guide
 

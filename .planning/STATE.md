@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
-status: completed
-last_updated: "2026-05-19T03:18:36.828Z"
+status: executing
+last_updated: "2026-05-19T04:04:32.439Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 17
+  completed_plans: 15
   percent: 57
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-19 — Phase 13 planned; 3 plans in 3 waves (Wave 0: stubs, Wave 1: core extractors, Wave 2: adapter wiring); EXPO-SLOT-01 already fixed in commit 7b80ae0
+**Last updated:** 2026-05-19 — Phase 13 Plan 01 (Wave 0) executed: src/core/styles/rn/ stubs created (3 source + 3 test), EXPO-SLOT-01 verified green at 488 passing + 6 pre-existing failures; Wave 1 (13-02) ready to proceed
 
 ## Project Reference
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 13 — RN Style Signal Extraction
-Plan: 0 of 3 (planning complete — ready to execute)
-Status: Ready to execute
+Plan: 2 of 3 (Plan 01 complete — Wave 1 ready)
+Status: Executing
 Last activity: 2026-05-19
 
 ## Progress Bar
@@ -42,7 +42,7 @@ v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
 v1.2   Phase 12  [##########] 100% (4/4 plans complete 2026-05-19)
-v1.2   Phase 13  [..........]   0%
+v1.2   Phase 13  [###.......]  33% (1/3 plans)
 v1.2   Phase 14  [..........]   0%
 v1.2   Phase 15  [..........]   0%
 ```
@@ -68,12 +68,13 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 - pendingWarnings pattern: queue in adapter.discoverEntries, flush+clear at start of extractComponents.
 - Analyzer JSXOpeningElement visitor added inside existing traverse call (same closure, same lines Set).
 - Tabs/Stack.Screen literal-only options serialization silently drops expression values (D-03).
+- test/core/styles/rn/ requires ../../../../src/ (4 levels up) not ../../../src/ (3 levels) — Vite ESM resolution depth mismatch discovered in Wave 0.
+- extractRNInlineStyle thin-delegates to extractInlineStyle — no reimplementation of inline-style logic (RN-05 SPEC mandate).
 
 ### Open Todos
 
-- Phase 12 ALL PLANS COMPLETE. ExpoRouterAdapter fully implemented (Plans 01-03) + snapshot baselines locked (Plan 04).
-- EXPO-SLOT-01: Slot injection does not work for kind:component nodes in injectChildrenSlots. Expo layouts show <Slot> component node instead of substituted page tree. Fix needed in Phase 13.
-- Snapshot baselines at test/adapters/expo/__snapshots__/ reflect current limited output; will improve when EXPO-SLOT-01 is fixed.
+- Phase 13 Plan 01 COMPLETE. Wave 0 stubs created; EXPO-SLOT-01 verified green (commit 7b80ae0). Wave 1 (13-02) ready.
+- EXPO-SLOT-01: VERIFIED GREEN — 109 expo tests pass, no failures. Fix was in commit 7b80ae0 from Phase 12.
 - RN text extraction uses __rnText synthetic attribute on RenderNode — future plan can promote to TreeNode text field.
 
 ### Blockers
@@ -89,8 +90,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-19 — Phase 12 Plan 04 executed: locked expo-basic and expo-tabs-and-dynamic snapshots; EXPO-SLOT-01 bug surfaced. Test count 491 → 494 (+3 tests). Commit: 8d0dbdd.
-- Next command: `/gsd:execute-phase 13` (Phase 13: fix EXPO-SLOT-01 and further Expo Router work)
+- Last session: 2026-05-19 — Phase 13 Plan 01 (Wave 0) executed: src/core/styles/rn/ stubs (3 source + 3 test, 19 it.todo), EXPO-SLOT-01 verified green (488 passing + 6 pre-existing failures). Commits: 2ec2245, 48f9f89.
+- Next command: `/gsd:execute-phase 13` plan 02 (Wave 1: parseStyleSheetCreate, flattenStyleArray, extractNativeWindClassNames implementations)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
