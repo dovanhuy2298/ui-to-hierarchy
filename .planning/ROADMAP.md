@@ -129,7 +129,10 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   3. `style={[styles.a, styles.b, dynamic && styles.c]}` flattens via `flattenStyleArray`; conditional members contribute their keys to the union exposed to `find_by_style` (a search for `c` hits even though runtime resolution is unknown); ≥8 shape tests cover the matrix.
   4. NativeWind `className="ios:p-4 android:p-2 text-lg"` is recognized on RN primitives; platform variants are stripped via a regex audit (`ios:`, `android:`, `web:`, `native:`); a `tw\`...\`` tagged template emits an explicit warning instead of being silently dropped.
   5. Unsupported `StyleSheet.create` patterns (computed keys, factory functions, hook-returned styles, two-hop imports) emit a node with `{ raw: <source-text> }` plus an envelope warning — the tool returns success, not error.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 13-01-PLAN.md — Wave 0: scaffold src/core/styles/rn/ stubs + test it.todo files + verify EXPO-SLOT-01 at 494 tests
+- [ ] 13-02-PLAN.md — Wave 1: implement parseStyleSheetCreate, extractRNInlineStyle, extractNativeWindClassNames, flattenStyleArray + 18+ unit tests (RN-04/05/06/07/08)
+- [ ] 13-03-PLAN.md — Wave 2: wire ExpoRouterAdapter (one-hop import resolution + globalStyleIndex) + NativeWind fixture + re-lock Expo snapshots
 **Scope**: IN — `core/styles/rn/stylesheet-create.ts`, `core/styles/rn/style-prop.ts`, `core/styles/rn/index.ts`, NativeWind variant regex; wired post-processing into `ExpoRouterAdapter`. OUT — statically computing merged style results; type-aware resolution.
 
 ### Phase 14: Resolver Platform-Suffix Fallback
