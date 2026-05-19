@@ -285,58 +285,10 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
         },
       });
 
-      // 2. Collect Tabs.Screen / Stack.Screen info from JSX.
-      // NOTE (WR-01 / SPEC gap): screenInfos is collected here but not propagated
-      // into ComponentDefinition. Screen metadata propagation is deferred to a future phase.
-      const screenInfos: ScreenInfo[] = [];
-      traverse(parsed.ast, {
-        JSXElement(path: { node: t.JSXElement }) {
-          const openingEl = path.node.openingElement;
-          const nameNode = openingEl.name;
-          // Match <Tabs.Screen> or <Stack.Screen>
-          if (!t.isJSXMemberExpression(nameNode)) return;
-          const objName = t.isJSXIdentifier(nameNode.object) ? nameNode.object.name : null;
-          const propName = t.isJSXIdentifier(nameNode.property) ? nameNode.property.name : null;
-          if (!objName || !propName) return;
-          if (!["Tabs", "Stack"].includes(objName)) return;
-          if (propName !== "Screen") return;
-
-          const line = openingEl.loc?.start.line ?? 0;
-          const navigatorName = objName;
-
-          // Extract name attribute
-          const nameAttr = getJsxAttr(openingEl.attributes, "name");
-          if (!nameAttr.found) return;
-
-          const nameAttrValue = nameAttr.node.value;
-          if (!nameAttrValue || !t.isStringLiteral(nameAttrValue)) {
-            // Non-literal name prop — emit warning, skip enumeration
-            ctx.warnings.push(
-              `Non-literal name prop on <${navigatorName}.Screen> at ${fwdFile}:${line} — screen not enumerated`,
-            );
-            return;
-          }
-          const screenName = nameAttrValue.value;
-
-          // Extract options attribute
-          let optionsValue = "{}";
-          const optionsAttr = getJsxAttr(openingEl.attributes, "options");
-          if (optionsAttr.found) {
-            const optionsAttrValue = optionsAttr.node.value;
-            if (
-              optionsAttrValue &&
-              t.isJSXExpressionContainer(optionsAttrValue) &&
-              !t.isJSXEmptyExpression(optionsAttrValue.expression)
-            ) {
-              optionsValue = serializeOptionsObject(
-                optionsAttrValue.expression as t.Expression,
-              );
-            }
-          }
-
-          screenInfos.push({ navigatorName, screenName, optionsValue, line });
-        },
-      });
+      // 2. screenInfos traversal deactivated (IN-01): populated but never used.
+      // The ScreenInfo interface is kept for future propagation into ComponentDefinition.
+      // Re-enable this block when screen metadata propagation is implemented.
+      // const screenInfos: ScreenInfo[] = []; // deferred — see IN-01
 
       // 3. Discover components and post-process
       const components = discoverComponents(parsed.ast);
