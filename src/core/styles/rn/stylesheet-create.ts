@@ -28,10 +28,59 @@ export function parseStyleSheetCreate(
   warnings: string[],
   file: string,
 ): Map<string, string[]> {
-  // Wave 1: implement per RESEARCH Pattern 1
-  void traverse; // imported for Wave 1 use; suppress unused-import lint
-  void source;
-  void warnings;
-  void file;
-  return new Map();
+  const out = new Map<string, string[]>();
+
+  traverse(ast, {
+    CallExpression(path) {
+      const callee = path.node.callee;
+
+      // Match StyleSheet.create(...)
+      if (
+        !t.isMemberExpression(callee) ||
+        !t.isIdentifier(callee.object, { name: "StyleSheet" }) ||
+        !t.isIdentifier(callee.property, { name: "create" })
+      ) {
+        return;
+      }
+
+      const arg = path.node.arguments[0];
+      if (!arg) return;
+
+      // Resolve varName via parentPath — the CallExpression's parent is VariableDeclarator
+      const parent = path.parentPath?.node;
+      if (
+        !parent ||
+        !t.isVariableDeclarator(parent) ||
+        !t.isIdentifier(parent.id)
+      ) {
+        // Not assigned to a variable — skip silently (no varName to index)
+        return;
+      }
+      const varName = parent.id.name;
+
+      // RN-08: non-ObjectExpression argument → emit warning and skip entry
+      if (!t.isObjectExpression(arg)) {
+        const raw = source.slice(arg.start ?? 0, arg.end ?? 0);
+        warnings.push(
+          "Unsupported StyleSheet.create argument: " + raw + " at " + file,
+        );
+        return;
+      }
+
+      // Extract top-level literal keys from the object expression
+      const keys: string[] = [];
+      for (const prop of arg.properties) {
+        if (!t.isObjectProperty(prop) || prop.computed) continue;
+        const key = t.isIdentifier(prop.key)
+          ? prop.key.name
+          : t.isStringLiteral(prop.key)
+            ? prop.key.value
+            : null;
+        if (key) keys.push(key);
+      }
+      out.set(varName, keys);
+    },
+  });
+
+  return out;
 }

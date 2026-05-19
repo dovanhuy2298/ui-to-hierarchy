@@ -33,10 +33,38 @@ export function extractNativeWindClassNames(
   file: string,
   line: number,
 ): string[] {
-  // Wave 1: implement per RESEARCH Pattern 3 (regex /(ios|android|web|native):/g)
-  void jsxElement;
-  void warnings;
-  void file;
-  void line;
+  // Find the className attribute on the JSX element
+  const attr = jsxElement.openingElement.attributes.find(
+    (a): a is t.JSXAttribute =>
+      t.isJSXAttribute(a) &&
+      t.isJSXIdentifier(a.name) &&
+      a.name.name === "className",
+  );
+  if (!attr) return [];
+
+  const val = attr.value;
+
+  // Branch on val type FIRST (Pitfall 5: never run regex on tagged template content)
+  if (t.isStringLiteral(val)) {
+    const PLATFORM_VARIANT_RE = /(ios|android|web|native):/g;
+    const stripped = val.value.replace(PLATFORM_VARIANT_RE, "");
+    return stripped.trim().split(/\s+/).filter(Boolean);
+  }
+
+  if (t.isJSXExpressionContainer(val)) {
+    const expr = val.expression;
+    if (t.isTaggedTemplateExpression(expr)) {
+      warnings.push(
+        "NativeWind tw` ` tagged template not supported — use className string at " +
+          file +
+          ":" +
+          line,
+      );
+      return [];
+    }
+    // Other expressions (variables, concatenations) → silently unsupported until v1.3
+    return [];
+  }
+
   return [];
 }

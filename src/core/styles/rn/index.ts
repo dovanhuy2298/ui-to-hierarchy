@@ -28,13 +28,67 @@ export function flattenStyleArray(
   warnings: string[],
   file: string,
 ): string[] {
-  // Wave 1: implement per RESEARCH Pattern 2 (null-check before t.is*; ≥ 8 cases)
-  void node;
-  void fileStyleIndex;
-  void source;
-  void warnings;
-  void file;
-  return [];
+  const expr = node.expression;
+  if (!t.isArrayExpression(expr)) return [];
+
+  const keys: string[] = [];
+
+  for (const el of expr.elements) {
+    // MUST BE FIRST: sparse array holes are JS null (not t.NullLiteral) — Pitfall 4
+    if (el === null) continue;
+
+    // Null/Boolean literals → skip silently, no warning
+    if (t.isNullLiteral(el) || t.isBooleanLiteral(el)) continue;
+
+    // StringLiteral → pass through as a key
+    if (t.isStringLiteral(el)) {
+      keys.push(el.value);
+      continue;
+    }
+
+    // Nested ArrayExpression → warn and skip
+    if (t.isArrayExpression(el)) {
+      warnings.push("Nested array in style prop at " + file + " — skipped");
+      continue;
+    }
+
+    // MemberExpression or LogicalExpression(&&/||).right MemberExpression
+    const memberEl = t.isMemberExpression(el)
+      ? el
+      : t.isLogicalExpression(el) && t.isMemberExpression(el.right)
+        ? el.right
+        : null;
+
+    if (
+      memberEl &&
+      t.isIdentifier(memberEl.object) &&
+      t.isIdentifier(memberEl.property)
+    ) {
+      const varName = memberEl.object.name;
+      const indexKeys = fileStyleIndex.get(varName);
+      if (indexKeys) {
+        keys.push(...indexKeys);
+      } else {
+        warnings.push(
+          "StyleSheet var '" + varName + "' not found in index at " + file,
+        );
+      }
+      continue;
+    }
+
+    // CallExpression → warn and skip
+    if (t.isCallExpression(el)) {
+      const raw = source.slice(el.start ?? 0, el.end ?? 0);
+      warnings.push(
+        "Unsupported style array element (call expr): " + raw + " at " + file,
+      );
+      continue;
+    }
+
+    // Anything else falls through silently
+  }
+
+  return keys;
 }
 
 export { parseStyleSheetCreate } from "./stylesheet-create.js";
