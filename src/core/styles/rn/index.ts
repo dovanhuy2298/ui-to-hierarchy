@@ -52,10 +52,15 @@ export function flattenStyleArray(
       continue;
     }
 
-    // MemberExpression or LogicalExpression(&&/||).right MemberExpression
+    // MemberExpression or LogicalExpression(&&/||/??).right MemberExpression
+    // All three operators are treated as "the right side may be applied" —
+    // && is conditional, || and ?? are fallbacks, but all three are included
+    // as reasonable static approximations for style array analysis.
     const memberEl = t.isMemberExpression(el)
       ? el
-      : t.isLogicalExpression(el) && t.isMemberExpression(el.right)
+      : t.isLogicalExpression(el) &&
+          (el.operator === "&&" || el.operator === "||" || el.operator === "??") &&
+          t.isMemberExpression(el.right)
         ? el.right
         : null;
 
@@ -65,9 +70,17 @@ export function flattenStyleArray(
       t.isIdentifier(memberEl.property)
     ) {
       const varName = memberEl.object.name;
+      const accessedKey = memberEl.property.name;
       const indexKeys = fileStyleIndex.get(varName);
       if (indexKeys) {
-        keys.push(...indexKeys);
+        // Emit only the accessed key, not all keys in the stylesheet var (CR-01 fix)
+        if (indexKeys.includes(accessedKey)) {
+          keys.push(accessedKey);
+        } else {
+          warnings.push(
+            "StyleSheet key '" + accessedKey + "' not found in var '" + varName + "' at " + file,
+          );
+        }
       } else {
         warnings.push(
           "StyleSheet var '" + varName + "' not found in index at " + file,

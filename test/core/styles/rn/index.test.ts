@@ -36,12 +36,13 @@ function buildArrayContainer(arraySrc: string): {
 }
 
 describe("RN-06 flattenStyleArray", () => {
-  it("resolves MemberExpression styles.card to fileStyleIndex keys", () => {
+  it("resolves MemberExpression styles.card to only the accessed key", () => {
     const { node, source } = buildArrayContainer("[styles.card]");
     const index = new Map([["styles", ["card", "bold"]]]);
     const warnings: string[] = [];
     const result = flattenStyleArray(node, index, source, warnings, "test.tsx");
-    expect(result).toEqual(["card", "bold"]);
+    // CR-01 fix: emit only the accessed key (card), not all keys in the stylesheet var
+    expect(result).toEqual(["card"]);
     expect(warnings).toHaveLength(0);
   });
 
@@ -50,29 +51,30 @@ describe("RN-06 flattenStyleArray", () => {
     const index = new Map([["styles", ["card", "bold"]]]);
     const warnings: string[] = [];
     const result = flattenStyleArray(node, index, source, warnings, "test.tsx");
-    // Same varName → keys appended twice (union, not dedup required by SPEC)
-    expect(result).toContain("card");
-    expect(result).toContain("bold");
+    // CR-01 fix: each access emits only its own accessed key
+    expect(result).toEqual(["card", "bold"]);
     expect(warnings).toHaveLength(0);
   });
 
-  it("includes right-side keys from LogicalExpression && conditional", () => {
+  it("includes right-side key from LogicalExpression && conditional", () => {
     const { node, source } = buildArrayContainer("[active && styles.bold]");
     const index = new Map([["styles", ["card", "bold"]]]);
     const warnings: string[] = [];
     const result = flattenStyleArray(node, index, source, warnings, "test.tsx");
-    expect(result).toContain("card");
-    expect(result).toContain("bold");
+    // CR-01 fix: emit only the accessed key (bold), not all keys in the stylesheet var
+    expect(result).toEqual(["bold"]);
+    expect(result).not.toContain("card");
     expect(warnings).toHaveLength(0);
   });
 
-  it("includes right-side keys from LogicalExpression || conditional", () => {
+  it("includes right-side key from LogicalExpression || conditional", () => {
     const { node, source } = buildArrayContainer("[a || styles.b]");
     const index = new Map([["styles", ["b", "c"]]]);
     const warnings: string[] = [];
     const result = flattenStyleArray(node, index, source, warnings, "test.tsx");
-    expect(result).toContain("b");
-    expect(result).toContain("c");
+    // CR-01 fix: emit only the accessed key (b), not all keys in the stylesheet var
+    expect(result).toEqual(["b"]);
+    expect(result).not.toContain("c");
     expect(warnings).toHaveLength(0);
   });
 
