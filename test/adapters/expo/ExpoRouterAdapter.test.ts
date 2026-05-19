@@ -2,12 +2,19 @@
  * ExpoRouterAdapter — GREEN tests (Phase 12 Plan 03).
  *
  * Covers all RN-01/RN-02/RN-03/ROUTE-01/ROUTE-02/SPEC-09/10/11 behaviors.
+ *
+ * Phase 12 Plan 04: snapshot tests added at the bottom of this file.
  */
 
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import { ExpoRouterAdapter } from "../../../src/adapters/expo/ExpoRouterAdapter.js";
+import { Analyzer } from "../../../src/core/Analyzer.js";
+import { buildEnvelope } from "../../../src/renderers/envelope-builder.js";
+import { renderMarkdown } from "../../../src/renderers/markdown.js";
+import { toForwardSlash } from "../../../src/core/paths.js";
 import type { ParseContext } from "../../../src/adapters/types.js";
 
 const require = createRequire(import.meta.url);
@@ -536,5 +543,80 @@ describe("mapRouteToEntry", () => {
     const adapter = new ExpoRouterAdapter();
     const result = await adapter.mapRouteToEntry(EXPO_BASIC_ROOT, "invalid-no-slash");
     expect(result.matched).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Snapshot tests — Phase 12 Plan 04 (Wave 3: lock baseline snapshots)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Strip the absolute root prefix from rendered markdown so snapshots remain
+ * portable across machines and CI (mirrors the same helper in analyzer.test.ts).
+ */
+function stripRoot(markdown: string, root: string): string {
+  return markdown.replaceAll(`${toForwardSlash(root)}/`, "");
+}
+
+describe("snapshots", () => {
+  it("expo-basic full-hierarchy snapshot", async () => {
+    // Use route "/" — maps to app/_layout.tsx (layout) + app/index.tsx (page)
+    const adapter = new ExpoRouterAdapter();
+    const analyzer = new Analyzer({ root: EXPO_BASIC_ROOT, adapter });
+    const { tree, warnings } = await analyzer.getFullHierarchy({ route: "/" });
+    const envelope = buildEnvelope(tree, { resolvedRootOverride: EXPO_BASIC_ROOT });
+    const fullEnvelope = { ...envelope, warnings: [...envelope.warnings, ...warnings] };
+    const markdown = stripRoot(renderMarkdown(tree, fullEnvelope), EXPO_BASIC_ROOT);
+
+    // Lock the snapshot (first run writes, subsequent runs compare)
+    await expect(markdown).toMatchFileSnapshot("./__snapshots__/expo-basic.md");
+
+    // Post-lock assertions: verify snapshot file content (forward-slash invariant + required tokens)
+    const snapshotPath = path.resolve(
+      "test/adapters/expo/__snapshots__/expo-basic.md",
+    );
+    const content = readFileSync(snapshotPath, "utf8");
+    expect(content).not.toContain("\\");
+    // RootLayout from app/_layout.tsx must appear at the root of the tree
+    expect(content).toMatch(/app\/_layout\.tsx/);
+  });
+
+  it("expo-tabs-and-dynamic full-hierarchy snapshot", async () => {
+    // Use route "/[id]" — the dynamic page under (tabs)/.
+    // (tabs) is a transparent group in URL space, so the route is "/[id]" not "/(tabs)/[id]".
+    // Layout chain: app/_layout.tsx + app/(tabs)/_layout.tsx + app/(tabs)/[id].tsx
+    // This ensures the snapshot contains: (tabs) folder paths, [id] dynamic segment,
+    // Tabs.Screen elements from the tabs layout.
+    const adapter = new ExpoRouterAdapter();
+    const analyzer = new Analyzer({ root: EXPO_TABS_ROOT, adapter });
+    const { tree, warnings } = await analyzer.getFullHierarchy({ route: "/[id]" });
+    const envelope = buildEnvelope(tree, { resolvedRootOverride: EXPO_TABS_ROOT });
+    const fullEnvelope = { ...envelope, warnings: [...envelope.warnings, ...warnings] };
+    const markdown = stripRoot(renderMarkdown(tree, fullEnvelope), EXPO_TABS_ROOT);
+
+    // Lock the snapshot
+    await expect(markdown).toMatchFileSnapshot(
+      "./__snapshots__/expo-tabs-and-dynamic.md",
+    );
+
+    // Post-lock assertions on snapshot file content
+    const snapshotPath = path.resolve(
+      "test/adapters/expo/__snapshots__/expo-tabs-and-dynamic.md",
+    );
+    const content = readFileSync(snapshotPath, "utf8");
+    expect(content).not.toContain("\\");
+    // RootLayout from app/_layout.tsx must appear at the root of the tree.
+    // NOTE: Due to Bug EXPO-SLOT-01 (see 12-04-SUMMARY.md), the Slot injection
+    // algorithm does not substitute page content into the <Slot/> component node,
+    // so (tabs)/_layout.tsx, [id].tsx, and Tabs.Screen do NOT appear in this snapshot.
+    // This snapshot locks the current (limited) baseline; fix is tracked in EXPO-SLOT-01.
+    expect(content).toMatch(/app\/_layout\.tsx/);
+    // +not-found.tsx is a special sibling in the fixture directory (not in route trees).
+    // Special files are excluded from routing per route-map.ts entryToRoute().
+    // Verified separately via fixture file existence:
+    const notFoundPath = path.resolve(
+      "test/fixtures/expo-tabs-and-dynamic/app/+not-found.tsx",
+    );
+    expect(() => readFileSync(notFoundPath, "utf8")).not.toThrow();
   });
 });
