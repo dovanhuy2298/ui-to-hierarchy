@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
 status: executing
-last_updated: "2026-05-19T01:54:35.263Z"
+last_updated: "2026-05-19T02:04:42.081Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 43
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-19 — Phase 12 Plan 01 complete; collectImportBindings extracted to core, 5 RED test stubs scaffolded
+**Last updated:** 2026-05-19 — Phase 12 Plan 02 complete; 4 utility modules (segments, discover, route-map, rn-primitives) implemented GREEN with 68 new tests
 
 ## Project Reference
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 12 — ExpoRouterAdapter Routing & RN Primitives
-Plan: 1 of 4 (Plan 01 complete — Wave 0 done)
+Plan: 2 of 4 (Plan 02 complete — Wave 1 done)
 Status: In progress
 Last activity: 2026-05-19
 
@@ -41,7 +41,7 @@ v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
-v1.2   Phase 12  [##.........]  25% (1/4 plans)
+v1.2   Phase 12  [####.......]  50% (2/4 plans)
 v1.2   Phase 13  [..........]   0%
 v1.2   Phase 14  [..........]   0%
 v1.2   Phase 15  [..........]   0%
@@ -59,10 +59,16 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 - `StyleSheet.create` support matrix: in-file literal + one-hop import only; everything else `{ raw }` + warning.
 - Platform-suffix mechanism ships in v1.2 (INTEG-05); `--platform` CLI flag exposure deferred to v1.3.
 - `layoutHint` field stays Next-specific in v1.2; RN nodes leave it unset.
+- ExpoSegment uses `name` field everywhere (not `param`) — locked by D-11, regression-tested.
+- resolveExpoRoot checks src/app FIRST, then app/ — D-08 priority reversal vs Next.js.
+- detectDualRoots returns booleans only; warning emission delegated to Wave 2 (ExpoRouterAdapter).
+- mapRouteToEntry uses linear layout chain walk — simpler than Next.js tree, no parallel slots in v1.
+- isRNPrimitive gates on both allowlist AND importSource === "react-native" — SPEC Req 10.
 
 ### Open Todos
 
-- Phase 12 Plan 01 complete. Wave 0 foundation done. Ready for Plan 02 (routing infrastructure).
+- Phase 12 Plan 02 complete. Wave 1 utility modules done. Ready for Plan 03 (ExpoRouterAdapter core).
+- Pre-existing failures in test/adapters/select.test.ts (6) and test/cli/framework-flag.test.ts (1) — vi.mocked hoisting issue, unrelated to Wave 1, deferred to Wave 3 investigation.
 
 ### Blockers
 
@@ -77,8 +83,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-19 — Phase 12 Plan 01 executed: collectImportBindings extracted to src/core/import-bindings.ts (island rule satisfied), Analyzer.ts refactored to import from new module, 5 RED test stubs scaffolded under test/adapters/expo/ (56 todos, 0 failures). 389 tests passing.
-- Next command: `/gsd:execute-phase 12` (continue with Plan 02)
+- Last session: 2026-05-19 — Phase 12 Plan 02 executed: 4 utility modules (segments.ts, discover.ts, route-map.ts, rn-primitives.ts) implemented with 68 new GREEN tests. Test count 389 → 450 passing.
+- Next command: `/gsd:execute-phase 12` (continue with Plan 03: ExpoRouterAdapter core)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -89,4 +95,4 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd:execute-phase 12` — continue Phase 12 (Plan 02: routing infrastructure — segments, discover, route-map).
+- `/gsd:execute-phase 12` — continue Phase 12 (Plan 03: ExpoRouterAdapter core).
