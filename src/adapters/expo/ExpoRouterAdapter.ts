@@ -776,9 +776,9 @@ function visitRenderNode(
           typeof attr.value.value === "string"
         ) {
           // Strip NativeWind platform-variant prefixes (ios: / android: / web: / native:)
-          const PLATFORM_VARIANT_RE = /(ios|android|web|native):/g;
+          const PLATFORM_VARIANT_RE = /(?:ios|android|web|native):(S+)/g;
           const stripped = attr.value.value
-            .replace(PLATFORM_VARIANT_RE, "")
+            .replace(PLATFORM_VARIANT_RE, "$1")
             .trim()
             .split(/\s+/)
             .filter(Boolean);
