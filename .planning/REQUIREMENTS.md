@@ -18,20 +18,20 @@
 
 ### ROUTE — Expo Router routing semantics
 
-- [ ] **ROUTE-01**: ExpoRouterAdapter discovers routes from `app/` and `src/app/`; when both exist, `src/app/` wins and a warning is emitted naming both directories.
-- [ ] **ROUTE-02**: `_layout.tsx` files compose a root → leaf layout chain; the JSX walker recognizes `<Slot/>` (imported from `expo-router`) as the children injection point — analogous to Next.js's `{children}` identifier.
+- [x] **ROUTE-01**: ExpoRouterAdapter discovers routes from `app/` and `src/app/`; when both exist, `src/app/` wins and a warning is emitted naming both directories.
+- [x] **ROUTE-02**: `_layout.tsx` files compose a root → leaf layout chain; the JSX walker recognizes `<Slot/>` (imported from `expo-router`) as the children injection point — analogous to Next.js's `{children}` identifier.
 - [ ] **ROUTE-03**: Dynamic segments parsed and surfaced in the route: `[param]`, `[...rest]`, `[[...opt]]`; each segment kind reflected in the rendered tree's route label.
 - [ ] **ROUTE-04**: Route groups `(group)/` are transparent — they do not contribute a URL segment but their `_layout.tsx` still participates in the layout chain.
 - [ ] **ROUTE-05**: `index.tsx` becomes the default route at its directory's URL (e.g., `app/index.tsx` → `/`, `app/settings/index.tsx` → `/settings`).
-- [ ] **ROUTE-06**: `<Tabs>` from `expo-router` recognized in `_layout.tsx`; literal-string `<Tabs.Screen name="..." options={...}>` children enumerated by name with their `options` summarized as attributes on the tab node.
-- [ ] **ROUTE-07**: `<Stack>` from `expo-router` recognized in `_layout.tsx`; `<Stack.Screen name="..." options={...}>` enumerated analogously to Tabs.Screen.
-- [ ] **ROUTE-08**: Expo-prefixed specials handled by convention: `+not-found.tsx` registered as a special sibling (not URL-mapped); `+html.tsx` and `+native-intent.tsx` skipped; `+api.ts` skipped (server route, no UI).
+- [x] **ROUTE-06**: `<Tabs>` from `expo-router` recognized in `_layout.tsx`; literal-string `<Tabs.Screen name="..." options={...}>` children enumerated by name with their `options` summarized as attributes on the tab node.
+- [x] **ROUTE-07**: `<Stack>` from `expo-router` recognized in `_layout.tsx`; `<Stack.Screen name="..." options={...}>` enumerated analogously to Tabs.Screen.
+- [x] **ROUTE-08**: Expo-prefixed specials handled by convention: `+not-found.tsx` registered as a special sibling (not URL-mapped); `+html.tsx` and `+native-intent.tsx` skipped; `+api.ts` skipped (server route, no UI).
 
 ### RN — React Native primitives & style signals
 
-- [ ] **RN-01**: RN primitive allowlist (`View`, `Text`, `ScrollView`, `Image`, `Touchable*`, `Pressable`, `FlatList`, `SectionList`, `Modal`, `KeyboardAvoidingView`, `SafeAreaView` when from `react-native`, etc.) is recognized as `kind: "element"` when imported from `react-native`.
-- [ ] **RN-02**: A user-defined component sharing a primitive name (e.g., `<Text>` imported from `@/components/Text`) stays `kind: "component"` — disambiguation is by **import source**, not by tag name alone. Namespace imports (`import * as RN from "react-native"`) handled or documented.
-- [ ] **RN-03**: Text content extraction is anchored on `<Text>` children: literal strings inside `<Text>` populate the node's text content (parallel to v1.0 text extraction on web).
+- [x] **RN-01**: RN primitive allowlist (`View`, `Text`, `ScrollView`, `Image`, `Touchable*`, `Pressable`, `FlatList`, `SectionList`, `Modal`, `KeyboardAvoidingView`, `SafeAreaView` when from `react-native`, etc.) is recognized as `kind: "element"` when imported from `react-native`.
+- [x] **RN-02**: A user-defined component sharing a primitive name (e.g., `<Text>` imported from `@/components/Text`) stays `kind: "component"` — disambiguation is by **import source**, not by tag name alone. Namespace imports (`import * as RN from "react-native"`) handled or documented.
+- [x] **RN-03**: Text content extraction is anchored on `<Text>` children: literal strings inside `<Text>` populate the node's text content (parallel to v1.0 text extraction on web).
 - [ ] **RN-04**: `StyleSheet.create({card: {...}})` calls are indexed at parse time and exposed via `ParseResult`; `style={styles.card}` references resolve to the property name keys. Supports in-file literal object + one-hop import (lookup-only); behavior documented in a doc-comment support matrix in `core/styles/rn/stylesheet-create.ts`.
 - [ ] **RN-05**: Inline `style={{ padding: 8 }}` extracted on RN primitives (parity with v1.0 web inline-style extractor); existing v1.0 extractor reused where possible.
 - [ ] **RN-06**: Style array merging `style={[a, b, dynamic && c]}` flattened by a dedicated `flattenStyleArray` utility; conditional members contribute as a union to `find_by_style` recall (so `dynamic && styles.c` makes `c`'s keys findable even though the runtime evaluation is unknown).

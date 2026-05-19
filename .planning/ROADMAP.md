@@ -112,9 +112,9 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   4. A user component named `<Text>` imported from `@/components/Text` keeps `kind: "component"`; `<Text>` imported from `react-native` is classified `kind: "element"` and its literal-string children populate the node's text content.
   5. When both `app/` and `src/app/` exist, `src/app/` wins and an envelope warning names both directories.
 **Plans**: 4 plans
-- [ ] 12-01-PLAN.md — Extract collectImportBindings to src/core/import-bindings.ts + scaffold RED test stubs (D-04, D-05)
-- [ ] 12-02-PLAN.md — Implement routing infra: segments.ts, discover.ts, route-map.ts, rn-primitives.ts (ROUTE-01, ROUTE-03, ROUTE-04, ROUTE-05)
-- [ ] 12-03-PLAN.md — Replace all 5 ExpoRouterAdapter stubs + extend Analyzer.collectChildrenSlotLines with JSXOpeningElement visitor (ROUTE-01, ROUTE-02, RN-01, RN-02, RN-03)
+- [x] 12-01-PLAN.md — Extract collectImportBindings to src/core/import-bindings.ts + scaffold RED test stubs (D-04, D-05)
+- [x] 12-02-PLAN.md — Implement routing infra: segments.ts, discover.ts, route-map.ts, rn-primitives.ts (ROUTE-01, ROUTE-03, ROUTE-04, ROUTE-05)
+- [x] 12-03-PLAN.md — Replace all 5 ExpoRouterAdapter stubs + extend Analyzer.collectChildrenSlotLines with JSXOpeningElement visitor (ROUTE-01, ROUTE-02, RN-01, RN-02, RN-03)
 - [ ] 12-04-PLAN.md — Lock expo-basic and expo-tabs-and-dynamic markdown snapshots; verify full suite green
 **Scope**: IN — `expo/discover.ts`, `segments.ts`, `route-map.ts`, `rn-primitives.ts`, `ExpoRouterAdapter.ts`, `<Slot>` / `<Tabs>` / `<Stack>` JSX walker. OUT — `StyleSheet.create` / style array / NativeWind extraction (Phase 13); platform-suffix resolution (Phase 14).
 **UI hint**: yes
@@ -171,7 +171,7 @@ Full details: [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 | 9. Fixture Design & Stub Packages              | v1.2      | 3/3            | Complete    | 2026-05-13 |
 | 10. Interface Widening & Analyzer De-Next-ification | v1.2 | 2/2 | Complete   | 2026-05-13 |
 | 11. Adapter Detection, Selection & Tool Routing | v1.2     | 5/5 | Complete   | 2026-05-18 |
-| 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 0/?            | Not started | —          |
+| 12. ExpoRouterAdapter Routing & RN Primitives  | v1.2      | 3/4 | In Progress|  |
 | 13. RN Style Signal Extraction                 | v1.2      | 0/?            | Not started | —          |
 | 14. Resolver Platform-Suffix Fallback          | v1.2      | 0/?            | Not started | —          |
 | 15. Integration Suite & --init Template        | v1.2      | 0/?            | Not started | —          |

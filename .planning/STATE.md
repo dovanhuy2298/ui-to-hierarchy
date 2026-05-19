@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
 status: executing
-last_updated: "2026-05-19T02:04:42.081Z"
+last_updated: "2026-05-19T02:14:39.843Z"
 last_activity: 2026-05-19
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 43
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-19 — Phase 12 Plan 02 complete; 4 utility modules (segments, discover, route-map, rn-primitives) implemented GREEN with 68 new tests
+**Last updated:** 2026-05-19 — Phase 12 Plan 03 complete; ExpoRouterAdapter real implementation + Analyzer JSXOpeningElement slot fix; 34 new tests (457→491)
 
 ## Project Reference
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 12 — ExpoRouterAdapter Routing & RN Primitives
-Plan: 2 of 4 (Plan 02 complete — Wave 1 done)
-Status: In progress
+Plan: 3 of 4 (Plan 03 complete — Wave 2 done)
+Status: Ready to execute
 Last activity: 2026-05-19
 
 ## Progress Bar
@@ -41,7 +41,7 @@ v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
-v1.2   Phase 12  [####.......]  50% (2/4 plans)
+v1.2   Phase 12  [######.....]  75% (3/4 plans)
 v1.2   Phase 13  [..........]   0%
 v1.2   Phase 14  [..........]   0%
 v1.2   Phase 15  [..........]   0%
@@ -64,11 +64,17 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 - detectDualRoots returns booleans only; warning emission delegated to Wave 2 (ExpoRouterAdapter).
 - mapRouteToEntry uses linear layout chain walk — simpler than Next.js tree, no parallel slots in v1.
 - isRNPrimitive gates on both allowlist AND importSource === "react-native" — SPEC Req 10.
+- RN text extraction injects __rnText synthetic attribute on RenderNode (avoids R8 schema change).
+- pendingWarnings pattern: queue in adapter.discoverEntries, flush+clear at start of extractComponents.
+- Analyzer JSXOpeningElement visitor added inside existing traverse call (same closure, same lines Set).
+- Tabs/Stack.Screen literal-only options serialization silently drops expression values (D-03).
 
 ### Open Todos
 
-- Phase 12 Plan 02 complete. Wave 1 utility modules done. Ready for Plan 03 (ExpoRouterAdapter core).
-- Pre-existing failures in test/adapters/select.test.ts (6) and test/cli/framework-flag.test.ts (1) — vi.mocked hoisting issue, unrelated to Wave 1, deferred to Wave 3 investigation.
+- Phase 12 Plan 03 complete. ExpoRouterAdapter fully implemented with RN primitives, slot injection fix, Tabs/Stack.Screen walker. 491 tests passing.
+- Pre-existing failures in test/adapters/select.test.ts (6) and test/cli/framework-flag.test.ts (1) — vi.mocked hoisting issue, unrelated to Wave 1-2, deferred to Wave 3 investigation.
+- RN text extraction uses __rnText synthetic attribute on RenderNode — future plan can promote to TreeNode text field.
+- pendingWarnings pattern established: queue in discoverEntries, flush in extractComponents.
 
 ### Blockers
 
@@ -83,8 +89,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-19 — Phase 12 Plan 02 executed: 4 utility modules (segments.ts, discover.ts, route-map.ts, rn-primitives.ts) implemented with 68 new GREEN tests. Test count 389 → 450 passing.
-- Next command: `/gsd:execute-phase 12` (continue with Plan 03: ExpoRouterAdapter core)
+- Last session: 2026-05-19 — Phase 12 Plan 03 executed: ExpoRouterAdapter all 5 stubs replaced + Analyzer JSXOpeningElement fix. Test count 457 → 491 (+34 tests). Commits: b81f40f, b93bf4f.
+- Next command: `/gsd:execute-phase 12` (continue with Plan 04: ExpoRouterAdapter snapshot tests)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -95,4 +101,4 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd:execute-phase 12` — continue Phase 12 (Plan 03: ExpoRouterAdapter core).
+- `/gsd:execute-phase 12` — continue Phase 12 (Plan 04: ExpoRouterAdapter snapshot tests).
