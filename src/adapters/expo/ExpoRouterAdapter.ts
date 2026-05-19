@@ -15,6 +15,8 @@ import type { FrameworkAdapter } from "../FrameworkAdapter.js";
 import type {
   ComponentDefinition,
   ParseContext,
+  PropSignature,
+  RenderNode,
   ResolveResult,
   RouteMatch,
 } from "../types.js";
@@ -37,48 +39,7 @@ import {
   mapRouteToEntry as expoMapRouteToEntry,
 } from "./route-map.js";
 import { isRNPrimitive } from "./rn-primitives.js";
-
-/** SKIP_KEYS — avoid descending into metadata fields when walking AST subtrees. */
-const SKIP_KEYS: ReadonlySet<string> = new Set([
-  "loc",
-  "start",
-  "end",
-  "range",
-  "leadingComments",
-  "trailingComments",
-  "innerComments",
-  "extra",
-]);
-
-function walkAst(node: t.Node | null | undefined, visit: (n: t.Node) => void): void {
-  if (!node) return;
-  visit(node);
-  for (const key of Object.keys(node)) {
-    if (SKIP_KEYS.has(key)) continue;
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (Array.isArray(child)) {
-      for (const c of child) {
-        if (isAstNode(c)) walkAst(c as t.Node, visit);
-      }
-    } else if (isAstNode(child)) {
-      walkAst(child as t.Node, visit);
-    }
-  }
-}
-
-function isAstNode(value: unknown): boolean {
-  return (
-    !!value && typeof value === "object" && typeof (value as { type?: unknown }).type === "string"
-  );
-}
-
-function collectJsxElements(node: t.Node): t.JSXElement[] {
-  const out: t.JSXElement[] = [];
-  walkAst(node, (n) => {
-    if (t.isJSXElement(n)) out.push(n);
-  });
-  return out;
-}
+import { detectExpoRouter } from "./detect.js";
 
 /**
  * Serialize an ObjectExpression's literal-typed properties to a compact JSON string.
@@ -140,11 +101,11 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
   private pendingWarnings: string[] = [];
 
   /**
-   * Always returns false — real detection is in src/adapters/expo/detect.ts.
-   * Do NOT call this method on an already-selected ExpoRouterAdapter instance.
+   * Delegates to detectExpoRouter for proper framework detection.
    */
-  async detect(_absRoot: string): Promise<boolean> {
-    return false;
+  async detect(absRoot: string): Promise<boolean> {
+    const { detected } = await detectExpoRouter(absRoot);
+    return detected;
   }
 
   /**
@@ -152,6 +113,12 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
    * First checks for dual-root situation (both app/ and src/app/ exist),
    * queues a warning into pendingWarnings if so, then delegates to the
    * standalone discoverEntries helper.
+   *
+   * IMPORTANT: This method must only be called ONCE per adapter instance.
+   * `pendingWarnings` accumulates across calls and is only flushed into the
+   * first subsequent `extractComponents` call. Calling `discoverEntries`
+   * multiple times will cause warnings to accumulate unboundedly and may
+   * result in them being attributed to the wrong parse context.
    */
   async discoverEntries(absRoot: string): Promise<string[]> {
     const { hasSrcApp, hasApp } = await detectDualRoots(absRoot);
@@ -274,7 +241,9 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
         },
       });
 
-      // 2. Collect Tabs.Screen / Stack.Screen info from JSX
+      // 2. Collect Tabs.Screen / Stack.Screen info from JSX.
+      // NOTE (WR-01 / SPEC gap): screenInfos is collected here but not propagated
+      // into ComponentDefinition. Screen metadata propagation is deferred to a future phase.
       const screenInfos: ScreenInfo[] = [];
       traverse(parsed.ast, {
         JSXElement(path: { node: t.JSXElement }) {
@@ -328,14 +297,13 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
       // 3. Discover components and post-process
       const components = discoverComponents(parsed.ast);
       for (const comp of components) {
+        // NOTE: screenInfos propagation into ComponentDefinition is deferred (SPEC gap).
         const componentDef = this.buildComponentDefinition(
           comp,
           parsed.ast,
           parsed.source,
           fwdFile,
           bindings,
-          screenInfos,
-          ctx,
         );
         out.push(componentDef);
       }
@@ -350,28 +318,23 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
     source: string,
     file: string,
     bindings: Map<string, { source: string; importedName: string }>,
-    _screenInfos: ScreenInfo[],
-    _ctx: ParseContext,
   ): ComponentDefinition {
     // 1. Render flow
     const renderFlow = walkRenderFlow(comp.body, source, file);
 
-    // 2. JSX elements for RN primitive post-processing
-    const jsxElements = collectJsxElements(comp.body);
-
-    // 3. Props
+    // 2. Props
     const props = extractProps(comp.body, source);
 
-    // 4. Text content
+    // 3. Text content
     const textContent = collectTextContent(renderFlow);
 
-    // 5. Runtime boundary
+    // 4. Runtime boundary
     const firstDirective = ast.program.directives[0]?.value.value;
     const runtime: "server" | "client" =
       firstDirective === "use client" ? "client" : "server";
 
-    // 6. RN primitive post-processing on render flow
-    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings, jsxElements);
+    // 5. RN primitive post-processing on render flow
+    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings);
 
     return {
       name: comp.name,
@@ -401,10 +364,9 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
  * We detect RN primitives using the bindings map.
  */
 function postProcessRenderFlow(
-  node: import("../types.js").RenderNode | null,
+  node: RenderNode | null,
   bindings: Map<string, { source: string; importedName: string }>,
-  _jsxElements: t.JSXElement[],
-): import("../types.js").RenderNode {
+): RenderNode {
   if (!node) {
     return { kind: "error", message: "null render flow", file: "", line: 0 };
   }
@@ -412,9 +374,9 @@ function postProcessRenderFlow(
 }
 
 function visitRenderNode(
-  node: import("../types.js").RenderNode,
+  node: RenderNode,
   bindings: Map<string, { source: string; importedName: string }>,
-): import("../types.js").RenderNode {
+): RenderNode {
   if (node.kind === "jsx") {
     const binding = bindings.get(node.tag);
     const isRN = binding ? isRNPrimitive(node.tag, binding.source) : false;
@@ -428,14 +390,14 @@ function visitRenderNode(
       // RN primitive: override isComponent to false (it's an element)
       // For "Text": extract literal text content
       if (node.tag === "Text") {
-        // Collect literal text from JSXText children (non-whitespace)
+        // Collect literal text from processed children (post-recursion, consistent with returned tree).
         const textParts: string[] = [];
-        for (const child of node.children) {
+        for (const child of processedChildren) {
           if (child.kind === "text" && child.value.trim()) {
             textParts.push(child.value.trim());
           }
         }
-        const textValue = textParts.join("").trim();
+        const textValue = textParts.join(" ").trim();
         const result: import("../types.js").RenderNode = {
           ...node,
           isComponent: false,
@@ -496,15 +458,12 @@ function visitRenderNode(
 // Helpers copied from NextJsAdapter (kept internal to this file)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PropSignature, RenderNode } from "../types.js";
-import * as tTypes from "@babel/types";
-
 function extractProps(body: t.Node, source: string): PropSignature[] {
   let fn: t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression | null = null;
   if (
-    tTypes.isFunctionDeclaration(body) ||
-    tTypes.isFunctionExpression(body) ||
-    tTypes.isArrowFunctionExpression(body)
+    t.isFunctionDeclaration(body) ||
+    t.isFunctionExpression(body) ||
+    t.isArrowFunctionExpression(body)
   ) {
     fn = body;
   }
@@ -514,34 +473,34 @@ function extractProps(body: t.Node, source: string): PropSignature[] {
 
   const typeSlice = readTypeSlice(param, source);
 
-  if (tTypes.isIdentifier(param)) {
+  if (t.isIdentifier(param)) {
     return [{ name: param.name, typeSlice, optional: !!param.optional }];
   }
 
-  if (tTypes.isAssignmentPattern(param) && tTypes.isIdentifier(param.left)) {
+  if (t.isAssignmentPattern(param) && t.isIdentifier(param.left)) {
     return [{ name: param.left.name, typeSlice, optional: true }];
   }
 
-  const objPat = tTypes.isObjectPattern(param)
+  const objPat = t.isObjectPattern(param)
     ? param
-    : tTypes.isAssignmentPattern(param) && tTypes.isObjectPattern(param.left)
+    : t.isAssignmentPattern(param) && t.isObjectPattern(param.left)
       ? param.left
       : null;
   if (!objPat) return [];
 
   const props: PropSignature[] = [];
   for (const p of objPat.properties) {
-    if (tTypes.isObjectProperty(p)) {
+    if (t.isObjectProperty(p)) {
       let localName: string | null = null;
       let optional = false;
-      if (tTypes.isIdentifier(p.value)) {
+      if (t.isIdentifier(p.value)) {
         localName = p.value.name;
-      } else if (tTypes.isAssignmentPattern(p.value) && tTypes.isIdentifier(p.value.left)) {
+      } else if (t.isAssignmentPattern(p.value) && t.isIdentifier(p.value.left)) {
         localName = p.value.left.name;
         optional = true;
       }
       if (localName) props.push({ name: localName, typeSlice, optional });
-    } else if (tTypes.isRestElement(p) && tTypes.isIdentifier(p.argument)) {
+    } else if (t.isRestElement(p) && t.isIdentifier(p.argument)) {
       props.push({ name: p.argument.name, typeSlice, optional: false });
     }
   }
@@ -549,25 +508,25 @@ function extractProps(body: t.Node, source: string): PropSignature[] {
 }
 
 function readTypeSlice(param: t.Node, source: string): string {
-  if (tTypes.isIdentifier(param) && param.typeAnnotation && tTypes.isTSTypeAnnotation(param.typeAnnotation)) {
+  if (t.isIdentifier(param) && param.typeAnnotation && t.isTSTypeAnnotation(param.typeAnnotation)) {
     return sliceSource(source, param.typeAnnotation.typeAnnotation);
   }
   if (
-    tTypes.isObjectPattern(param) &&
+    t.isObjectPattern(param) &&
     param.typeAnnotation &&
-    tTypes.isTSTypeAnnotation(param.typeAnnotation)
+    t.isTSTypeAnnotation(param.typeAnnotation)
   ) {
     return sliceSource(source, param.typeAnnotation.typeAnnotation);
   }
-  if (tTypes.isAssignmentPattern(param) && tTypes.isObjectPattern(param.left)) {
+  if (t.isAssignmentPattern(param) && t.isObjectPattern(param.left)) {
     const left = param.left;
-    if (left.typeAnnotation && tTypes.isTSTypeAnnotation(left.typeAnnotation)) {
+    if (left.typeAnnotation && t.isTSTypeAnnotation(left.typeAnnotation)) {
       return sliceSource(source, left.typeAnnotation.typeAnnotation);
     }
   }
-  if (tTypes.isAssignmentPattern(param) && tTypes.isIdentifier(param.left)) {
+  if (t.isAssignmentPattern(param) && t.isIdentifier(param.left)) {
     const left = param.left;
-    if (left.typeAnnotation && tTypes.isTSTypeAnnotation(left.typeAnnotation)) {
+    if (left.typeAnnotation && t.isTSTypeAnnotation(left.typeAnnotation)) {
       return sliceSource(source, left.typeAnnotation.typeAnnotation);
     }
   }

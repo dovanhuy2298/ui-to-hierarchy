@@ -116,10 +116,11 @@ describe("mapRouteToEntry", () => {
     expect(result.entries.every((e) => !e.includes("\\"))).toBe(true);
   });
 
-  it("params and slots are empty objects in v1 (no param extraction)", async () => {
+  it("params are populated with param names from the route pattern; slots are empty in v1", async () => {
     const result = await mapRouteToEntry(EXPO_TABS, "/[id]");
     expect(result.matched).toBe(true);
-    expect(result.params).toEqual({});
+    // WR-04: param names are extracted from the route pattern; values are "" (static analysis).
+    expect(result.params).toEqual({ id: "" });
     expect(result.slots).toEqual({});
   });
 });

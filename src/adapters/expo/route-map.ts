@@ -208,7 +208,11 @@ export async function mapRouteToEntry(
     return cloneEmpty();
   }
 
-  // Find the page file that maps to the given route
+  // Find the page file that maps to the given route.
+  // toForwardSlash(file) is applied explicitly here to ensure Windows
+  // paths from tinyglobby (which may return mixed separators) are
+  // normalized before being used with buildLayoutChain. buildLayoutChain
+  // depends on forward-slash paths throughout.
   let pageFile: string | null = null;
   for (const file of files) {
     const fwdFile = toForwardSlash(file);
@@ -224,10 +228,21 @@ export async function mapRouteToEntry(
   // Build the layout chain (root→leaf), then append page
   try {
     const layouts = await buildLayoutChain(pageFile, fwdAppRoot);
+
+    // Extract dynamic parameter names from the matched route pattern.
+    // Values are "" since this is static analysis — actual values are
+    // only known at runtime. Handles [param] and [...param] patterns.
+    const params: Record<string, string> = {};
+    const paramMatches = route.matchAll(/\[\.\.\.(\w+)\]|\[(\w+)\]/g);
+    for (const m of paramMatches) {
+      const name = m[1] ?? m[2];
+      if (name) params[name] = "";
+    }
+
     return {
       matched: true,
       entries: [...layouts, pageFile],
-      params: {},
+      params,
       slots: {},
     };
   } catch {

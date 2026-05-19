@@ -107,8 +107,8 @@ describe("discoverEntries", () => {
 
   it("includes _layout.tsx and index.tsx for expo-basic fixture", async () => {
     const result = await discoverEntries(EXPO_BASIC);
-    expect(result.some((p) => p.endsWith("/app/_layout.tsx") || p.endsWith("\\app\\_layout.tsx"))).toBe(true);
-    expect(result.some((p) => p.endsWith("/app/index.tsx") || p.endsWith("\\app\\index.tsx"))).toBe(true);
+    expect(result.some((p) => p.endsWith("/app/_layout.tsx"))).toBe(true);
+    expect(result.some((p) => p.endsWith("/app/index.tsx"))).toBe(true);
     // Ensure no backslashes (forward-slash invariant)
     expect(result.every((p) => !p.includes("\\"))).toBe(true);
   });
