@@ -11,8 +11,10 @@
  */
 
 import * as t from "@babel/types";
+import { parseExpression } from "@babel/parser";
 import type { FrameworkAdapter } from "../FrameworkAdapter.js";
 import type {
+  ClassToken,
   ComponentDefinition,
   ParseContext,
   PropSignature,
@@ -30,6 +32,9 @@ import { walkRenderFlow } from "../../core/render-flow/index.js";
 import { resolveModule as coreResolveModule } from "../../core/resolver/index.js";
 import { traverse } from "../../core/babel-shim.js";
 import { collectImportBindings } from "../../core/import-bindings.js";
+import { parseStyleSheetCreate } from "../../core/styles/rn/stylesheet-create.js";
+import { extractRNInlineStyle, extractNativeWindClassNames } from "../../core/styles/rn/style-prop.js";
+import { flattenStyleArray } from "../../core/styles/rn/index.js";
 import {
   discoverEntries as expoDiscoverEntries,
   detectDualRoots,
@@ -193,6 +198,7 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
     this.pendingWarnings = [];
 
     const out: ComponentDefinition[] = [];
+    const globalStyleIndex = new Map<string, Map<string, string[]>>();
 
     for (const absPath of entryFiles) {
       const fwdFile = toForwardSlash(absPath);
@@ -224,6 +230,40 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
       }
 
       const bindings = collectImportBindings(parsed.ast);
+
+      // Build per-file StyleSheet.create index
+      const fileWarnings: string[] = [];
+      const fileStyleIndex = parseStyleSheetCreate(parsed.ast, parsed.source, fileWarnings, fwdFile);
+      globalStyleIndex.set(fwdFile, fileStyleIndex);
+
+      // One-hop StyleSheet import resolution (D-02/D-03)
+      for (const [localName, binding] of bindings) {
+        if (fileStyleIndex.has(localName)) continue;
+        if (!binding.source.startsWith(".")) continue;
+        const resolved = coreResolveModule(ctx, fwdFile, binding.source, binding.importedName);
+        if (!resolved.ok || resolved.kind !== "local") continue;
+        const targetPath = toForwardSlash(resolved.absolutePath);
+        let targetIndex = globalStyleIndex.get(targetPath);
+        if (!targetIndex) {
+          const targetParsed = parseFile(ctx, targetPath);
+          if (targetParsed.kind === "error") {
+            fileWarnings.push(`Failed to parse StyleSheet import at ${targetPath}: ${targetParsed.message}`);
+            continue;
+          }
+          targetIndex = parseStyleSheetCreate(targetParsed.ast, targetParsed.source, fileWarnings, targetPath);
+          globalStyleIndex.set(targetPath, targetIndex);
+        }
+        const importedKeys = targetIndex.get(binding.importedName);
+        if (importedKeys) {
+          fileStyleIndex.set(localName, importedKeys);
+        } else {
+          fileWarnings.push(
+            `StyleSheet '${binding.importedName}' not found in imported file ${targetPath} — D-04 fallback at ${fwdFile}`,
+          );
+        }
+      }
+
+      for (const w of fileWarnings) ctx.warnings.push(w);
 
       // 1. Namespace import warning (SPEC Req 10)
       traverse(parsed.ast, {
@@ -304,6 +344,8 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
           parsed.source,
           fwdFile,
           bindings,
+          fileStyleIndex,
+          ctx,
         );
         out.push(componentDef);
       }
@@ -318,6 +360,8 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
     source: string,
     file: string,
     bindings: Map<string, { source: string; importedName: string }>,
+    fileStyleIndex: Map<string, string[]>,
+    ctx: ParseContext,
   ): ComponentDefinition {
     // 1. Render flow
     const renderFlow = walkRenderFlow(comp.body, source, file);
@@ -333,8 +377,29 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
     const runtime: "server" | "client" =
       firstDirective === "use client" ? "client" : "server";
 
-    // 5. RN primitive post-processing on render flow
-    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings);
+    // 5/6. Shared warnings + accumulators for style signals
+    const localWarnings: string[] = [];
+    const accumulatedClassNames: ClassToken[] = [];
+    const accumulatedInlineStyles: Record<string, string | { raw: string }> = {};
+
+    // 5. RN primitive post-processing on render flow (injects synthetic style signal attributes)
+    const processedRenderFlow = postProcessRenderFlow(renderFlow, bindings, fileStyleIndex, localWarnings);
+
+    // Walk the component body recursively to collect RN primitive JSX elements.
+    // We cannot use traverse(comp.body, ...) because babel traverse requires a
+    // Program/File root with scope. Instead we use a simple recursive visitor.
+    collectRNPrimitiveStyles(
+      comp.body,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+
+    for (const w of localWarnings) ctx.warnings.push(w);
 
     return {
       name: comp.name,
@@ -345,12 +410,227 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
       props,
       textContent,
       renderFlow: processedRenderFlow,
-      classNames: [],
-      inlineStyles: {},
+      classNames: accumulatedClassNames,
+      inlineStyles: accumulatedInlineStyles,
       cssModuleRefs: [],
       styledTemplates: [],
       runtime,
     };
+  }
+}
+
+/**
+ * Recursively collect RN style signals from all JSX elements within a component body node.
+ * Uses a simple recursive AST walk (not babel traverse) because traverse requires a
+ * Program/File root with scope.
+ *
+ * For each JSX element that is an RN primitive:
+ *   - extractRNInlineStyle → merge into accumulatedInlineStyles (last-wins per WR-04)
+ *   - extractNativeWindClassNames → append tokens to accumulatedClassNames
+ *   - style array (style={[...]}) → flattenStyleArray → append keys to accumulatedClassNames
+ */
+function collectRNPrimitiveStyles(
+  node: t.Node | null | undefined,
+  bindings: Map<string, { source: string; importedName: string }>,
+  fileStyleIndex: Map<string, string[]>,
+  source: string,
+  file: string,
+  localWarnings: string[],
+  accumulatedClassNames: ClassToken[],
+  accumulatedInlineStyles: Record<string, string | { raw: string }>,
+): void {
+  if (!node) return;
+
+  if (t.isJSXElement(node)) {
+    const openingEl = node.openingElement;
+    const nameNode = openingEl.name;
+    if (t.isJSXIdentifier(nameNode)) {
+      const tagName = nameNode.name;
+      const binding = bindings.get(tagName);
+      if (binding && isRNPrimitive(tagName, binding.source)) {
+        const line = openingEl.loc?.start.line ?? 0;
+
+        // a. Inline styles
+        const inlineResult = extractRNInlineStyle(node, source);
+        for (const [k, v] of Object.entries(inlineResult)) {
+          accumulatedInlineStyles[k] = v;
+        }
+
+        // b. NativeWind classNames
+        const classTokens = extractNativeWindClassNames(node, localWarnings, file, line);
+        for (const token of classTokens) {
+          accumulatedClassNames.push({ kind: "literal", value: token, file, line });
+        }
+
+        // c. Style array flattening
+        const styleAttr = openingEl.attributes.find(
+          (a): a is t.JSXAttribute =>
+            t.isJSXAttribute(a) && t.isJSXIdentifier(a.name) && a.name.name === "style",
+        );
+        if (
+          styleAttr &&
+          styleAttr.value &&
+          t.isJSXExpressionContainer(styleAttr.value) &&
+          t.isArrayExpression((styleAttr.value as t.JSXExpressionContainer).expression)
+        ) {
+          const arrayKeys = flattenStyleArray(
+            styleAttr.value as t.JSXExpressionContainer,
+            fileStyleIndex,
+            source,
+            localWarnings,
+            file,
+          );
+          for (const key of arrayKeys) {
+            accumulatedClassNames.push({ kind: "literal", value: key, file, line });
+          }
+        }
+      }
+    }
+    // Recurse into children
+    for (const child of node.children) {
+      collectRNPrimitiveStyles(
+        child as t.Node,
+        bindings,
+        fileStyleIndex,
+        source,
+        file,
+        localWarnings,
+        accumulatedClassNames,
+        accumulatedInlineStyles,
+      );
+    }
+    return;
+  }
+
+  if (t.isJSXFragment(node)) {
+    for (const child of node.children) {
+      collectRNPrimitiveStyles(
+        child as t.Node,
+        bindings,
+        fileStyleIndex,
+        source,
+        file,
+        localWarnings,
+        accumulatedClassNames,
+        accumulatedInlineStyles,
+      );
+    }
+    return;
+  }
+
+  // For function-like nodes, recurse into body
+  if (
+    t.isFunctionDeclaration(node) ||
+    t.isFunctionExpression(node) ||
+    t.isArrowFunctionExpression(node)
+  ) {
+    collectRNPrimitiveStyles(
+      node.body,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  if (t.isBlockStatement(node)) {
+    for (const stmt of node.body) {
+      collectRNPrimitiveStyles(
+        stmt,
+        bindings,
+        fileStyleIndex,
+        source,
+        file,
+        localWarnings,
+        accumulatedClassNames,
+        accumulatedInlineStyles,
+      );
+    }
+    return;
+  }
+
+  if (t.isReturnStatement(node)) {
+    collectRNPrimitiveStyles(
+      node.argument ?? null,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  if (t.isParenthesizedExpression(node)) {
+    collectRNPrimitiveStyles(
+      node.expression,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  if (t.isJSXExpressionContainer(node) && !t.isJSXEmptyExpression(node.expression)) {
+    collectRNPrimitiveStyles(
+      node.expression,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  if (t.isConditionalExpression(node)) {
+    collectRNPrimitiveStyles(
+      node.consequent,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    collectRNPrimitiveStyles(
+      node.alternate,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
+  }
+
+  if (t.isLogicalExpression(node)) {
+    collectRNPrimitiveStyles(
+      node.right,
+      bindings,
+      fileStyleIndex,
+      source,
+      file,
+      localWarnings,
+      accumulatedClassNames,
+      accumulatedInlineStyles,
+    );
+    return;
   }
 }
 
@@ -366,16 +646,76 @@ export class ExpoRouterAdapter implements FrameworkAdapter {
 function postProcessRenderFlow(
   node: RenderNode | null,
   bindings: Map<string, { source: string; importedName: string }>,
+  fileStyleIndex: Map<string, string[]>,
+  warnings: string[],
 ): RenderNode {
   if (!node) {
     return { kind: "error", message: "null render flow", file: "", line: 0 };
   }
-  return visitRenderNode(node, bindings);
+  return visitRenderNode(node, bindings, fileStyleIndex, warnings);
+}
+
+/**
+ * Resolve style signal keys from a style expression string.
+ * Handles:
+ *   - ObjectExpression: returns property names as styleKeys (inline style)
+ *   - ArrayExpression: resolves MemberExpression elements via fileStyleIndex (style array)
+ * Returns { styleKeys, arrayKeys } where arrayKeys are StyleSheet variable keys.
+ */
+function resolveStyleExpressionKeys(
+  expressionSource: string,
+  fileStyleIndex: Map<string, string[]>,
+  file: string,
+  warnings: string[],
+): { styleKeys: string[]; arrayKeys: string[] } {
+  const styleKeys: string[] = [];
+  const arrayKeys: string[] = [];
+  try {
+    const expr = parseExpression(expressionSource, { plugins: ["jsx", "typescript"] });
+    if (expr.type === "ObjectExpression") {
+      for (const prop of expr.properties) {
+        if (prop.type === "ObjectProperty" && !prop.computed) {
+          if (prop.key.type === "Identifier") styleKeys.push(prop.key.name);
+          else if (prop.key.type === "StringLiteral") styleKeys.push(prop.key.value);
+        }
+      }
+    } else if (expr.type === "ArrayExpression") {
+      for (const el of expr.elements) {
+        if (!el) continue;
+        // MemberExpression or LogicalExpression(&&/||).right MemberExpression
+        const memberEl =
+          el.type === "MemberExpression"
+            ? el
+            : (el.type === "LogicalExpression" && el.right.type === "MemberExpression")
+              ? el.right
+              : null;
+        if (
+          memberEl &&
+          memberEl.type === "MemberExpression" &&
+          memberEl.object.type === "Identifier" &&
+          memberEl.property.type === "Identifier"
+        ) {
+          const varName = memberEl.object.name;
+          const indexKeys = fileStyleIndex.get(varName);
+          if (indexKeys) {
+            arrayKeys.push(...indexKeys);
+          } else {
+            warnings.push(`StyleSheet var '${varName}' not found in index at ${file}`);
+          }
+        }
+      }
+    }
+  } catch {
+    // parse failure — silently skip (D-14 style)
+  }
+  return { styleKeys, arrayKeys };
 }
 
 function visitRenderNode(
   node: RenderNode,
   bindings: Map<string, { source: string; importedName: string }>,
+  fileStyleIndex: Map<string, string[]>,
+  warnings: string[],
 ): RenderNode {
   if (node.kind === "jsx") {
     const binding = bindings.get(node.tag);
@@ -383,12 +723,53 @@ function visitRenderNode(
 
     // Process children recursively
     const processedChildren = node.children.map((child) =>
-      visitRenderNode(child, bindings),
+      visitRenderNode(child, bindings, fileStyleIndex, warnings),
     );
 
     if (isRN) {
       // RN primitive: override isComponent to false (it's an element)
       // For "Text": extract literal text content
+      let syntheticAttrs = [...node.attributes];
+      const additionalSynthetic: import("../types.js").JsxAttribute[] = [];
+
+      // Process style signal injection for RN primitives
+      for (const attr of node.attributes) {
+        if (attr.name === "style" && attr.value.kind === "expression") {
+          const { styleKeys, arrayKeys } = resolveStyleExpressionKeys(
+            attr.value.source,
+            fileStyleIndex,
+            node.file,
+            warnings,
+          );
+          // Inject StyleSheet array keys as synthetic __rnStyleKeys attribute
+          if (arrayKeys.length > 0) {
+            additionalSynthetic.push({
+              name: "__rnStyleKeys",
+              value: { kind: "literal", value: arrayKeys.join(",") },
+            });
+          }
+          // styleKeys are inline object property names (already handled by scrapeStyleAttributes)
+          void styleKeys;
+        }
+        if (
+          attr.name === "className" &&
+          attr.value.kind === "literal" &&
+          typeof attr.value.value === "string"
+        ) {
+          // Strip NativeWind platform-variant prefixes (ios: / android: / web: / native:)
+          const PLATFORM_VARIANT_RE = /(ios|android|web|native):/g;
+          const stripped = attr.value.value.replace(PLATFORM_VARIANT_RE, "").trim();
+          if (stripped !== attr.value.value) {
+            // Replace the className attr with the stripped version
+            syntheticAttrs = syntheticAttrs.map((a) =>
+              a.name === "className"
+                ? { name: "className", value: { kind: "literal" as const, value: stripped } }
+                : a,
+            );
+          }
+        }
+      }
+
       if (node.tag === "Text") {
         // Collect literal text from processed children (post-recursion, consistent with returned tree).
         const textParts: string[] = [];
@@ -402,6 +783,7 @@ function visitRenderNode(
           ...node,
           isComponent: false,
           children: processedChildren,
+          attributes: syntheticAttrs,
         };
         // Only add text if we extracted something (not dynamic children)
         if (textValue) {
@@ -411,18 +793,23 @@ function visitRenderNode(
           return {
             ...result,
             attributes: [
-              ...node.attributes,
+              ...syntheticAttrs,
+              ...additionalSynthetic,
               { name: "__rnText", value: { kind: "literal", value: textValue } },
             ],
           };
         }
-        return result;
+        return {
+          ...result,
+          attributes: [...syntheticAttrs, ...additionalSynthetic],
+        };
       }
 
       return {
         ...node,
         isComponent: false,
         children: processedChildren,
+        attributes: [...syntheticAttrs, ...additionalSynthetic],
       };
     }
 
@@ -432,22 +819,22 @@ function visitRenderNode(
   if (node.kind === "fragment") {
     return {
       ...node,
-      children: node.children.map((child) => visitRenderNode(child, bindings)),
+      children: node.children.map((child) => visitRenderNode(child, bindings, fileStyleIndex, warnings)),
     };
   }
 
   if (node.kind === "branch") {
     return {
       ...node,
-      thenBranch: node.thenBranch ? visitRenderNode(node.thenBranch, bindings) : null,
-      elseBranch: node.elseBranch ? visitRenderNode(node.elseBranch, bindings) : null,
+      thenBranch: node.thenBranch ? visitRenderNode(node.thenBranch, bindings, fileStyleIndex, warnings) : null,
+      elseBranch: node.elseBranch ? visitRenderNode(node.elseBranch, bindings, fileStyleIndex, warnings) : null,
     };
   }
 
   if (node.kind === "list") {
     return {
       ...node,
-      item: visitRenderNode(node.item, bindings),
+      item: visitRenderNode(node.item, bindings, fileStyleIndex, warnings),
     };
   }
 
