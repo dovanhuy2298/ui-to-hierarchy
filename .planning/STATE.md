@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: React Native + Expo Router
-status: completed
-last_updated: "2026-05-18T08:00:00.000Z"
-last_activity: 2026-05-18
+status: executing
+last_updated: "2026-05-19T01:54:35.263Z"
+last_activity: 2026-05-19
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 43
 ---
 
 # STATE — ui-to-hierarchyMCP
 
-**Last updated:** 2026-05-18 — Phase 12 planned; 4 plans across 4 waves; ready to execute
+**Last updated:** 2026-05-19 — Phase 12 Plan 01 complete; collectImportBindings extracted to core, 5 RED test stubs scaffolded
 
 ## Project Reference
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-05-12)
 ## Current Position
 
 Phase: 12 — ExpoRouterAdapter Routing & RN Primitives
-Plan: 0 of 4 (planned — ready to execute)
-Status: Ready to execute
-Last activity: 2026-05-18
+Plan: 1 of 4 (Plan 01 complete — Wave 0 done)
+Status: In progress
+Last activity: 2026-05-19
 
 ## Progress Bar
 
@@ -41,7 +41,7 @@ v1.1   Phases 7–8 [##########] 100% (shipped 2026-05-12)
 v1.2   Phase 9   [##########] 100% (3/3 plans complete 2026-05-13)
 v1.2   Phase 10  [##########] 100% (2/2 plans complete 2026-05-13)
 v1.2   Phase 11  [##########] 100% (5/5 plans complete 2026-05-18)
-v1.2   Phase 12  [..........]   0%
+v1.2   Phase 12  [##.........]  25% (1/4 plans)
 v1.2   Phase 13  [..........]   0%
 v1.2   Phase 14  [..........]   0%
 v1.2   Phase 15  [..........]   0%
@@ -62,7 +62,7 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ### Open Todos
 
-- None. Phase 11 complete. Ready for Phase 12.
+- Phase 12 Plan 01 complete. Wave 0 foundation done. Ready for Plan 02 (routing infrastructure).
 
 ### Blockers
 
@@ -77,8 +77,8 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Session Continuity
 
-- Last session: 2026-05-18 — Phase 11 executed: 5/5 plans complete across 4 waves. ExpoRouterAdapter stub, detectExpoRouter, detectNextJs, selectAdapter + --framework flag, tool handler refactor all shipped. 389 tests passing. Deviation: 7 existing fixtures had no package.json (fixed by Plan 05 executor).
-- Next command: `/gsd:plan-phase 12` or `/gsd:execute-phase 12`
+- Last session: 2026-05-19 — Phase 12 Plan 01 executed: collectImportBindings extracted to src/core/import-bindings.ts (island rule satisfied), Analyzer.ts refactored to import from new module, 5 RED test stubs scaffolded under test/adapters/expo/ (56 todos, 0 failures). 389 tests passing.
+- Next command: `/gsd:execute-phase 12` (continue with Plan 02)
 - Released artifact: `ui-hierarchy-mcp` v0.2.0 on npm (v1.1).
 
 ## Quick Tasks Completed
@@ -89,5 +89,4 @@ Captured in PROJECT.md Key Decisions table. v1.2-specific decisions to log as ph
 
 ## Operator Next Steps
 
-- `/gsd:plan-phase 12` — plan Phase 12 (ExpoRouterAdapter real parsing — Expo Router routes, components, classifyEntry).
-- `/gsd:execute-phase 12` — execute Phase 12 once planned.
+- `/gsd:execute-phase 12` — continue Phase 12 (Plan 02: routing infrastructure — segments, discover, route-map).
