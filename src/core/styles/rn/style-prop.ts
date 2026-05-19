@@ -46,8 +46,8 @@ export function extractNativeWindClassNames(
 
   // Branch on val type FIRST (Pitfall 5: never run regex on tagged template content)
   if (t.isStringLiteral(val)) {
-    const PLATFORM_VARIANT_RE = /(ios|android|web|native):/g;
-    const stripped = val.value.replace(PLATFORM_VARIANT_RE, "");
+    const PLATFORM_VARIANT_RE = /(?:ios|android|web|native):(S+)/g;
+    const stripped = val.value.replace(PLATFORM_VARIANT_RE, "$1");
     return stripped.trim().split(/\s+/).filter(Boolean);
   }
 
