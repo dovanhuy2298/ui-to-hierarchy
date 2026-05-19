@@ -730,26 +730,32 @@ function visitRenderNode(
       // RN primitive: override isComponent to false (it's an element)
       // For "Text": extract literal text content
       let syntheticAttrs = [...node.attributes];
-      const additionalSynthetic: import("../types.js").JsxAttribute[] = [];
 
-      // Process style signal injection for RN primitives
+      // Process style signal injection for RN primitives.
+      // Strategy: inject individual className="<key>" attributes for each style key so that:
+      //   1. scrapeStyleAttributes in Analyzer.ts picks them up as classNames for findByStyle
+      //   2. The snapshot markdown shows each key individually (grep '"key"' matches ='key')
+      //   3. No Analyzer.ts changes needed — className handling already exists
+      //
+      // Build list of syntheticAttrs without className (we'll rebuild it)
+      const nonClassAttrs = node.attributes.filter((a) => a.name !== "className");
+      const extraClassTokens: import("../types.js").JsxAttribute[] = [];
+
       for (const attr of node.attributes) {
         if (attr.name === "style" && attr.value.kind === "expression") {
-          const { styleKeys, arrayKeys } = resolveStyleExpressionKeys(
+          const { arrayKeys } = resolveStyleExpressionKeys(
             attr.value.source,
             fileStyleIndex,
             node.file,
             warnings,
           );
-          // Inject StyleSheet array keys as synthetic __rnStyleKeys attribute
-          if (arrayKeys.length > 0) {
-            additionalSynthetic.push({
-              name: "__rnStyleKeys",
-              value: { kind: "literal", value: arrayKeys.join(",") },
+          // Inject each StyleSheet array key as its own className attribute
+          for (const key of arrayKeys) {
+            extraClassTokens.push({
+              name: "className",
+              value: { kind: "literal" as const, value: key },
             });
           }
-          // styleKeys are inline object property names (already handled by scrapeStyleAttributes)
-          void styleKeys;
         }
         if (
           attr.name === "className" &&
@@ -758,17 +764,23 @@ function visitRenderNode(
         ) {
           // Strip NativeWind platform-variant prefixes (ios: / android: / web: / native:)
           const PLATFORM_VARIANT_RE = /(ios|android|web|native):/g;
-          const stripped = attr.value.value.replace(PLATFORM_VARIANT_RE, "").trim();
-          if (stripped !== attr.value.value) {
-            // Replace the className attr with the stripped version
-            syntheticAttrs = syntheticAttrs.map((a) =>
-              a.name === "className"
-                ? { name: "className", value: { kind: "literal" as const, value: stripped } }
-                : a,
-            );
+          const stripped = attr.value.value
+            .replace(PLATFORM_VARIANT_RE, "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+          // Inject each stripped token as its own className attribute
+          for (const token of stripped) {
+            extraClassTokens.push({
+              name: "className",
+              value: { kind: "literal" as const, value: token },
+            });
           }
         }
       }
+
+      // Rebuild syntheticAttrs: non-className attrs first, then all className tokens
+      syntheticAttrs = [...nonClassAttrs, ...extraClassTokens];
 
       if (node.tag === "Text") {
         // Collect literal text from processed children (post-recursion, consistent with returned tree).
@@ -794,22 +806,18 @@ function visitRenderNode(
             ...result,
             attributes: [
               ...syntheticAttrs,
-              ...additionalSynthetic,
               { name: "__rnText", value: { kind: "literal", value: textValue } },
             ],
           };
         }
-        return {
-          ...result,
-          attributes: [...syntheticAttrs, ...additionalSynthetic],
-        };
+        return result;
       }
 
       return {
         ...node,
         isComponent: false,
         children: processedChildren,
-        attributes: [...syntheticAttrs, ...additionalSynthetic],
+        attributes: syntheticAttrs,
       };
     }
 

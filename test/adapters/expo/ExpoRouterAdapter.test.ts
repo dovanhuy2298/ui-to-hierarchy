@@ -618,4 +618,43 @@ describe("snapshots", () => {
     );
     expect(() => readFileSync(notFoundPath, "utf8")).not.toThrow();
   });
+
+  it("expo-tabs-and-dynamic RN style signals via extractComponents (Phase 13 — RN-04/05/06/07)", () => {
+    // Directly exercise extractComponents on (tabs)/index.tsx which has all four RN style channels:
+    //   StyleSheet.create({ card, bold }) — RN-04 (parseStyleSheetCreate)
+    //   style={[styles.card, active && styles.bold]} — RN-06 (flattenStyleArray)
+    //   style={{ fontWeight: "bold" }} — RN-05 (extractRNInlineStyle)
+    //   className="ios:p-4 android:p-2 text-lg" — RN-07 (extractNativeWindClassNames)
+    //
+    // NOTE: This file is NOT reachable via the full-hierarchy snapshot route "/[id]" because
+    // (tabs)/_layout.tsx uses <Tabs> (not <Slot>) and static analysis cannot inject tab pages.
+    // Directly calling extractComponents verifies the wiring at the adapter boundary.
+    const adapter = new ExpoRouterAdapter();
+    const indexPath = path.resolve(
+      "test/fixtures/expo-tabs-and-dynamic/app/(tabs)/index.tsx",
+    );
+    const ctx = makeCtx();
+    ctx.resolvedRoot = EXPO_TABS_ROOT;
+    const components = adapter.extractComponents(ctx, [indexPath]);
+    expect(components.length).toBeGreaterThan(0);
+
+    // Find the HomeTab component
+    const homeTab = components.find((c) => c.name === "HomeTab");
+    expect(homeTab).toBeDefined();
+    expect(homeTab!.classNames).toBeDefined();
+
+    // RN-07: NativeWind className tokens — platform variants stripped, 3 tokens remain
+    const classNameValues = homeTab!.classNames.map((t) => t.value);
+    expect(classNameValues).toContain("p-4");
+    expect(classNameValues).toContain("p-2");
+    expect(classNameValues).toContain("text-lg");
+
+    // RN-04/RN-06: StyleSheet.create keys — card and bold appear as className signals
+    expect(classNameValues).toContain("card");
+    expect(classNameValues).toContain("bold");
+
+    // RN-05: inlineStyles — fontWeight: "bold" from style={{ fontWeight: "bold" }}
+    expect(homeTab!.inlineStyles).toBeDefined();
+    expect(homeTab!.inlineStyles["fontWeight"]).toBe("bold");
+  });
 });
